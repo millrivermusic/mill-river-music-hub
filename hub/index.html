@@ -112,13 +112,15 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 /* Tiles. Counts are Airtable formulas on the Purchase Log. */
 const ACTIVE="OR(TRIM({Data Status}&'')='Purchased / Approved',{Data Status}='POS Synced',{Data Status}='Ready For Ecommerce')";
 const COUNTS={
-  posWait:{label:"Waiting to POS sync (60 days)", f:"AND(TRIM({Data Status}&'')='Purchased / Approved',IS_AFTER({Date In},DATEADD(TODAY(),-60,'days')))", href:"https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR/viwuD9J3f1Ie9Q9yY"},
+  posWait:{label:"Waiting to POS sync (60 days)", f:"AND(TRIM({Data Status}&'')='Purchased / Approved',IS_AFTER({Date In},DATEADD(TODAY(),-60,'days')))", href:"../lookup/?tab=pos"},
   tbd:{label:"Not checked yet (TBD)", f:`AND({Physical Status}='TBD',${ACTIVE})`},
   needsGuitar:{label:"Guitar repair", f:`AND({Physical Status}='Needs Work: Guitar Repair',${ACTIVE})`},
   needsAmp:{label:"Electronics + tube amps", f:`AND(OR({Physical Status}='Needs Work: Electronics Repair',{Physical Status}='Needs Work: Tube Amp Repair'),${ACTIVE})`},
   needsOther:{label:"Horns + misc", f:`AND(OR({Physical Status}='Needs Work: Horn Repair',{Physical Status}='Needs Work: Misc'),${ACTIVE})`},
   needsPhotos:{label:"POS synced, no photos yet", f:"AND({Data Status}='POS Synced',NOT({Cloudinary URLs}),NOT({Image 1}))"},
   upNext:{label:"Up next to list", f:"AND({Data Status}='POS Synced',OR({Physical Status}='Ready to Sell',{Physical Status}='PriorityReady'),NOT({Description Done}))"},
+  live:{label:"Listed (live online)", f:"AND(TRIM({Data Status}&'')='Ready For Ecommerce',{Listing Live?}='Live')", href:"../lookup/?tab=live"},
+  going:{label:"Going online, not live yet", f:"AND(TRIM({Data Status}&'')='Ready For Ecommerce',{Listing Live?}!='Live')", href:"../lookup/?tab=going"},
   ecom:{label:"Going to Reverb tonight", f:"AND({Ecommerce Sync},{Data Status}='Ready For Ecommerce',NOT({Reverb URL}))"},
 };
 const TILES=[
@@ -126,7 +128,7 @@ const TILES=[
   {ic:"🔧", t:"Tech Bench", p:"Pick the work you do: guitars, electronics, tube amps, horns, misc, or TBD. Log work, mark ready to sell.", where:"Phone or computer", href:"../tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
   {ic:"📷", t:"Photos", p:"Scan the SKU, shoot, upload. Goes straight to Cloudinary and Lightspeed.", where:"Phone app", href:"../", counts:["needsPhotos"]},
   {ic:"✍️", t:"Listing", p:"Write up used listings with Claude: research, fields, house format, save.", where:"In Claude", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
-  {ic:"🔎", t:"Lookup & Notes", p:"Find any item: price, status, history. Price checks. Add a note from a call.", where:"Coming soon", soon:true, counts:[]},
+  {ic:"🔎", t:"Lookup & Notes", p:"Find any item: where it stands, price checks, our history. View-only; notes and changes are confirmed first.", where:"Phone or computer", href:"../lookup/", counts:["live","going"]},
 ];
 const VAL={};
 
@@ -138,7 +140,7 @@ async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
   return offset?n+"+":n; }
 
 function renderTiles(){ $("tiles").innerHTML=TILES.map(t=>{ const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
-  ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}" target="_blank" rel="noopener"><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
+  ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}"${/^https?:/.test(c.href)?' target="_blank" rel="noopener"':""}><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
   if(t.soon) return `<div class="tile soon"><span class="badge">Soon</span>${inner}</div>`;
   const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; }).join(""); }
 

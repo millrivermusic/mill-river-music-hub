@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8A3B12">
+<title>MRM Lookup</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* MRM Lookup: find any item, see where it stands, check prices. View-only until you choose to make a change, and every change is confirmed first. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; --sugg:#F0C14D; --sugg-soft:#3A2E10; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.bar select{font:inherit;font-size:14px;border-radius:9px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:960px;margin:0 auto;padding-top:14px;padding-bottom:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 8px;font-size:18px;font-weight:800}
+.card h3{margin:0 0 6px;font-size:15px;font-weight:800}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:44px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn.warnb{background:var(--warn);color:#fff}
+.btn:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input.t,select.t,textarea.t{border:1px solid var(--line);background:var(--sunk);border-radius:11px;padding:10px 12px;font-size:16px;min-width:0;width:100%}
+input.t:focus,select.t:focus,textarea.t:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+textarea.t{min-height:64px;resize:vertical}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-top:10px}
+.tab{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);white-space:nowrap;display:inline-flex;gap:6px}
+.tab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tab .n{opacity:.85;font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:10px 12px;cursor:pointer}
+.res:hover{border-color:var(--accent)}
+.res b{line-height:1.25}
+.res .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .why{grid-column:1/-1;font-size:13px;color:var(--warn);font-weight:700}
+.price{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sku{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line)}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent} .tag.need{background:var(--sugg-soft);color:var(--sugg);border-color:transparent} .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent} .tag.info{background:var(--info-soft);color:var(--info);border-color:transparent}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.deets{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 14px;margin:12px 0 0}
+.deets div{min-width:0} .deets dt{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase} .deets dd{margin:0;overflow-wrap:anywhere}
+.notebox{margin-top:12px;border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 10px 10px 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.notebox b{display:block;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;white-space:normal}
+.thumbs{display:flex;gap:6px;overflow-x:auto;margin-top:12px}
+.thumbs img{width:110px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex:none;background:var(--sunk)}
+.linkrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.linkrow a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;color:inherit;text-decoration:none}
+.linkrow a:hover{border-color:var(--accent)}
+table.hist{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+table.hist th{text-align:left;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);padding:6px 6px;border-bottom:1px solid var(--line)}
+table.hist td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.hist td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scrollx{overflow-x:auto}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
+label.f.wide{grid-column:1/-1}
+.locked{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--line);border-radius:12px;padding:10px 12px;color:var(--muted);font-size:14px}
+.review{margin-top:12px;border:2px solid var(--warn);border-radius:14px;padding:14px;background:var(--warn-soft)}
+.review p{margin:0 0 8px;font-weight:800;color:var(--warn)}
+.review ul{margin:0 0 10px;padding-left:20px}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+.scan{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
+.scan video{flex:1;width:100%;object-fit:cover;min-height:0}
+.scan .frame{position:absolute;left:10%;right:10%;top:38%;height:22%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
+.scan .foot{position:absolute;left:0;right:0;bottom:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;align-items:center;color:#fff}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>🔎 Lookup</h1>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../hub/">Hub</a></div></div></header>
+<main class="wrap">
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device</h2>
+    <p class="small muted" style="margin:0 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices with MRM Photos, the Hub or Tech Bench set up are connected automatically.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card" id="browse" hidden>
+    <div class="row"><form id="sform" class="row" style="flex:1 1 260px"><input class="t" id="q" inputmode="search" placeholder="SKU, name, brand, model…" autocomplete="off" style="flex:1 1 160px;width:auto"><button class="btn" type="submit">Find</button></form><button class="btn sec" id="scanbtn" type="button">▦ Scan</button></div>
+    <div class="tabs" id="tabs"></div>
+    <div id="bmsg"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section id="item" hidden></section>
+</main>
+<div class="scan" id="scanner" hidden><video id="vid" playsinline muted></video><div class="frame"></div>
+  <div class="foot"><div>Point at the SKU barcode</div><button class="btn sec" id="stopscan" style="min-width:160px">Cancel</button></div></div>
+
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", phys:"fldM1ajllQvTvdKwI", cat:"fldRSem0EtiWihkN1", cond:"fldYuGbUJO4a0bNvu", notes:"fldW0Sgi7TVduheu1",
+  serial:"fldt6OBgEhIwhEvjP", dateIn:"fldf0h1eW3dxrlufr", seller:"fldTyF7VCWXfIcpJm", cost:"fldg6j6emzCkDiGaI", esp:"fldkODnsYDRYqeOOm", pos:"fld0ESkFoFMOhfR0g", online:"fldd9UhO7Ld2Io9f0", newPrice:"fld6COeapNgbSjGQX",
+  repairEst:"fldSuGcsrYx8FGajQ", repairCost:"fldQdlwr3NdLnkNxW", problem:"flds9Vh216pnpNtHW", problemNotes:"fldkgKctPGo7QA45c", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", img1:"fldECxEFzuwWNZoDi",
+  intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX", finish:"flduMrOukLdpZa903", desc:"fldK4r1UVR5CMLNwZ", reverbUrl:"fldxpwguYzuqHGNrk", live:"fldhDcy7R5md05jLL",
+  ecom:"fldX0VOsDANQgy19J", descDone:"fldBLrfIlQl4L6TTg", syncStatus:"fldAYVCBr0NvScNGw", lsSync:"fldaLAXj2wSSleZZB", dateSold:"fldE8Lo8KkVQep2RL", listedBy:"fldmEXUkfXzeXUwEl", ship:"fldMXyf3MJT81bP8H" };
+const PHYS=["TBD","Needs Work: Guitar Repair","Needs Work: Electronics Repair","Needs Work: Tube Amp Repair","Needs Work: Horn Repair","Needs Work: Misc","Ready to Sell","Hold","Parts","Long Term Project","Tag Sale","Listed","Sold"];
+const LOCS=["Intake Room","Sales Floor","Repair","Repair(Humidifying)","Front caseland","Shop Stock","Mezzanine Overflow","Drum Loft","Easthampton Storage","Climate Controlled Storage","Eho 2","J&N Garage","Rust Temple"];
+const DS=x=>`TRIM({Data Status}&'')='${x}'`;
+const TABS=[
+  {k:"pos", label:"Waiting POS sync", f:DS("Purchased / Approved"), note:"Bought and approved, not in Lightspeed yet. Red lines show what's probably holding it up."},
+  {k:"store", label:"In store only", f:DS("POS Synced"), note:"In Lightspeed, not sent online yet."},
+  {k:"going", label:"Going online", f:`AND(${DS("Ready For Ecommerce")},{Listing Live?}!='Live')`, note:"Sent to Reverb/website but not confirmed live yet."},
+  {k:"live", label:"Listed (live)", f:`AND(${DS("Ready For Ecommerce")},{Listing Live?}='Live')`, note:"Live online."},
+  {k:"pending", label:"Pending / hold", f:`OR(${DS("Pending")},${DS("Hold")},${DS("Awaiting Consigner Approval")},${DS("Potential Deal")})`, note:"Pending deals, holds and consignments awaiting approval."},
+  {k:"sold", label:"Sold", f:DS("Sold"), note:"Most recent 100 by date in.", max:100},
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let TAB=(()=>{ const m=/[?&]tab=(\w+)/.exec(location.search); return m&&TABS.some(t=>t.k===m[1])?m[1]:(store.get("mrm-lookup-tab")||"store"); })();
+let ROWS=[], COUNTS={}, REC=null, busy=false, editing=false, pending=null, searchQ="";
+
+const num=v=>{ const x=parseFloat(String(v??"").replace(/[$,]/g,"")); return isFinite(x)?x:null; };
+const money=v=>{ const x=num(v); return x?"$"+x.toLocaleString("en-US"):""; };
+const f=(r,k)=>{ const v=r&&r.fields&&r.fields[FX[k]]; if(v==null) return ""; if(Array.isArray(v)) return v.map(x=>x&&typeof x==="object"?(x.name??x.filename??""):x).join(", "); if(typeof v==="object") return v.text??v.name??""; return v; };
+const quote=s=>"'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
+const st=r=>String(f(r,"status")||"").trim();
+
+/* ---------- Airtable (reads) ---------- */
+async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
+const FQ=Object.values(FX).filter(x=>x!==FX.desc).map(x=>"fields%5B%5D="+x).join("&");
+async function query(formula,max){ let out=[], offset="";
+  do{ let p=`?returnFieldsByFieldId=true&${FQ}&pageSize=100&filterByFormula=${encodeURIComponent(formula)}&sort%5B0%5D%5Bfield%5D=${FX.dateIn}&sort%5B0%5D%5Bdirection%5D=desc`; if(offset) p+="&offset="+encodeURIComponent(offset);
+    const j=await api(p); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<(max||300));
+  return out.slice(0,max||300); }
+async function countF(fml){ let n=0, offset="", pages=0;
+  do{ const j=await api(`?pageSize=100&fields%5B%5D=${FX.name}&filterByFormula=${encodeURIComponent(fml)}${offset?"&offset="+encodeURIComponent(offset):""}`); n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<10);
+  return offset?n+"+":n; }
+
+/* ---------- browse ---------- */
+function renderTabs(){ $("tabs").innerHTML=TABS.map(t=>`<button class="tab ${t.k===TAB&&!searchQ?"on":""}" data-act="tab" data-k="${t.k}">${esc(t.label)}<span class="n">${COUNTS[t.k]!==undefined?COUNTS[t.k]:""}</span></button>`).join(""); }
+async function loadTab(){ searchQ=""; renderTabs(); const t=TABS.find(x=>x.k===TAB); renderList("Loading…");
+  try{ ROWS=await query(t.f,t.max||300); renderList(`${esc(t.note)}${ROWS.length>=300?" Showing the newest 300.":""}`); }catch(e){ ROWS=[]; renderList(esc(e.message)); } }
+async function loadCounts(){ await Promise.all(TABS.filter(t=>t.k!=="sold").map(async t=>{ try{ COUNTS[t.k]=await countF(t.f); }catch(e){ COUNTS[t.k]="?"; } })); renderTabs(); }
+async function find(q){ q=String(q||"").trim(); if(!q) return loadTab(); searchQ=q; renderTabs(); renderList("Looking…");
+  try{ let recs=[]; try{ recs=await query(`{SKU}&''=${quote(q)}`,5); }catch(e){}
+    if(recs.length===1) return openItem(recs[0]);
+    if(!recs.length){ const words=q.toLowerCase().split(/\s+/).filter(w=>w.length>1).slice(0,5); const nameHas=words.map(w=>`FIND(${quote(w)},LOWER({Name}&''))`).join(",");
+      recs=await query(`OR(AND(${nameHas}),FIND(${quote(q)},{SKU}&''),FIND(LOWER(${quote(q)}),LOWER({Serial #}&'')))`,100); }
+    ROWS=recs; renderList(recs.length?`${recs.length}${recs.length>=100?"+":""} match${recs.length===1?"":"es"} for “${esc(q)}”, any status. <a href="#" data-act="clear">Clear</a>`:`Nothing found for “${esc(q)}”.`); }
+  catch(e){ ROWS=[]; renderList(esc(e.message)); } }
+function stuck(r){ const w=[]; if(!String(f(r,"name")).trim()) w.push("no name"); if(!/^\d+$/.test(String(f(r,"sku")).trim())) w.push("SKU missing or not all digits"); if(!f(r,"cat")) w.push("no category"); if(num(f(r,"cost"))==null) w.push("no purchase cost"); if(num(f(r,"pos"))==null) w.push("no POS price (0 is OK)");
+  const s=String(f(r,"syncStatus")||""); if(/error|missing|fail|required|wasn't/i.test(s)) w.push("sync says: "+s.split("\n").pop().slice(0,90)); return w; }
+const ago=d=>{ if(!d) return ""; const n=Math.round((Date.now()-new Date(d).getTime())/86400000); return n<1?"today":n===1?"1 day":n<60?n+" days":n<730?Math.round(n/30)+" mo":Math.round(n/365)+" yr"; };
+function priceOf(r){ return money(f(r,"online"))||money(f(r,"pos"))||(money(f(r,"esp"))?"exp. "+money(f(r,"esp")):""); }
+function renderList(msg){ $("bmsg").innerHTML=msg?`<div class="small muted" style="margin-top:10px">${msg}</div>`:"";
+  $("list").innerHTML=ROWS.map((r,i)=>{ const why=TAB==="pos"&&!searchQ?stuck(r):[];
+    return `<button class="res" data-act="open" data-i="${i}"><b>${esc(f(r,"name")||"(no name)")}</b><span class="price">${esc(priceOf(r))}</span>
+      <span class="meta"><span class="sku">${esc(f(r,"sku"))}</span> · ${esc(st(r)||"no status")} · ${esc(f(r,"phys")||"–")} · in ${esc(ago(f(r,"dateIn")))}${f(r,"location")?" · "+esc(f(r,"location")):""}</span>
+      ${why.length?`<span class="why">${esc(why.join(" · "))}</span>`:""}</button>`; }).join(""); }
+
+/* ---------- item (read-only by default) ---------- */
+function openItem(r){ REC=r; editing=false; pending=null; $("browse").hidden=true; $("item").hidden=false; renderItem(); window.scrollTo(0,0); }
+function closeItem(){ REC=null; editing=false; pending=null; $("item").hidden=true; $("browse").hidden=false; }
+function pics(r){ const u=String(f(r,"urls")||"").split(/\s+/).filter(x=>/^https:\/\/res\.cloudinary\.com\//.test(x));
+  const a=(r.fields[FX.img1]||[]).map(x=>x.thumbnails&&x.thumbnails.large?x.thumbnails.large.url:x.url);
+  return (u.length?u.map(x=>x.replace(/\/upload\/.*?\/v(\d+)\//,"/upload/c_fill,w_240,h_240,q_auto,f_jpg/v$1/")):a).slice(0,10); }
+function searchTerms(r){ return [f(r,"make"),f(r,"model")].filter(Boolean).join(" ")||String(f(r,"name")).replace(/\s*-\s*Used.*$/i,"").replace(/w\/.*$/i,"").trim(); }
+function renderItem(extra){ const r=REC, s=st(r), live=f(r,"live");
+  const tags=[`<span class="tag ${s==="Sold"?"warn":s==="Ready For Ecommerce"?"ok":"info"}">${esc(s||"no status")}</span>`,`<span class="tag ${/Needs|TBD/.test(f(r,"phys"))?"need":/Ready/.test(f(r,"phys"))?"ok":""}">${esc(f(r,"phys")||"no physical status")}</span>`];
+  if(live) tags.push(`<span class="tag ${live==="Live"?"ok":""}">Online: ${esc(live)}</span>`); if(r.fields[FX.descDone]) tags.push(`<span class="tag">Description done</span>`);
+  const rows=[["POS price",money(f(r,"pos"))],["Online price",money(f(r,"online"))],["Expected sale",money(f(r,"esp"))],["New price",money(f(r,"newPrice"))],["Paid",money(f(r,"cost"))],
+    ["Category",f(r,"cat")],["Condition",f(r,"cond")],["Make",f(r,"make")],["Model",f(r,"model")],["Year",f(r,"year")],["Finish",f(r,"finish")],["Serial #",f(r,"serial")],
+    ["Date in",f(r,"dateIn")],["Intake",f(r,"intakeType")],["Seller",f(r,"seller")],["Location",f(r,"location")],["Shipping",f(r,"ship")],["Repair est.",money(f(r,"repairEst"))],["Repair cost",money(f(r,"repairCost"))],["Listed by",f(r,"listedBy")],["Date sold",f(r,"dateSold")]].filter(x=>x[1]!==""&&x[1]!=null);
+  const box=(t,v)=>v?`<div class="notebox"><b>${t}</b>${esc(v)}</div>`:""; const p=pics(r); const why=s==="Purchased / Approved"?stuck(r):[];
+  const term=encodeURIComponent(searchTerms(r));
+  $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2><span class="sku">SKU ${esc(f(r,"sku"))}</span></div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
+    <div class="tags">${tags.join("")}</div>
+    ${why.length?`<div class="note warn">Probably holding up the POS sync: ${esc(why.join("; "))}.</div>`:""}
+    ${p.length?`<div class="thumbs">${p.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
+    <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
+    ${f(r,"reverbUrl")?`<div class="linkrow"><a href="${esc(f(r,"reverbUrl"))}" target="_blank" rel="noopener">Open on Reverb ↗</a></div>`:""}
+    ${box("Notes",f(r,"notes"))}${box("Problem notes",f(r,"problemNotes"))}
+    <div id="descbox"></div></div>
+
+  <div class="card"><h2>Check prices</h2>
+    <div class="linkrow">
+      <a href="https://reverb.com/marketplace?query=${term}&condition=used" target="_blank" rel="noopener">Reverb used listings ↗</a>
+      <a href="https://reverb.com/price-guide?query=${term}" target="_blank" rel="noopener">Reverb price guide ↗</a>
+      <a href="https://www.ebay.com/sch/i.html?_nkw=${term}&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener">eBay sold ↗</a>
+      <a href="https://www.google.com/search?q=${term}+used+price" target="_blank" rel="noopener">Google ↗</a>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn sec" data-act="hist">What have we sold these for?</button><span class="small muted">Searches our Purchase Log for “${esc(searchTerms(r))}”.</span></div>
+    <div id="hist"></div></div>
+
+  <div class="card"><h2>Notes and changes</h2>
+    <div class="small muted">This page is view-only. Adding a note or changing a field always asks you to confirm, and every change is written into the item's Notes with your name and the time.</div>
+    <div class="form"><label class="f wide">Add a note (call from the customer, a hold, something you noticed)<textarea class="t" id="notein" placeholder="e.g. Customer called, wants to come try it Saturday."></textarea></label></div>
+    <div class="row" style="margin-top:8px"><button class="btn sec" data-act="reviewnote">Add note…</button></div>
+    ${editing?editForm():`<div class="locked" style="margin-top:14px"><span>🔒 Fields are locked.</span><button class="btn sec" data-act="unlock">Make a change…</button></div>`}
+    <div id="review"></div><div id="imsg">${extra||""}</div></div>`;
+  if(REC.fields[FX.desc]===undefined) loadDesc(); else showDesc(); }
+async function loadDesc(){ try{ const j=await api(`/${REC.id}?returnFieldsByFieldId=true`); REC.fields={...REC.fields,...(j.fields||{})}; if(REC.fields[FX.desc]===undefined) REC.fields[FX.desc]=""; showDesc(); }catch(e){} }
+function showDesc(){ const d=String(REC.fields[FX.desc]||"").trim(); const el=$("descbox"); if(el) el.innerHTML=d?`<details style="margin-top:12px"><summary class="small"><b>Listing description</b> (${d.length} characters)</summary><div class="small" style="white-space:pre-wrap;margin-top:6px">${esc(d)}</div></details>`:""; }
+async function history(){ const el=$("hist"); el.innerHTML=`<div class="small muted" style="margin-top:8px">Searching…</div>`;
+  const words=searchTerms(REC).toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(w=>w.length>1&&!["used","with","the","and","guitar","w"].includes(w)).slice(0,4);
+  if(!words.length){ el.innerHTML=`<div class="small muted">Not enough to search on.</div>`; return; }
+  try{ const recs=(await query(`AND(${words.map(w=>`FIND(${quote(w)},LOWER({Name}&''))`).join(",")})`,60)).filter(x=>x.id!==REC.id);
+    if(!recs.length){ el.innerHTML=`<div class="small muted" style="margin-top:8px">No other “${esc(words.join(" "))}” in the Purchase Log.</div>`; return; }
+    el.innerHTML=`<div class="scrollx"><table class="hist"><thead><tr><th>Item</th><th>Status</th><th>In</th><th class="r">Paid</th><th class="r">Price</th></tr></thead><tbody>${recs.map(x=>`<tr><td>${esc(f(x,"name"))}<br><span class="sku">${esc(f(x,"sku"))}</span></td><td>${esc(st(x))}</td><td>${esc(String(f(x,"dateIn")).slice(0,7))}</td><td class="r">${esc(money(f(x,"cost")))}</td><td class="r">${esc(money(f(x,"online"))||money(f(x,"pos")))}</td></tr>`).join("")}</tbody></table></div>
+      <div class="small muted" style="margin-top:6px">Prices are what we listed at, not necessarily what it sold for.</div>`; }
+  catch(e){ el.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+
+/* ---------- changes: always reviewed and confirmed ---------- */
+const EDIT=[["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["problemNotes","Problem notes","text"]];
+function editForm(){ return `<div class="form" style="margin-top:14px">${EDIT.map(([k,l,t,opts])=>{ const v=f(REC,k);
+  if(t==="select") return `<label class="f">${l}<select class="t" data-e="${k}"><option value="">(blank)</option>${opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}${v&&!opts.includes(v)?`<option selected>${esc(v)}</option>`:""}</select></label>`;
+  return `<label class="f ${t==="text"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':""}></label>`; }).join("")}</div>
+  <div class="row" style="margin-top:10px"><button class="btn warnb" data-act="reviewedit">Review changes…</button><button class="btn sec" data-act="lock">Cancel</button></div>`; }
+function collect(){ const ch=[]; document.querySelectorAll("[data-e]").forEach(el=>{ const k=el.dataset.e, def=EDIT.find(x=>x[0]===k); const before=f(REC,k); let after=el.value.trim();
+  if(def[2]==="money"){ const a=num(after), b=num(before); if(a!==b) ch.push({k,label:def[1],from:money(b)||"(blank)",to:money(a)||"(blank)",val:a}); }
+  else if(after!==String(before||"")) ch.push({k,label:def[1],from:before||"(blank)",to:after||"(blank)",val:after||null}); }); return ch; }
+function review(kind){ if(!WHO){ $("review").innerHTML=`<div class="note warn">Pick your name at the top first, so the change is signed.</div>`; return; }
+  if(kind==="note"){ const t=$("notein").value.trim(); if(!t){ $("review").innerHTML=`<div class="note">Type the note first.</div>`; return; } pending={note:t,changes:[]}; }
+  else { const ch=collect(); if(!ch.length){ $("review").innerHTML=`<div class="note">Nothing changed.</div>`; return; } pending={note:"",changes:ch}; }
+  const live=st(REC)==="Ready For Ecommerce"&&pending.changes.some(c=>c.k==="online"||c.k==="pos");
+  $("review").innerHTML=`<div class="review"><p>Confirm ${pending.note?"adding this note to":"these changes to"} ${esc(f(REC,"name"))} (SKU ${esc(f(REC,"sku"))})?</p>
+    <ul>${pending.note?`<li>Note: “${esc(pending.note)}”</li>`:""}${pending.changes.map(c=>`<li><b>${esc(c.label)}</b>: ${esc(c.from)} → <b>${esc(c.to)}</b></li>`).join("")}</ul>
+    ${live?`<div class="small" style="margin-bottom:10px;color:var(--warn);font-weight:700">This item is online; a price change may sync to Reverb and the website.</div>`:""}
+    <div class="row"><button class="btn warnb" data-act="confirm">Yes, save it</button><button class="btn sec" data-act="cancelreview">Cancel</button></div></div>`; }
+async function commit(){ if(busy||!pending) return; busy=true; $("review").innerHTML=`<div class="note">Saving…</div>`;
+  try{ const fields={}; pending.changes.forEach(c=>fields[FX[c.k]]=c.val);
+    const fresh=await api(`/${REC.id}?returnFieldsByFieldId=true`); const cur=String((fresh.fields||{})[FX.notes]||"").replace(/\s+$/,"");
+    const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+    const parts=[]; if(pending.note) parts.push(pending.note); if(pending.changes.length) parts.push("Changed "+pending.changes.map(c=>`${c.label} ${c.from} → ${c.to}`).join("; "));
+    fields[FX.notes]=(cur?cur+"\n":"")+`[${stamp} ${WHO}] ${parts.join(". ")}`;
+    const out=await api(`/${REC.id}`,{method:"PATCH",body:JSON.stringify({fields,returnFieldsByFieldId:true})});
+    REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; pending=null; editing=false; busy=false; renderItem(`<div class="note ok">Saved and logged in Notes.</div>`); }
+  catch(e){ busy=false; $("review").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+
+/* ---------- scan ---------- */
+let stream=null, scanning=false;
+async function scan(){ if(!("BarcodeDetector" in window)){ $("bmsg").innerHTML=`<div class="note warn">This browser can't scan barcodes. Type the SKU instead.</div>`; return; }
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}); }catch(e){ $("bmsg").innerHTML=`<div class="note warn">Camera blocked. Allow the camera, or type the SKU.</div>`; return; }
+  const v=$("vid"); v.srcObject=stream; await v.play(); $("scanner").hidden=false; scanning=true; let det; try{ det=new BarcodeDetector({formats:["code_128","code_39","ean_13","upc_a","qr_code","itf","codabar"]}); }catch(e){ det=new BarcodeDetector(); }
+  const tick=async()=>{ if(!scanning) return; try{ const c=(await det.detect(v)).map(x=>String(x.rawValue||"").trim()).find(Boolean); if(c){ if(navigator.vibrate) navigator.vibrate(60); stopScan(); find((/[?&]sku=([^&#]+)/.exec(c)||[])[1]||c); return; } }catch(e){} setTimeout(tick,180); }; tick(); }
+function stopScan(){ scanning=false; $("scanner").hidden=true; if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const a=el.dataset.act;
+  if(a==="tab"){ TAB=el.dataset.k; store.set("mrm-lookup-tab",TAB); $("q").value=""; loadTab(); }
+  else if(a==="open") openItem(ROWS[+el.dataset.i]);
+  else if(a==="close") closeItem();
+  else if(a==="clear"){ e.preventDefault(); $("q").value=""; loadTab(); }
+  else if(a==="hist") history();
+  else if(a==="unlock"){ editing=true; renderItem(); setTimeout(()=>{ const x=document.querySelector("[data-e]"); if(x) x.scrollIntoView({block:"center"}); },50); }
+  else if(a==="lock"){ editing=false; pending=null; renderItem(); }
+  else if(a==="reviewnote") review("note");
+  else if(a==="reviewedit") review("edit");
+  else if(a==="cancelreview"){ pending=null; $("review").innerHTML=""; }
+  else if(a==="confirm") commit(); });
+$("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); find($("q").value); });
+$("scanbtn").addEventListener("click",scan); $("stopscan").addEventListener("click",stopScan);
+$("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  const prev=TOKEN; TOKEN=t; try{ await api("?maxRecords=1&fields%5B%5D="+FX.name); store.set("mrm-photos-token",t); $("tok").value=""; start(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+function start(){ $("setup").hidden=!!TOKEN; $("browse").hidden=!TOKEN; if(!TOKEN) return; const m=/[?&]sku=([^&#]+)/.exec(location.search)||/[?&]q=([^&#]+)/.exec(location.search);
+  if(m){ $("q").value=decodeURIComponent(m[1]); find($("q").value); } else loadTab(); loadCounts(); }
+start();
+</script>
+</body>
+</html>
