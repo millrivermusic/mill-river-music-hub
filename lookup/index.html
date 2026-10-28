@@ -126,6 +126,7 @@ const PHYS=["TBD","Needs Work: Guitar Repair","Needs Work: Electronics Repair","
 const LOCS=["Intake Room","Sales Floor","Repair","Repair(Humidifying)","Front caseland","Shop Stock","Mezzanine Overflow","Drum Loft","Easthampton Storage","Climate Controlled Storage","Eho 2","J&N Garage","Rust Temple"];
 const DS=x=>`TRIM({Data Status}&'')='${x}'`;
 const TABS=[
+  {k:"all", label:"Everything", f:"TRUE()", note:"Every item in the Purchase Log, newest first. Showing the latest 300; search to find anything older.", nocount:true},
   {k:"pos", label:"Waiting POS sync", f:DS("Purchased / Approved"), note:"Bought and approved, not in Lightspeed yet. Red lines show what's probably holding it up."},
   {k:"store", label:"In store only", f:DS("POS Synced"), note:"In Lightspeed, not sent online yet."},
   {k:"going", label:"Going online", f:`AND(${DS("Ready For Ecommerce")},{Listing Live?}!='Live')`, note:"Sent to Reverb/website but not confirmed live yet."},
@@ -137,7 +138,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
-let TAB=(()=>{ const m=/[?&]tab=(\w+)/.exec(location.search); return m&&TABS.some(t=>t.k===m[1])?m[1]:(store.get("mrm-lookup-tab")||"store"); })();
+let TAB=(()=>{ const m=/[?&]tab=(\w+)/.exec(location.search); return m&&TABS.some(t=>t.k===m[1])?m[1]:"all"; })();
 let ROWS=[], COUNTS={}, REC=null, busy=false, editing=false, pending=null, searchQ="";
 
 const num=v=>{ const x=parseFloat(String(v??"").replace(/[$,]/g,"")); return isFinite(x)?x:null; };
@@ -161,8 +162,8 @@ async function countF(fml){ let n=0, offset="", pages=0;
 /* ---------- browse ---------- */
 function renderTabs(){ $("tabs").innerHTML=TABS.map(t=>`<button class="tab ${t.k===TAB&&!searchQ?"on":""}" data-act="tab" data-k="${t.k}">${esc(t.label)}<span class="n">${COUNTS[t.k]!==undefined?COUNTS[t.k]:""}</span></button>`).join(""); }
 async function loadTab(){ searchQ=""; renderTabs(); const t=TABS.find(x=>x.k===TAB); renderList("Loading…");
-  try{ ROWS=await query(t.f,t.max||300); renderList(`${esc(t.note)}${ROWS.length>=300?" Showing the newest 300.":""}`); }catch(e){ ROWS=[]; renderList(esc(e.message)); } }
-async function loadCounts(){ await Promise.all(TABS.filter(t=>t.k!=="sold").map(async t=>{ try{ COUNTS[t.k]=await countF(t.f); }catch(e){ COUNTS[t.k]="?"; } })); renderTabs(); }
+  try{ ROWS=await query(t.f,t.max||300); renderList(`${esc(t.note)}${ROWS.length>=300&&t.k!=="all"?" Showing the newest 300.":""}`); }catch(e){ ROWS=[]; renderList(esc(e.message)); } }
+async function loadCounts(){ await Promise.all(TABS.filter(t=>t.k!=="sold"&&!t.nocount).map(async t=>{ try{ COUNTS[t.k]=await countF(t.f); }catch(e){ COUNTS[t.k]="?"; } })); renderTabs(); }
 async function find(q){ q=String(q||"").trim(); if(!q) return loadTab(); searchQ=q; renderTabs(); renderList("Looking…");
   try{ let recs=[]; try{ recs=await query(`{SKU}&''=${quote(q)}`,5); }catch(e){}
     if(recs.length===1) return openItem(recs[0]);
