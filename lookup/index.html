@@ -215,10 +215,10 @@ function renderItem(extra){ const r=REC, s=st(r), live=f(r,"live");
     <div id="hist"></div></div>
 
   <div class="card"><h2>Notes and changes</h2>
-    <div class="small muted">This page is view-only. Adding a note or changing a field always asks you to confirm, and every change is written into the item's Notes with your name and the time.</div>
+    <div class="small muted">Notes save straight to the item. Fields are locked until you tap <b>Change fields</b>. Every note and change is written into the item's Notes with your name and the time.</div>
     <div class="form"><label class="f wide">Add a note (call from the customer, a hold, something you noticed)<textarea class="t" id="notein" placeholder="e.g. Customer called, wants to come try it Saturday."></textarea></label></div>
-    <div class="row" style="margin-top:8px"><button class="btn sec" data-act="reviewnote">Add note…</button></div>
-    ${editing?editForm():`<div class="locked" style="margin-top:14px"><span>🔒 Fields are locked.</span><button class="btn sec" data-act="unlock">Make a change…</button></div>`}
+    <div class="row" style="margin-top:8px"><button class="btn" data-act="savenote">Save note</button></div>
+    ${editing?editForm():`<div class="locked" style="margin-top:14px"><span>🔒 Fields are locked.</span><button class="btn sec" data-act="unlock">✏️ Change fields</button></div>`}
     <div id="review"></div><div id="imsg">${extra||""}</div></div>`;
   if(REC.fields[FX.desc]===undefined) loadDesc(); else showDesc(); }
 async function loadDesc(){ try{ const j=await api(`/${REC.id}?returnFieldsByFieldId=true`); REC.fields={...REC.fields,...(j.fields||{})}; if(REC.fields[FX.desc]===undefined) REC.fields[FX.desc]=""; showDesc(); }catch(e){} }
@@ -233,14 +233,21 @@ async function history(){ const el=$("hist"); el.innerHTML=`<div class="small mu
   catch(e){ el.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 
 /* ---------- changes: always reviewed and confirmed ---------- */
-const EDIT=[["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["problemNotes","Problem notes","text"]];
+const CONDS=["Mint","Excellent","Very Good","Good","Fair","Poor","Non Functioning","As-Is"];
+const EDIT=[["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["cond","Condition (Reverb)","select",CONDS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["repairEst","Repair estimate","money"],["serial","Serial #","text"],["model","Model","text"],["year","Year","text"],["finish","Finish / color","text"],["problemNotes","Problem notes","wide"]];
 function editForm(){ return `<div class="form" style="margin-top:14px">${EDIT.map(([k,l,t,opts])=>{ const v=f(REC,k);
   if(t==="select") return `<label class="f">${l}<select class="t" data-e="${k}"><option value="">(blank)</option>${opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}${v&&!opts.includes(v)?`<option selected>${esc(v)}</option>`:""}</select></label>`;
-  return `<label class="f ${t==="text"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':""}></label>`; }).join("")}</div>
-  <div class="row" style="margin-top:10px"><button class="btn warnb" data-act="reviewedit">Review changes…</button><button class="btn sec" data-act="lock">Cancel</button></div>`; }
+  return `<label class="f ${t==="wide"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':""}></label>`; }).join("")}</div>
+  <div id="pendsum" class="small" style="margin-top:10px"></div><div class="row" style="margin-top:8px"><button class="btn" data-act="savefields" id="savefields" disabled>Save changes</button><button class="btn sec" data-act="lock">Cancel</button></div>`; }
+function updSum(){ const el=$("pendsum"); if(!el) return; const ch=collect(); const live=st(REC)==="Ready For Ecommerce"&&ch.some(c=>c.k==="online"||c.k==="pos"); $("savefields").disabled=!ch.length;
+  el.innerHTML=ch.length?`<b>${ch.length} change${ch.length>1?"s":""}:</b> ${ch.map(c=>`${esc(c.label)} ${esc(c.from)} → <b>${esc(c.to)}</b>`).join("; ")}${live?`<div style="color:var(--warn);font-weight:700;margin-top:4px">This item is live online; a price change may sync to Reverb and the website.</div>`:""}`:`<span class="muted">Edit any field, then Save changes.</span>`; }
 function collect(){ const ch=[]; document.querySelectorAll("[data-e]").forEach(el=>{ const k=el.dataset.e, def=EDIT.find(x=>x[0]===k); const before=f(REC,k); let after=el.value.trim();
   if(def[2]==="money"){ const a=num(after), b=num(before); if(a!==b) ch.push({k,label:def[1],from:money(b)||"(blank)",to:money(a)||"(blank)",val:a}); }
   else if(after!==String(before||"")) ch.push({k,label:def[1],from:before||"(blank)",to:after||"(blank)",val:after||null}); }); return ch; }
+function saveDirect(kind){ if(!WHO){ $("review").innerHTML=`<div class="note warn">Pick your name at the top first, so it's signed.</div>`; return; }
+  if(kind==="note"){ const t=$("notein").value.trim(); if(!t){ $("review").innerHTML=`<div class="note">Type the note first.</div>`; return; } pending={note:t,changes:[]}; }
+  else { const ch=collect(); if(!ch.length) return; pending={note:"",changes:ch}; }
+  commit(); }
 function review(kind){ if(!WHO){ $("review").innerHTML=`<div class="note warn">Pick your name at the top first, so the change is signed.</div>`; return; }
   if(kind==="note"){ const t=$("notein").value.trim(); if(!t){ $("review").innerHTML=`<div class="note">Type the note first.</div>`; return; } pending={note:t,changes:[]}; }
   else { const ch=collect(); if(!ch.length){ $("review").innerHTML=`<div class="note">Nothing changed.</div>`; return; } pending={note:"",changes:ch}; }
@@ -256,7 +263,7 @@ async function commit(){ if(busy||!pending) return; busy=true; $("review").inner
     const parts=[]; if(pending.note) parts.push(pending.note); if(pending.changes.length) parts.push("Changed "+pending.changes.map(c=>`${c.label} ${c.from} → ${c.to}`).join("; "));
     fields[FX.notes]=(cur?cur+"\n":"")+`[${stamp} ${WHO}] ${parts.join(". ")}`;
     const out=await api(`/${REC.id}`,{method:"PATCH",body:JSON.stringify({fields,returnFieldsByFieldId:true})});
-    REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; pending=null; editing=false; busy=false; renderItem(`<div class="note ok">Saved and logged in Notes.</div>`); }
+    const what=pending.note&&!pending.changes.length?"Note saved.":"Saved: "+pending.changes.map(c=>`${esc(c.label)} ${esc(c.from)} → ${esc(c.to)}`).join("; ")+"."; REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; pending=null; editing=false; busy=false; renderItem(`<div class="note ok">${what} Logged in Notes.</div>`); }
   catch(e){ busy=false; $("review").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 
 /* ---------- scan ---------- */
@@ -274,12 +281,15 @@ document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); 
   else if(a==="close") closeItem();
   else if(a==="clear"){ e.preventDefault(); $("q").value=""; loadTab(); }
   else if(a==="hist") history();
-  else if(a==="unlock"){ editing=true; renderItem(); setTimeout(()=>{ const x=document.querySelector("[data-e]"); if(x) x.scrollIntoView({block:"center"}); },50); }
+  else if(a==="unlock"){ editing=true; renderItem(); updSum(); setTimeout(()=>{ const x=document.querySelector("[data-e]"); if(x) x.scrollIntoView({block:"center"}); },50); }
   else if(a==="lock"){ editing=false; pending=null; renderItem(); }
-  else if(a==="reviewnote") review("note");
+  else if(a==="savenote") saveDirect("note");
+  else if(a==="savefields") saveDirect("edit");
   else if(a==="reviewedit") review("edit");
   else if(a==="cancelreview"){ pending=null; $("review").innerHTML=""; }
   else if(a==="confirm") commit(); });
+document.addEventListener("input",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
+document.addEventListener("change",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
 $("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); find($("q").value); });
 $("scanbtn").addEventListener("click",scan); $("stopscan").addEventListener("click",stopScan);
 $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
