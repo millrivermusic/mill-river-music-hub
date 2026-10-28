@@ -61,6 +61,12 @@ textarea.t{min-height:64px;resize:vertical}
 .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line)}
 .tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent} .tag.need{background:var(--sugg-soft);color:var(--sugg);border-color:transparent} .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent} .tag.info{background:var(--info-soft);color:var(--info);border-color:transparent}
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.prices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.prices div{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+.prices dt{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.prices dd{margin:2px 0 0;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.prices dd.none{color:var(--muted);font-weight:600}
+@media (max-width:420px){.prices{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .deets{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 14px;margin:12px 0 0}
 .deets div{min-width:0} .deets dt{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase} .deets dd{margin:0;overflow-wrap:anywhere}
 .notebox{margin-top:12px;border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 10px 10px 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
@@ -174,7 +180,7 @@ async function find(q){ q=String(q||"").trim(); if(!q) return loadTab(); searchQ
 function stuck(r){ const w=[]; if(!String(f(r,"name")).trim()) w.push("no name"); if(!/^\d+$/.test(String(f(r,"sku")).trim())) w.push("SKU missing or not all digits"); if(!f(r,"cat")) w.push("no category"); if(num(f(r,"cost"))==null) w.push("no purchase cost"); if(num(f(r,"pos"))==null) w.push("no POS price (0 is OK)");
   const s=String(f(r,"syncStatus")||""); if(/error|missing|fail|required|wasn't/i.test(s)) w.push("sync says: "+s.split("\n").pop().slice(0,90)); return w; }
 const ago=d=>{ if(!d) return ""; const n=Math.round((Date.now()-new Date(d).getTime())/86400000); return n<1?"today":n===1?"1 day":n<60?n+" days":n<730?Math.round(n/30)+" mo":Math.round(n/365)+" yr"; };
-function priceOf(r){ return money(f(r,"online"))||money(f(r,"pos"))||(money(f(r,"esp"))?"exp. "+money(f(r,"esp")):""); }
+function priceOf(r){ const p=[]; const o=money(f(r,"online")), s=money(f(r,"pos")); if(s) p.push("POS "+s); if(o&&o!==s) p.push("Online "+o); else if(o&&!s) p.push("Online "+o); if(!p.length&&money(f(r,"esp"))) p.push("exp. "+money(f(r,"esp"))); return p.join(" · "); }
 function renderList(msg){ $("bmsg").innerHTML=msg?`<div class="small muted" style="margin-top:10px">${msg}</div>`:"";
   $("list").innerHTML=ROWS.map((r,i)=>{ const why=TAB==="pos"&&!searchQ?stuck(r):[];
     return `<button class="res" data-act="open" data-i="${i}"><b>${esc(f(r,"name")||"(no name)")}</b><span class="price">${esc(priceOf(r))}</span>
@@ -191,13 +197,16 @@ function searchTerms(r){ return [f(r,"make"),f(r,"model")].filter(Boolean).join(
 function renderItem(extra){ const r=REC, s=st(r), live=f(r,"live");
   const tags=[`<span class="tag ${s==="Sold"?"warn":s==="Ready For Ecommerce"?"ok":"info"}">${esc(s||"no status")}</span>`,`<span class="tag ${/Needs|TBD/.test(f(r,"phys"))?"need":/Ready/.test(f(r,"phys"))?"ok":""}">${esc(f(r,"phys")||"no physical status")}</span>`];
   if(live) tags.push(`<span class="tag ${live==="Live"?"ok":""}">Online: ${esc(live)}</span>`); if(r.fields[FX.descDone]) tags.push(`<span class="tag">Description done</span>`);
-  const rows=[["POS price",money(f(r,"pos"))],["Online price",money(f(r,"online"))],["Expected sale",money(f(r,"esp"))],["New price",money(f(r,"newPrice"))],["Paid",money(f(r,"cost"))],
+  const pv=k=>{ const x=num(f(r,k)); return x==null?"":"$"+x.toLocaleString("en-US"); };
+  const priceBox=[["POS price","pos"],["Online price","online"],["Expected sale","esp"],["Purchase price","cost"]].map(([l,k])=>{ const v=pv(k); return `<div><dt>${l}</dt><dd class="${v?"":"none"}">${v||"—"}</dd></div>`; }).join("");
+  const rows=[["New price",money(f(r,"newPrice"))],
     ["Category",f(r,"cat")],["Condition",f(r,"cond")],["Make",f(r,"make")],["Model",f(r,"model")],["Year",f(r,"year")],["Finish",f(r,"finish")],["Serial #",f(r,"serial")],
     ["Date in",f(r,"dateIn")],["Intake",f(r,"intakeType")],["Seller",f(r,"seller")],["Location",f(r,"location")],["Shipping",f(r,"ship")],["Repair est.",money(f(r,"repairEst"))],["Repair cost",money(f(r,"repairCost"))],["Listed by",f(r,"listedBy")],["Date sold",f(r,"dateSold")]].filter(x=>x[1]!==""&&x[1]!=null);
   const box=(t,v)=>v?`<div class="notebox"><b>${t}</b>${esc(v)}</div>`:""; const p=pics(r); const why=s==="Purchased / Approved"?stuck(r):[];
   const term=encodeURIComponent(searchTerms(r));
   $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2><span class="sku">SKU ${esc(f(r,"sku"))}</span></div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
     <div class="tags">${tags.join("")}</div>
+    <dl class="prices">${priceBox}</dl>
     ${why.length?`<div class="note warn">Probably holding up the POS sync: ${esc(why.join("; "))}.</div>`:""}
     ${p.length?`<div class="thumbs">${p.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
     <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
@@ -235,7 +244,7 @@ async function history(){ const el=$("hist"); el.innerHTML=`<div class="small mu
 
 /* ---------- changes: always reviewed and confirmed ---------- */
 const CONDS=["Mint","Excellent","Very Good","Good","Fair","Poor","Non Functioning","As-Is"];
-const EDIT=[["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["cond","Condition (Reverb)","select",CONDS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["repairEst","Repair estimate","money"],["serial","Serial #","text"],["model","Model","text"],["year","Year","text"],["finish","Finish / color","text"]];
+const EDIT=[["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["cond","Condition (Reverb)","select",CONDS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["cost","Purchase price","money"],["repairEst","Repair estimate","money"],["serial","Serial #","text"],["model","Model","text"],["year","Year","text"],["finish","Finish / color","text"]];
 function editForm(){ return `<div class="form" style="margin-top:14px">${EDIT.map(([k,l,t,opts])=>{ const v=f(REC,k);
   if(t==="select") return `<label class="f">${l}<select class="t" data-e="${k}"><option value="">(blank)</option>${opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}${v&&!opts.includes(v)?`<option selected>${esc(v)}</option>`:""}</select></label>`;
   return `<label class="f ${t==="wide"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':""}></label>`; }).join("")}</div>
