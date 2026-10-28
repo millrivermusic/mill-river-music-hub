@@ -111,7 +111,7 @@ const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", phys:"fldM1ajllQvTvdKwI", cat:"fldRSem0EtiWihkN1", cond:"fldYuGbUJO4a0bNvu", notes:"fldW0Sgi7TVduheu1",
   serial:"fldt6OBgEhIwhEvjP", dateIn:"fldf0h1eW3dxrlufr", seller:"fldTyF7VCWXfIcpJm", cost:"fldg6j6emzCkDiGaI", esp:"fldkODnsYDRYqeOOm", repairEst:"fldSuGcsrYx8FGajQ", repairCost:"fldQdlwr3NdLnkNxW",
-  repaired:"fld3NLcmOjkDruejF", problem:"flds9Vh216pnpNtHW", problemNotes:"fldkgKctPGo7QA45c", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX" };
+  repaired:"fld3NLcmOjkDruejF", problem:"flds9Vh216pnpNtHW", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX" };
 // The queues techs can pick. "TBD" = not looked at yet.
 const KINDS=[
   {k:"TBD", label:"TBD (not checked yet)"},
@@ -164,7 +164,7 @@ async function find(q){ q=String(q||"").trim(); if(!q) return loadQueue(); searc
   catch(e){ ROWS=[]; renderList(esc(e.message)); } }
 function ageDays(d){ if(!d) return ""; const n=Math.round((Date.now()-new Date(d).getTime())/86400000); return n<1?"today":n===1?"1 day":n<60?n+" days":Math.round(n/30)+" mo"; }
 function renderList(msg){ $("qmsg").innerHTML=(FLASH?`<div class="note ok">${FLASH}</div>`:"")+(msg?`<div class="small muted" style="margin-top:8px">${msg}</div>`:"");
-  $("list").innerHTML=ROWS.map((r,i)=>{ const ps=f(r,"phys"), need=/Needs|TBD/.test(ps); const note=String(f(r,"problemNotes")||f(r,"notes")||"").split("\n").pop();
+  $("list").innerHTML=ROWS.map((r,i)=>{ const ps=f(r,"phys"), need=/Needs|TBD/.test(ps); const note=String(f(r,"notes")||"").split("\n").pop();
     return `<button class="res" data-act="open" data-i="${i}"><b>${esc(f(r,"name"))}</b><span class="tag ${need?"need":/Ready/.test(ps)?"ok":""}">${esc(ps||"no status")}</span>
       <span class="meta"><span class="sku">${esc(f(r,"sku"))}</span> · ${esc(String(f(r,"cat")||"no category").split(">").pop())} · in ${esc(ageDays(f(r,"dateIn")))}${note?" · "+esc(note):""}</span></button>`; }).join(""); }
 
@@ -179,14 +179,13 @@ function renderItem(extra){ const r=REC; const ps=f(r,"phys");
   $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2><span class="sku">SKU ${esc(f(r,"sku"))}</span></div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Queue</button></div>
     ${pics.length?`<div class="thumbs">${pics.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
     <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
-    ${box("Notes",f(r,"notes"))}${box("Problem notes",f(r,"problemNotes"))}</div>
+    ${box("Notes",f(r,"notes"))}</div>
   <div class="card" style="margin-top:12px"><h2>Log work</h2>
     <div class="form">
-      <label class="f wide">What you found or did (added to Notes with your name and the time)<textarea class="t" id="work" placeholder="e.g. Set up, new strings, cleaned pots, output jack replaced. Frets fine."></textarea></label>
+      <label class="f wide">What you found or did (added to Notes with your name and the time)<textarea class="t" id="work" placeholder="e.g. Set up, new strings, cleaned pots, output jack replaced. Frets fine. Still needs: reverb tank."></textarea></label>
       <label class="f">Status<select class="t" id="setps">${SET_TO.map(s=>`<option ${s===ps?"selected":""}>${esc(s)}</option>`).join("")}${SET_TO.includes(ps)?"":`<option selected>${esc(ps)}</option>`}</select></label>
       <label class="f">Repair cost ($)<input class="t" id="rcost" inputmode="decimal" value="${esc(f(r,"repairCost"))}"></label>
       <label class="f">Repair estimate ($)<input class="t" id="rest" inputmode="decimal" value="${esc(f(r,"repairEst"))}"></label>
-      <label class="f">Problem notes (what's still wrong)<input class="t" id="pnotes" value="${esc(f(r,"problemNotes"))}"></label>
       <label class="check"><input type="checkbox" id="rep" ${REC.fields[FX.repaired]?"checked":""}> Repaired</label>
     </div>
     <div class="row" style="margin-top:12px"><button class="btn" data-act="save">Save</button><button class="btn ok" data-act="done">✓ Done, ready to sell</button></div>
@@ -197,7 +196,6 @@ async function save(done){ if(busy||!REC) return; busy=true; const msg=$("imsg")
     const num=v=>{ const x=parseFloat(String(v).replace(/[$,]/g,"")); return isFinite(x)?x:null; };
     const rc=num($("rcost").value), re=num($("rest").value);
     if(rc!==num(f(REC,"repairCost"))) fields[FX.repairCost]=rc; if(re!==num(f(REC,"repairEst"))) fields[FX.repairEst]=re;
-    const pn=$("pnotes").value.trim(); if(pn!==String(f(REC,"problemNotes")||"")) fields[FX.problemNotes]=pn;
     const rep=done?true:$("rep").checked; if(rep!==!!REC.fields[FX.repaired]) fields[FX.repaired]=rep;
     if(work||done){ const fresh=await api(`/${REC.id}?returnFieldsByFieldId=true`); const cur=String((fresh.fields||{})[FX.notes]||"").replace(/\s+$/,"");
       const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
