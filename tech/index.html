@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8A3B12">
+<title>MRM Tech Bench</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* MRM Tech Bench: the repair queue. Pick the kinds of work you do, open an item, log work, mark it ready to sell. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; --sugg:#F0C14D; --sugg-soft:#3A2E10; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.bar select{font:inherit;font-size:14px;border-radius:9px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:900px;margin:0 auto;padding-top:14px;padding-bottom:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 8px;font-size:18px;font-weight:800}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:46px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn.ok{background:var(--ok);color:#fff}
+.btn:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input.t,select.t,textarea.t{border:1px solid var(--line);background:var(--sunk);border-radius:11px;padding:10px 12px;font-size:16px;min-width:0;width:100%}
+input.t:focus,select.t:focus,textarea.t:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+textarea.t{min-height:70px;resize:vertical}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .n{font-variant-numeric:tabular-nums;opacity:.85}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:10px 12px;cursor:pointer}
+.res:hover{border-color:var(--accent)}
+.res b{line-height:1.25}
+.res .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sku{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line);align-self:start}
+.tag.need{background:var(--sugg-soft);color:var(--sugg);border-color:transparent}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.deets{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 14px;margin:12px 0 0}
+.deets div{min-width:0} .deets dt{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase} .deets dd{margin:0;overflow-wrap:anywhere}
+.notebox{margin-top:12px;border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 10px 10px 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.notebox b{display:block;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;white-space:normal}
+.thumbs{display:flex;gap:6px;overflow-x:auto;margin-top:12px}
+.thumbs img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex:none;background:var(--sunk)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
+label.f.wide{grid-column:1/-1}
+.check{display:flex;gap:8px;align-items:center;font-size:15px;font-weight:700;color:var(--ink)}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+.confirm{margin-top:12px;border:2px solid var(--ok);border-radius:14px;padding:14px;background:var(--ok-soft)}
+.confirm p{margin:0 0 10px;font-weight:700;color:var(--ok)}
+.scan{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
+.scan video{flex:1;width:100%;object-fit:cover;min-height:0}
+.scan .frame{position:absolute;left:10%;right:10%;top:38%;height:22%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
+.scan .foot{position:absolute;left:0;right:0;bottom:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;align-items:center;color:#fff}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>🔧 Tech Bench</h1>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../hub/">Hub</a></div></div></header>
+<main class="wrap">
+
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device</h2>
+    <p class="small muted" style="margin:0 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices that already have MRM Photos or the Hub set up are connected automatically.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card" id="queue" hidden>
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">What are you working on?</h2>
+      <select class="t" id="sort" style="width:auto"><option value="new">Newest in first</option><option value="old">Oldest first</option></select></div>
+    <div class="chips" id="chips" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px"><form id="sform" class="row" style="flex:1 1 260px"><input class="t" id="q" inputmode="search" placeholder="Find by SKU or name" autocomplete="off" style="flex:1 1 160px;width:auto"><button class="btn sec" type="submit">Find</button></form><button class="btn sec" id="scanbtn" type="button">▦ Scan</button></div>
+    <div id="qmsg"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section id="item" hidden></section>
+</main>
+
+<div class="scan" id="scanner" hidden><video id="vid" playsinline muted></video><div class="frame"></div>
+  <div class="foot"><div>Point at the SKU barcode</div><button class="btn sec" id="stopscan" style="min-width:160px">Cancel</button></div></div>
+
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", phys:"fldM1ajllQvTvdKwI", cat:"fldRSem0EtiWihkN1", cond:"fldYuGbUJO4a0bNvu", notes:"fldW0Sgi7TVduheu1",
+  serial:"fldt6OBgEhIwhEvjP", dateIn:"fldf0h1eW3dxrlufr", seller:"fldTyF7VCWXfIcpJm", cost:"fldg6j6emzCkDiGaI", esp:"fldkODnsYDRYqeOOm", repairEst:"fldSuGcsrYx8FGajQ", repairCost:"fldQdlwr3NdLnkNxW",
+  repaired:"fld3NLcmOjkDruejF", problem:"flds9Vh216pnpNtHW", problemNotes:"fldkgKctPGo7QA45c", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX" };
+// The queues techs can pick. "TBD" = not looked at yet.
+const KINDS=[
+  {k:"TBD", label:"TBD (not checked yet)"},
+  {k:"Needs Work: Guitar Repair", label:"Guitar repair"},
+  {k:"Needs Work: Electronics Repair", label:"Electronics"},
+  {k:"Needs Work: Tube Amp Repair", label:"Tube amps"},
+  {k:"Needs Work: Horn Repair", label:"Horns"},
+  {k:"Needs Work: Misc", label:"Misc"},
+  {k:"Needs Minor Work", label:"Needs minor (old)"},
+  {k:"Needs Medium Work", label:"Needs medium (old)"},
+];
+const SET_TO=["TBD","Needs Work: Guitar Repair","Needs Work: Electronics Repair","Needs Work: Tube Amp Repair","Needs Work: Horn Repair","Needs Work: Misc","Ready to Sell","Hold","Parts","Long Term Project","Tag Sale"];
+const ACTIVE="OR(TRIM({Data Status}&'')='Purchased / Approved',{Data Status}='POS Synced',{Data Status}='Ready For Ecommerce',{Data Status}='Pending')";
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let PICK=(()=>{ try{ const v=JSON.parse(store.get("mrm-tech-kinds")||"null"); if(Array.isArray(v)&&v.length) return v; }catch(e){} return ["TBD","Needs Work: Guitar Repair"]; })();
+let SORT=store.get("mrm-tech-sort")||"new";
+let ROWS=[], COUNTS={}, REC=null, busy=false, searchMode=false, FLASH="";
+
+const money=v=>{ const x=Number(v); return isFinite(x)&&x?"$"+x.toLocaleString("en-US"):""; };
+const f=(r,k)=>{ const v=r&&r.fields&&r.fields[FX[k]]; if(v==null) return ""; if(Array.isArray(v)) return v.map(x=>x&&typeof x==="object"?(x.name??""):x).join(", "); if(typeof v==="object") return v.text??v.name??""; return v; };
+const quote=s=>"'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
+
+/* ---------- Airtable ---------- */
+async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
+const FQ=Object.values(FX).map(x=>"fields%5B%5D="+x).join("&");
+async function query(formula,max,dir){ let out=[], offset="";
+  do{ let p=`?returnFieldsByFieldId=true&${FQ}&pageSize=100&filterByFormula=${encodeURIComponent(formula)}&sort%5B0%5D%5Bfield%5D=${FX.dateIn}&sort%5B0%5D%5Bdirection%5D=${dir||"desc"}`; if(offset) p+="&offset="+encodeURIComponent(offset);
+    const j=await api(p); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<(max||300));
+  return out; }
+async function countKind(k){ let n=0, offset="", pages=0; const fml=`AND({Physical Status}=${quote(k)},${ACTIVE})`;
+  do{ const j=await api(`?pageSize=100&fields%5B%5D=${FX.name}&filterByFormula=${encodeURIComponent(fml)}${offset?"&offset="+encodeURIComponent(offset):""}`); n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<6);
+  return offset?n+"+":n; }
+
+/* ---------- queue ---------- */
+function renderChips(){ $("chips").innerHTML=KINDS.map(x=>`<button class="chip ${PICK.includes(x.k)?"on":""}" data-act="kind" data-k="${esc(x.k)}">${esc(x.label)}<span class="n">${COUNTS[x.k]!==undefined?COUNTS[x.k]:""}</span></button>`).join(""); }
+async function loadQueue(){ searchMode=false; if(!PICK.length){ ROWS=[]; renderList("Pick at least one kind of work above."); return; } renderList("Loading…");
+  const fml=`AND(OR(${PICK.map(k=>`{Physical Status}=${quote(k)}`).join(",")}),${ACTIVE})`;
+  try{ ROWS=await query(fml,300,SORT==="old"?"asc":"desc"); renderList(ROWS.length?"":"Nothing waiting in those queues."); }catch(e){ ROWS=[]; renderList(esc(e.message)); } }
+async function loadCounts(){ await Promise.all(KINDS.map(async x=>{ try{ COUNTS[x.k]=await countKind(x.k); }catch(e){ COUNTS[x.k]="?"; } })); renderChips(); }
+async function find(q){ q=String(q||"").trim(); if(!q) return loadQueue(); searchMode=true; renderList("Looking…");
+  try{ let recs=[]; try{ recs=await query(`{SKU}&''=${quote(q)}`,5); }catch(e){}
+    if(recs.length===1) return openItem(recs[0]);
+    if(!recs.length) recs=await query(`OR(FIND(LOWER(${quote(q)}),LOWER({Name}&'')),FIND(${quote(q)},{SKU}&''))`,40);
+    ROWS=recs; renderList(recs.length?`Search results for “${esc(q)}” (any status). <a href="#" data-act="back">Back to queue</a>`:`Nothing found for “${esc(q)}”.`); }
+  catch(e){ ROWS=[]; renderList(esc(e.message)); } }
+function ageDays(d){ if(!d) return ""; const n=Math.round((Date.now()-new Date(d).getTime())/86400000); return n<1?"today":n===1?"1 day":n<60?n+" days":Math.round(n/30)+" mo"; }
+function renderList(msg){ $("qmsg").innerHTML=(FLASH?`<div class="note ok">${FLASH}</div>`:"")+(msg?`<div class="small muted" style="margin-top:8px">${msg}</div>`:"");
+  $("list").innerHTML=ROWS.map((r,i)=>{ const ps=f(r,"phys"), need=/Needs|TBD/.test(ps); const note=String(f(r,"problemNotes")||f(r,"notes")||"").split("\n").pop();
+    return `<button class="res" data-act="open" data-i="${i}"><b>${esc(f(r,"name"))}</b><span class="tag ${need?"need":/Ready/.test(ps)?"ok":""}">${esc(ps||"no status")}</span>
+      <span class="meta"><span class="sku">${esc(f(r,"sku"))}</span> · ${esc(String(f(r,"cat")||"no category").split(">").pop())} · in ${esc(ageDays(f(r,"dateIn")))}${note?" · "+esc(note):""}</span></button>`; }).join(""); }
+
+/* ---------- item ---------- */
+function openItem(r){ REC=r; $("queue").hidden=true; $("item").hidden=false; renderItem(); window.scrollTo(0,0); }
+function closeItem(){ REC=null; $("item").hidden=true; $("queue").hidden=false; }
+function renderItem(extra){ const r=REC; const ps=f(r,"phys");
+  const rows=[["Status",ps],["Data",String(f(r,"status")).trim()],["Category",f(r,"cat")],["Condition",f(r,"cond")],["Make",f(r,"make")],["Model",f(r,"model")],["Year",f(r,"year")],["Serial #",f(r,"serial")],
+    ["Date in",f(r,"dateIn")],["Intake",f(r,"intakeType")],["Seller",f(r,"seller")],["Paid",money(f(r,"cost"))],["Expected sale",money(f(r,"esp"))],["Repair est.",money(f(r,"repairEst"))],["Repair cost",money(f(r,"repairCost"))],["Repaired",REC.fields[FX.repaired]?"Yes":""],["Problem",f(r,"problem")],["Location",f(r,"location")]].filter(x=>x[1]!==""&&x[1]!=null);
+  const pics=String(f(r,"urls")||"").split(/\s+/).filter(u=>/^https:\/\/res\.cloudinary\.com\//.test(u)).slice(0,8).map(u=>u.replace(/\/upload\/[^/]*(?:\/[^/]*)*?\/v(\d+)\//,"/upload/c_fill,w_200,h_200,q_auto,f_jpg/v$1/"));
+  const box=(t,v)=>v?`<div class="notebox"><b>${t}</b>${esc(v)}</div>`:"";
+  $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2><span class="sku">SKU ${esc(f(r,"sku"))}</span></div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Queue</button></div>
+    ${pics.length?`<div class="thumbs">${pics.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
+    <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
+    ${box("Notes",f(r,"notes"))}${box("Problem notes",f(r,"problemNotes"))}</div>
+  <div class="card" style="margin-top:12px"><h2>Log work</h2>
+    <div class="form">
+      <label class="f wide">What you found or did (added to Notes with your name and the time)<textarea class="t" id="work" placeholder="e.g. Set up, new strings, cleaned pots, output jack replaced. Frets fine."></textarea></label>
+      <label class="f">Status<select class="t" id="setps">${SET_TO.map(s=>`<option ${s===ps?"selected":""}>${esc(s)}</option>`).join("")}${SET_TO.includes(ps)?"":`<option selected>${esc(ps)}</option>`}</select></label>
+      <label class="f">Repair cost ($)<input class="t" id="rcost" inputmode="decimal" value="${esc(f(r,"repairCost"))}"></label>
+      <label class="f">Repair estimate ($)<input class="t" id="rest" inputmode="decimal" value="${esc(f(r,"repairEst"))}"></label>
+      <label class="f">Problem notes (what's still wrong)<input class="t" id="pnotes" value="${esc(f(r,"problemNotes"))}"></label>
+      <label class="check"><input type="checkbox" id="rep" ${REC.fields[FX.repaired]?"checked":""}> Repaired</label>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn" data-act="save">Save</button><button class="btn ok" data-act="done">✓ Done, ready to sell</button></div>
+    <div id="confirm"></div><div id="imsg">${extra||""}</div></div>`; }
+async function save(done){ if(busy||!REC) return; busy=true; const msg=$("imsg"); msg.innerHTML=`<div class="note">Saving…</div>`;
+  try{ const fields={}; const work=$("work").value.trim();
+    const ps=done?"Ready to Sell":$("setps").value; if(ps!==f(REC,"phys")) fields[FX.phys]=ps;
+    const num=v=>{ const x=parseFloat(String(v).replace(/[$,]/g,"")); return isFinite(x)?x:null; };
+    const rc=num($("rcost").value), re=num($("rest").value);
+    if(rc!==num(f(REC,"repairCost"))) fields[FX.repairCost]=rc; if(re!==num(f(REC,"repairEst"))) fields[FX.repairEst]=re;
+    const pn=$("pnotes").value.trim(); if(pn!==String(f(REC,"problemNotes")||"")) fields[FX.problemNotes]=pn;
+    const rep=done?true:$("rep").checked; if(rep!==!!REC.fields[FX.repaired]) fields[FX.repaired]=rep;
+    if(work||done){ const fresh=await api(`/${REC.id}?returnFieldsByFieldId=true`); const cur=String((fresh.fields||{})[FX.notes]||"").replace(/\s+$/,"");
+      const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+      const line=`[${stamp}${WHO?" "+WHO:""}] ${done?"Tech done → Ready to Sell. ":""}${work}`.trim();
+      fields[FX.notes]=(cur?cur+"\n":"")+line; }
+    if(!Object.keys(fields).length){ busy=false; msg.innerHTML=`<div class="note">Nothing changed.</div>`; return; }
+    const out=await api(`/${REC.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,returnFieldsByFieldId:true})});
+    REC.fields={...REC.fields,...(out.fields||fields)}; busy=false;
+    if(done){ const name=f(REC,"name"); closeItem(); FLASH=`✓ ${esc(name)} is Ready to Sell and in the listing queue.`; loadQueue(); setTimeout(()=>{ FLASH=""; },8000); loadCounts(); return; }
+    renderItem(`<div class="note ok">Saved.</div>`); loadCounts(); }
+  catch(e){ busy=false; let m=e.message; if(/select option|Insufficient permissions to create new select option/i.test(m)) m+=" (The new statuses may not exist yet: run the Physical Status cleanup script in Airtable first.)"; msg.innerHTML=`<div class="note warn">${esc(m)}</div>`; } }
+
+/* ---------- scan ---------- */
+let stream=null, scanning=false;
+async function scan(){ if(!("BarcodeDetector" in window)){ $("qmsg").innerHTML=`<div class="note warn">This browser can't scan barcodes. Type the SKU instead.</div>`; return; }
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}); }catch(e){ $("qmsg").innerHTML=`<div class="note warn">Camera blocked. Allow the camera, or type the SKU.</div>`; return; }
+  const v=$("vid"); v.srcObject=stream; await v.play(); $("scanner").hidden=false; scanning=true; let det; try{ det=new BarcodeDetector({formats:["code_128","code_39","ean_13","upc_a","qr_code","itf","codabar"]}); }catch(e){ det=new BarcodeDetector(); }
+  const tick=async()=>{ if(!scanning) return; try{ const c=(await det.detect(v)).map(x=>String(x.rawValue||"").trim()).find(Boolean); if(c){ if(navigator.vibrate) navigator.vibrate(60); stopScan(); find((/[?&]sku=([^&#]+)/.exec(c)||[])[1]||c); return; } }catch(e){} setTimeout(tick,180); }; tick(); }
+function stopScan(){ scanning=false; $("scanner").hidden=true; if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const a=el.dataset.act;
+  if(a==="kind"){ const k=el.dataset.k; PICK=PICK.includes(k)?PICK.filter(x=>x!==k):[...PICK,k]; store.set("mrm-tech-kinds",JSON.stringify(PICK)); renderChips(); loadQueue(); }
+  else if(a==="open") openItem(ROWS[+el.dataset.i]);
+  else if(a==="close"){ closeItem(); if(!searchMode) loadQueue(); }
+  else if(a==="back"){ e.preventDefault(); $("q").value=""; loadQueue(); }
+  else if(a==="save") save(false);
+  else if(a==="done") $("confirm").innerHTML=`<div class="confirm"><p>Mark this Ready to Sell? It moves into the listing queue and gets ticked Repaired. Anything you typed above saves too.</p><div class="row"><button class="btn ok" data-act="doneyes">Yes, ready to sell</button><button class="btn sec" data-act="doneno">Not yet</button></div></div>`;
+  else if(a==="doneyes") save(true);
+  else if(a==="doneno") $("confirm").innerHTML=""; });
+$("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); find($("q").value); });
+$("scanbtn").addEventListener("click",scan); $("stopscan").addEventListener("click",stopScan);
+$("sort").value=SORT; $("sort").addEventListener("change",e=>{ SORT=e.target.value; store.set("mrm-tech-sort",SORT); loadQueue(); });
+$("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  const prev=TOKEN; TOKEN=t; try{ await api("?maxRecords=1&fields%5B%5D="+FX.name); store.set("mrm-photos-token",t); $("tok").value=""; start(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+function start(){ $("setup").hidden=!!TOKEN; $("queue").hidden=!TOKEN; if(!TOKEN) return; renderChips(); loadQueue(); loadCounts();
+  const m=/[?&]sku=([^&#]+)/.exec(location.search); if(m) find(decodeURIComponent(m[1])); }
+start();
+</script>
+</body>
+</html>
