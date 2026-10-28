@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8A3B12">
+<title>MRM Hub</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* MRM Hub: Mill River Music's staff home screen. One tile per tool, with live counts of where work is waiting. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif;
+  --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.bar{background:var(--accent);color:var(--accent-ink);padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em}
+.bar .who{display:flex;align-items:center;gap:8px;font-size:14px}
+.bar select{font:inherit;font-size:15px;border-radius:10px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:6px 10px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:1080px;margin:0 auto;padding-top:18px;padding-bottom:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.greet{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.greet h2{margin:0;font-size:20px}
+.greet .small{color:var(--muted);font-size:13.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0;color:inherit;text-decoration:none;position:relative}
+.tile .open{display:block;text-align:center;background:var(--accent);color:var(--accent-ink);border-radius:11px;padding:11px;font-weight:800;text-decoration:none}
+.tile .open:hover{filter:brightness(1.08)}
+.tile .top{display:flex;gap:12px;align-items:center}
+.tile .ic{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:22px;flex:none}
+.tile h3{margin:0;font-size:18px;font-weight:800}
+.tile p{margin:0;color:var(--muted);font-size:14px}
+.tile .where{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.tile.soon{opacity:.7;border-style:dashed}
+.tile.soon .top{padding-right:52px}
+.tile.soon .badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.counts{display:flex;flex-direction:column;gap:6px;margin-top:auto}
+.count{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:14px;color:inherit;text-decoration:none}
+a.count:hover{border-color:var(--accent)}
+.count b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.count.hot b{color:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{margin:0 0 8px;font-size:18px}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;color:inherit;text-decoration:none}
+.links a:hover{border-color:var(--accent)}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:48px;cursor:pointer;font:inherit;font-weight:700}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:12px;font:inherit;font-size:16px;width:100%;min-height:48px;color:inherit}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.foot{color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.foot button{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:0}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>MRM Hub</h1>
+  <label class="who">Who's working?<select id="who"><option value="">Pick your name</option></select></label></div></header>
+<main class="wrap">
+  <div class="greet"><h2 id="hello">Mill River Music tools</h2><span class="small" id="fresh"></span></div>
+
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device to Airtable</h2>
+    <p style="margin:0 0 10px;color:var(--muted)">Paste the MRM Photos Airtable key (starts with pat) to see live counts on the tiles. It stays on this device only. Phones that already have MRM Photos set up are connected automatically.</p>
+    <form id="setform" style="display:flex;flex-direction:column;gap:8px" autocomplete="off">
+      <input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" autocomplete="off">
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">Save and test</button><button class="btn sec" type="button" id="skip">Not now</button></div>
+    </form>
+    <div id="setmsg"></div>
+  </section>
+
+  <div class="grid" id="tiles"></div>
+
+  <section class="card">
+    <h2>Quick links</h2>
+    <div class="links">
+      <a href="https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR" target="_blank" rel="noopener">Airtable Purchase Log</a>
+      <a href="https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR/viwuD9J3f1Ie9Q9yY" target="_blank" rel="noopener">Purchased – Not POS Synced</a>
+      <a href="https://reverb.com/my/selling/listings" target="_blank" rel="noopener">Reverb listings</a>
+      <a href="https://reverb.com/shop/millrivermusic" target="_blank" rel="noopener">Our Reverb shop</a>
+      <a href="https://claude.ai/artifact/ARuCy53qmZyRMvVfY26zxB" target="_blank" rel="noopener">Used Listing Rules</a>
+      <a href="https://claude.ai/artifact/AxdfbGX4cGBF7Uup8z8emF" target="_blank" rel="noopener">MRM Systems Playbook</a>
+    </div>
+  </section>
+
+  <div class="foot"><span>Tools marked "in Claude" open in claude.ai on the shop login.</span><button id="setbtn">Airtable key</button></div>
+</main>
+
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");   // shared with MRM Photos (same site)
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Tiles. Counts are Airtable formulas on the Purchase Log. */
+const ACTIVE="OR(TRIM({Data Status}&'')='Purchased / Approved',{Data Status}='POS Synced',{Data Status}='Ready For Ecommerce')";
+const COUNTS={
+  posWait:{label:"Waiting to POS sync (60 days)", f:"AND(TRIM({Data Status}&'')='Purchased / Approved',IS_AFTER({Date In},DATEADD(TODAY(),-60,'days')))", href:"https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR/viwuD9J3f1Ie9Q9yY"},
+  needsWork:{label:"Need work (any Needs… status)", f:`AND(FIND('Needs',{Physical Status}&'')>0,${ACTIVE})`},
+  needsShop:{label:"Guitar shop", f:`AND({Physical Status}='Needs Work: Guitar Shop',${ACTIVE})`},
+  needsElec:{label:"Electronics", f:`AND({Physical Status}='Needs Work: Electronics',${ACTIVE})`},
+  needsPhotos:{label:"POS synced, no photos yet", f:"AND({Data Status}='POS Synced',NOT({Cloudinary URLs}),NOT({Image 1}))"},
+  upNext:{label:"Up next to list", f:"AND({Data Status}='POS Synced',{Physical Status}='PriorityReady',NOT({Description Done}))"},
+  ecom:{label:"Going to Reverb tonight", f:"AND({Ecommerce Sync},{Data Status}='Ready For Ecommerce',NOT({Reverb URL}))"},
+};
+const TILES=[
+  {ic:"🤝", t:"Intake", p:"Buy, trade or consign gear at the counter. Offers, receipts, check #.", where:"In Claude", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P", counts:["posWait"]},
+  {ic:"🔧", t:"Tech Bench", p:"Queue of gear needing work. Log what you did, mark it ready to sell.", where:"Coming soon", soon:true, counts:["needsWork","needsShop","needsElec"]},
+  {ic:"📷", t:"Photos", p:"Scan the SKU, shoot, upload. Goes straight to Cloudinary and Lightspeed.", where:"Phone app", href:"../", counts:["needsPhotos"]},
+  {ic:"✍️", t:"Listing", p:"Write up used listings with Claude: research, fields, house format, save.", where:"In Claude", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
+  {ic:"🔎", t:"Lookup & Notes", p:"Find any item: price, status, history. Price checks. Add a note from a call.", where:"Coming soon", soon:true, counts:[]},
+];
+const VAL={};
+
+async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
+  do{ const u=`https://api.airtable.com/v0/${BASE}/${TABLE}?pageSize=100&fields%5B%5D=Name&filterByFormula=${encodeURIComponent(c.f)}${offset?"&offset="+encodeURIComponent(offset):""}`;
+    const r=await fetch(u,{headers:{Authorization:"Bearer "+TOKEN}}); const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status));
+    n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<5);
+  return offset?n+"+":n; }
+
+function renderTiles(){ $("tiles").innerHTML=TILES.map(t=>{ const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
+  ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}" target="_blank" rel="noopener"><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
+  if(t.soon) return `<div class="tile soon"><span class="badge">Soon</span>${inner}</div>`;
+  const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; }).join(""); }
+
+async function refresh(){ if(!TOKEN){ renderTiles(); return; } renderTiles(); let err="";
+  await Promise.all(Object.keys(COUNTS).map(async k=>{ try{ VAL[k]=await count(k); }catch(e){ err=e.message; VAL[k]="?"; } }));
+  renderTiles(); $("fresh").textContent=err?("Counts: "+err):("Counts as of "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})); }
+
+function hello(){ const h=new Date().getHours(); $("hello").textContent=(WHO?(h<12?"Morning, ":h<17?"Afternoon, ":"Evening, ")+WHO:"Mill River Music tools"); }
+$("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); hello(); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  const prev=TOKEN; TOKEN=t; $("setmsg").innerHTML=`<div class="note">Testing…</div>`;
+  try{ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}?maxRecords=1&fields%5B%5D=Name`,{headers:{Authorization:"Bearer "+t}}); if(!r.ok) throw new Error("Airtable didn't accept that key ("+r.status+").");
+    store.set("mrm-photos-token",t); $("tok").value=""; $("setmsg").innerHTML=""; $("setup").hidden=true; refresh(); }
+  catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+$("skip").addEventListener("click",()=>{ $("setup").hidden=true; store.set("mrm-hub-skip","1"); });
+$("setbtn").addEventListener("click",()=>{ $("setup").hidden=false; $("setup").scrollIntoView(); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&TOKEN) refresh(); });
+if(!TOKEN&&!store.get("mrm-hub-skip")) $("setup").hidden=false;
+hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
+</script>
+</body>
+</html>
