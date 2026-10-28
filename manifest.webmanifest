@@ -1,0 +1,16 @@
+{
+  "name": "MRM Photos",
+  "short_name": "MRM Photos",
+  "description": "Mill River Music product photos: scan, shoot, send to Lightspeed.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2EFEA",
+  "theme_color": "#8A3B12",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
