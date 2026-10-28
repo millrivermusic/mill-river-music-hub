@@ -1,5 +1,5 @@
-# MRM Photos
+# Mill River Music Hub
 
-Mill River Music phone app for product photos: scan the SKU sticker, see what is in Lightspeed, shoot, upload to Cloudinary, sync to Lightspeed.
+Staff tools for Mill River Music: the Hub (home), MRM Photos (/photos), Tech Bench (/tech) and Lookup (/lookup).
 
-Hosted on GitHub Pages. No keys live in this code; each phone stores its own Airtable key and relay code.
+No keys live in this code; each device stores its own Airtable key and relay code. Temporary home until the move to Cloudflare.

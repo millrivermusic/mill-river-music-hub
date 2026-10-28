@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8A3B12">
+<title>MRM Photos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* MRM Photos: Mill River Music's phone app for product photos.
+   Scan or find an item, shoot, upload straight to Cloudinary, write the links to Airtable, tick Sync Photos -> Lightspeed. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif;
+  --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bar h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}
+.bar button{background:transparent;border:1px solid rgba(255,255,255,.45);color:inherit;border-radius:10px;padding:6px 10px;font:inherit;font-size:14px}
+.wrap{max-width:640px;margin:0 auto;padding-top:14px;padding-bottom:130px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{font-size:18px;margin:0 0 8px;font-weight:800}
+button,input{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:50px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn.big{font-size:18px;min-height:64px;width:100%}
+.btn:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:12px;font-size:17px;min-width:0;flex:1 1 160px;min-height:50px;width:100%}
+input.t:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{display:flex;justify-content:space-between;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:10px 12px;min-height:56px;cursor:pointer}
+.res b{display:block;line-height:1.25}
+.sku{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line)}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.note{border-radius:12px;padding:10px 12px;font-size:15px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filebtn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px}
+.filebtn input{position:absolute;inset:0;opacity:0}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.ph{position:relative;border-radius:12px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);aspect-ratio:1}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph.head{outline:3px solid var(--accent);outline-offset:-3px}
+.ph .num{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.7);color:#fff;font-weight:800;font-size:12px;border-radius:999px;padding:2px 8px}
+.ph .ctl{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:18px 4px 4px;background:linear-gradient(transparent,rgba(0,0,0,.55))}
+.ph .ctl button{border:0;background:rgba(255,255,255,.94);color:#1E1B16;width:34px;height:34px;border-radius:50%;font-weight:800;font-size:15px}
+.ph .st{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;color:#fff;background:rgba(0,0,0,.45);font-size:15px}
+.ph .st.ok{background:rgba(29,122,78,.55)} .ph .st.err{background:rgba(180,54,31,.75)}
+.ph .prog{position:absolute;left:0;bottom:0;height:5px;background:var(--accent)}
+.mode{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.mode label{display:flex;gap:10px;align-items:flex-start}
+.mode input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent)}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.dock .in{max-width:640px;margin:0 auto;display:flex;gap:8px}
+.dock .in .btn.big{flex:1}
+.dock .cancel{flex:0 0 auto;min-height:64px;padding:0 18px;font-size:16px}
+.dock .sure{background:var(--warn);color:#fff;border-color:var(--warn)}
+.done{text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.badge{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:30px;font-weight:800;background:var(--ok-soft);color:var(--ok)}
+/* scanner */
+.scan{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
+.scan video{flex:1;width:100%;object-fit:cover;min-height:0}
+.scan .frame{position:absolute;left:10%;right:10%;top:38%;height:22%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
+.scan .foot{position:absolute;left:0;right:0;bottom:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;align-items:center;color:#fff;text-align:center}
+code{font-family:var(--mono);font-size:13px;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:1px 5px;overflow-wrap:anywhere}
+ol.steps{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+</style>
+</head>
+<body>
+<header class="bar"><h1>MRM Photos</h1><div style="display:flex;gap:8px;align-items:center"><a href="../" style="color:inherit;font-weight:700;text-decoration:none;font-size:14px;opacity:.9">Hub</a><button id="setbtn" data-act="settings" hidden>Settings</button></div></header>
+<main class="wrap">
+
+  <section class="card" id="setup" hidden>
+    <h2>Set up this phone</h2>
+    <p class="small muted" style="margin:0 0 10px">One time per phone. Ask Jon for the MRM Photos Airtable key and the Lightspeed relay code. They stay on this phone only.</p>
+    <form id="setform" class="row" autocomplete="off">
+      <input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" autocomplete="off" spellcheck="false">
+      <input class="t" id="relay" type="password" placeholder="Lightspeed relay code (to see photos already in Lightspeed)" autocomplete="off" spellcheck="false">
+      <input class="t" id="who" placeholder="Your name (optional)">
+      <button class="btn" type="submit" style="width:100%">Save and test</button>
+    </form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card" id="pick" hidden>
+    <h2>Which item?</h2>
+    <button class="btn big" data-act="scan" id="scanbtn">▦ Scan SKU sticker</button>
+    <form class="row" id="sform" style="margin-top:10px"><input class="t" id="q" inputmode="search" enterkeyhint="search" placeholder="Or type SKU or name" autocomplete="off" style="flex:1 1 150px;width:auto"><button class="btn" type="submit">Find</button></form>
+    <div class="row" style="margin-top:8px"><button class="btn sec" type="button" data-act="needs" style="width:100%">Needs photos (POS synced, none yet)</button></div>
+    <div class="list" id="results"></div>
+  </section>
+
+  <section class="card" id="itemcard" hidden></section>
+
+  <section class="card" id="shoot" hidden>
+    <h2>Photos</h2>
+    <div class="small muted">Headshot first. Photo 1 is cropped square and watermarked automatically; the rest keep their shape.</div>
+    <div class="two" style="margin-top:10px">
+      <label class="btn filebtn">📷 Camera<input type="file" id="cam" accept="image/*" capture="environment"></label>
+      <label class="btn sec filebtn">🖼 Gallery<input type="file" id="gal" accept="image/*" multiple></label>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="mode" id="mode" hidden></div>
+    <div id="msg"></div>
+  </section>
+
+  <section class="card done" id="done" hidden></section>
+</main>
+
+<div class="dock" id="dock" hidden><div class="in"><button class="btn sec cancel" id="cancelbtn" data-act="cancel">✕ Cancel</button><button class="btn big" id="up" data-act="upload">Upload</button></div></div>
+
+<div class="scan" id="scanner" hidden>
+  <video id="vid" playsinline muted></video>
+  <div class="frame"></div>
+  <div class="foot"><div id="scanmsg">Point at the SKU barcode</div><button class="btn sec" data-act="stopscan" style="min-width:160px">Cancel</button></div>
+</div>
+
+<script>
+"use strict";
+const APP_VERSION="1.0 (10/28)";
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const CLOUD="rcfi8clj", PRESET="mrm_airtable"; // unsigned preset -> folder mrm_products (same one the Airtable sync uses)
+const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", urls:"fldsABSqaxA6WfmUL", sync:"fldyijcpG9gutvBEz", log:"fld3Yb7ATsBphSKqB", img1:"fldECxEFzuwWNZoDi", dateIn:"fldf0h1eW3dxrlufr" };
+const IN_POS=["POS Synced","Ready For Ecommerce","PriorityReady","Hold","Tagged No Reverb"];
+const WM="l_logo-slanted-white-5/c_scale,fl_relative,w_0.35,o_80/fl_layer_apply,g_south_west,x_30,y_30";
+const FIRST=`c_fill,g_center,w_1600,h_1600/${WM}/q_auto,f_jpg`, REST=`c_limit,w_1600,h_1600/${WM}/q_auto,f_jpg`;
+const MAXPX=2400;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who"), RELAY=store.get("mrm-photos-relay");
+const RELAY_URL="https://hook.us2.make.com/17qz783d8abby92br8tgzetxrb4wr1zh";
+let REC=null, results=[], SHOTS=[], ONLINE=null, ONLINE_SRC="", busy=false, LAST=null;
+/* SHOTS = the photo list in order: {kind:"ls"|"cl"|"new", url (thumb), full, file, res, st, pct} */
+
+/* ---------- Airtable REST ---------- */
+async function api(path,opt){ if(!TOKEN) throw new Error("This phone isn't set up yet.");
+  const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+"). Check Settings.":m); }
+  return j; }
+const FIELDQ=Object.values(FX).map(f=>"fields%5B%5D="+f).join("&");
+async function query(formula,max,sort){ let p=`?returnFieldsByFieldId=true&${FIELDQ}&maxRecords=${max||20}&filterByFormula=${encodeURIComponent(formula)}`;
+  if(sort) p+=`&sort%5B0%5D%5Bfield%5D=${sort}&sort%5B0%5D%5Bdirection%5D=desc`; return (await api(p)).records||[]; }
+const f=(rec,k)=>{ const v=rec&&rec.fields&&rec.fields[FX[k]]; if(v==null) return ""; if(typeof v==="object"&&!Array.isArray(v)) return v.text??v.name??""; return v; };
+const existing=rec=>String(f(rec,"urls")||"").split(/\s+/).filter(u=>/^https:\/\/res\.cloudinary\.com\//.test(u));
+const inPOS=rec=>IN_POS.includes(String(f(rec,"status")||"").trim());
+const quote=s=>"'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
+
+async function find(q){ q=String(q||"").trim(); if(!q) return; list("Looking…");
+  try{ let exact=[]; try{ exact=await query(`{SKU}&''=${quote(q)}`,5); }catch(e){ if(/key|Settings/.test(e.message)) throw e; }
+    if(exact.length===1) return pick(exact[0]);
+    let recs=exact; if(!recs.length){ try{ recs=await query(`OR(FIND(LOWER(${quote(q)}),LOWER({Name}&'')),FIND(${quote(q)},{SKU}&''))`,25,"Date In"); }catch(e){ if(/key|Settings/.test(e.message)) throw e; recs=await query(`FIND(LOWER(${quote(q)}),LOWER({Name}&''))`,25,"Date In"); } }
+    results=recs; list(recs.length?"":"Nothing found for “"+esc(q)+"”."); }
+  catch(e){ results=[]; list(esc(e.message)); } }
+async function needs(){ list("Loading…");
+  try{ results=await query(`AND(TRIM({Data Status}&'')='POS Synced',NOT({Cloudinary URLs}),NOT({Image 1}))`,40,"Date In"); list(results.length?"":"Everything POS synced has photos."); }
+  catch(e){ results=[]; list(esc(e.message)); } }
+function list(msg){ $("results").innerHTML=(msg?`<div class="small muted">${msg}</div>`:"")+results.map((x,i)=>`<button class="res" data-act="pick" data-i="${i}"><span><b>${esc(f(x,"name"))}</b><span class="sku">${esc(f(x,"sku"))}</span></span><span class="tag ${inPOS(x)?"ok":"warn"}">${esc(String(f(x,"status")||"no status").trim())}</span></button>`).join(""); }
+function pick(rec){ REC=rec; clearShots(); ONLINE=null; results=[]; $("results").innerHTML=""; $("q").value=""; view(); window.scrollTo(0,0); loadOnline(rec); }
+async function lsImages(sku){ if(!RELAY) return null;
+  const r=await fetch(RELAY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({secret:RELAY,method:"GET",path:`Item.json?customSku=${encodeURIComponent(sku)}&load_relations=["Images"]`})});
+  const txt=await r.text(); let j; try{ j=JSON.parse(txt); }catch(e){ throw new Error("Lightspeed relay said: "+txt.slice(0,80)); }
+  let item=j.Item; if(Array.isArray(item)) item=item[0]; if(!item) return {found:false,imgs:[]};
+  let im=item.Images&&item.Images.Image; if(!im) im=[]; if(!Array.isArray(im)) im=[im];
+  im.sort((a,b)=>(+a.ordering||0)-(+b.ordering||0));
+  return {found:true,imgs:im.map(x=>({full:`${x.baseImageURL}${x.publicID}.jpg`,thumb:`${x.baseImageURL}c_fill,w_360,h_360/${x.publicID}.jpg`}))}; }
+async function loadOnline(rec){ const sku=String(f(rec,"sku")||"").trim(); ONLINE_SRC="loading"; view();
+  let list=null, src="";
+  try{ const r=await lsImages(sku); if(r&&r.found){ list=r.imgs.map(x=>({kind:"ls",url:x.thumb,full:x.full})); src="Lightspeed"; } else if(r) src="notinls"; }
+  catch(e){ src="lserr"; }
+  if(!list){ const ex=existing(rec); list=ex.map(u=>({kind:"cl",url:u,full:u})); if(!src) src=RELAY?"":"nocode"; if(ex.length&&src!=="notinls") src=(src?src+"+":"")+"airtable"; }
+  if(REC!==rec) return;
+  ONLINE=list.map(x=>x.full); SHOTS=[...list.map(x=>({...x,st:""})),...SHOTS.filter(s=>s.kind==="new")]; ONLINE_SRC=src||"none"; view(); }
+function clearShots(){ SHOTS.forEach(s=>{ if(s.kind==="new") URL.revokeObjectURL(s.url); }); SHOTS=[]; }
+
+/* ---------- barcode scan ---------- */
+let stream=null, scanning=false;
+async function scan(){
+  if(!("BarcodeDetector" in window)){ say("This phone's browser can't scan barcodes. Type the SKU instead.","warn",true); $("q").focus(); return; }
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280}}}); }
+  catch(e){ say("Camera blocked. Allow camera access for this app in Android settings, or type the SKU.","warn",true); return; }
+  const v=$("vid"); v.srcObject=stream; await v.play(); $("scanner").hidden=false; scanning=true; $("scanmsg").textContent="Point at the SKU barcode";
+  let det; try{ det=new BarcodeDetector({formats:["code_128","code_39","ean_13","ean_8","upc_a","upc_e","qr_code","itf","codabar"]}); }catch(e){ det=new BarcodeDetector(); }
+  const tick=async()=>{ if(!scanning) return;
+    try{ const codes=await det.detect(v); const c=codes.map(x=>String(x.rawValue||"").trim()).find(Boolean);
+      if(c){ if(navigator.vibrate) navigator.vibrate(60); stopScan(); const sku=(/[?&]sku=([^&#]+)/.exec(c)||[])[1]||c; find(decodeURIComponent(sku)); return; } }catch(e){}
+    setTimeout(tick,180); };
+  tick(); }
+function stopScan(){ scanning=false; $("scanner").hidden=true; if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+
+/* ---------- photos ---------- */
+function addFiles(files){ for(const x of files){ if(/^image\//.test(x.type)||/\.(jpe?g|png|webp|heic)$/i.test(x.name)) SHOTS.push({kind:"new",file:x,url:URL.createObjectURL(x),st:"",pct:0}); } view(); }
+function move(i,d){ const j=i+d; if(j<0||j>=SHOTS.length) return; [SHOTS[i],SHOTS[j]]=[SHOTS[j],SHOTS[i]]; view(); }
+async function shrink(file){
+  let src; try{ src=await createImageBitmap(file,{imageOrientation:"from-image"}); }
+  catch(_){ src=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error("Couldn't read that photo")); im.src=URL.createObjectURL(file); }); }
+  const s=Math.min(1,MAXPX/Math.max(src.width,src.height)); if(s===1&&/jpe?g/i.test(file.type)) return file;
+  const c=document.createElement("canvas"); c.width=Math.round(src.width*s); c.height=Math.round(src.height*s); c.getContext("2d").drawImage(src,0,0,c.width,c.height);
+  return await new Promise(res=>c.toBlob(b=>res(b||file),"image/jpeg",0.88)); }
+function cloud(blob,publicId,onp){ return new Promise((res,rej)=>{ const fd=new FormData(); if(typeof blob==="string") fd.append("file",blob); else fd.append("file",blob,publicId+".jpg"); fd.append("upload_preset",PRESET); fd.append("public_id",publicId);
+  const x=new XMLHttpRequest(); x.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`);
+  x.upload.onprogress=e=>{ if(e.lengthComputable) onp(e.loaded/e.total); };
+  x.onload=()=>{ let j={}; try{ j=JSON.parse(x.responseText); }catch(e){} if(x.status>=200&&x.status<300&&j.public_id&&j.version) res({pid:j.public_id,ver:j.version}); else rej(new Error((j.error&&j.error.message)||("Cloudinary error "+x.status))); };
+  x.onerror=()=>rej(new Error("No connection. Check Wi-Fi and try again.")); x.send(fd); }); }
+const link=(r,first)=>`https://res.cloudinary.com/${CLOUD}/image/upload/${first?FIRST:REST}/v${r.ver}/${r.pid}.jpg`;
+// Lightspeed photos are already watermarked: copy them into our Cloudinary (Lightspeed deletes its copies when Make mirrors), no second watermark.
+const plain=(r,first)=>`https://res.cloudinary.com/${CLOUD}/image/upload/${first?"c_fill,g_center,w_1600,h_1600/q_auto,f_jpg":"q_auto,f_jpg"}/v${r.ver}/${r.pid}.jpg`;
+
+const newCount=()=>SHOTS.filter(s=>s.kind==="new").length;
+const finalLinks=()=>SHOTS.map((s,i)=>s.kind==="new"?link(s.res,i===0):s.kind==="ls"?plain(s.res,i===0):s.full);
+function changed(){ if(!ONLINE) return newCount()>0; const now=SHOTS.map(s=>s.kind==="new"?"new":s.full); return newCount()>0||now.length!==ONLINE.length||now.some((x,i)=>x!==ONLINE[i]); }
+async function upload(){ if(busy||!REC||!changed()) return;
+  if(!SHOTS.length&&!el_sure("up")) return;
+  busy=true; say(""); view();
+  const sku=String(f(REC,"sku")||"").replace(/[^A-Za-z0-9_-]/g,"");
+  if(!sku){ busy=false; view(); return say("This record has no SKU, so photos can't be named. Fix it in Airtable first.","warn"); }
+  const ts=Date.now();
+  for(let i=0;i<SHOTS.length;i++){ const s=SHOTS[i]; if(s.kind==="cl"||s.res) continue; s.st="up"; s.pct=0; view();
+    try{ const b=s.kind==="ls"?s.full:await shrink(s.file); s.res=await cloud(b,`${sku}_${i+1}_${ts}`,p=>{ s.pct=p; const el=document.querySelector(`[data-prog="${i}"]`); if(el) el.style.width=Math.round(p*100)+"%"; }); s.st="ok"; }
+    catch(e){ s.st="err"; s.err=e.message; }
+    view(); }
+  const bad=SHOTS.filter(s=>s.kind!=="cl"&&!s.res);
+  if(bad.length){ busy=false; view(); return say(`${bad.length} photo${bad.length>1?"s":""} didn't upload: ${esc(bad[0].err)} Tap Save to retry the rest. Nothing is changed on the item yet.`,"warn"); }
+  const links=finalLinks(), added=newCount();
+  const sync=inPOS(REC), stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York"});
+  const fields={[FX.urls]:links.join("\n"),[FX.log]:`PHOTO DESK ${stamp}${WHO?" ("+WHO+")":""} - ${added} new photo(s), ${links.length} total${sync?", sending to Lightspeed":", not in Lightspeed yet"}`};
+  if(sync&&links.length) fields[FX.sync]=true;
+  try{ await api("/"+REC.id,{method:"PATCH",body:JSON.stringify({fields})}); }
+  catch(e){ busy=false; view(); return say("Photos are in Cloudinary, but Airtable didn't save the links: "+esc(e.message)+" Tap Save to try again.","warn"); }
+  REC.fields[FX.urls]=links.join("\n"); LAST=REC;
+  const what=added?`${added} photo${added>1?"s":""} added`:"Photos updated";
+  $("done").innerHTML=`<div class="badge">✓</div><h2 style="margin:0">${what}</h2><div><b>${esc(f(REC,"name"))}</b> <span class="sku">${esc(sku)}</span></div>
+    <div class="muted">${links.length} photo${links.length===1?"":"s"} on the item. ${sync?(links.length?"Lightspeed matches this in a minute or two.":"Lightspeed keeps its photos until you add new ones."):"It isn't in Lightspeed yet; tick Sync Photos in Airtable once it's POS synced."}</div>
+    <button class="btn big" data-act="next">▦ Next item</button><button class="btn sec" data-act="again" style="width:100%">Back to this item</button>`;
+  clearShots(); REC=null; busy=false; view(true); window.scrollTo(0,0); }
+function el_sure(id){ const el=$(id); if(el.dataset.sure) return true; el.dataset.sure="1"; el.textContent="Remove every photo? Tap again"; return false; }
+function say(t,k,top){ const el=top?$("results"):$("msg"); el.innerHTML=t?`<div class="note ${k||""}">${t}</div>`:""; }
+
+/* ---------- views ---------- */
+function view(done){
+  const ready=!!TOKEN;
+  $("setup").hidden=ready; $("setbtn").hidden=!ready;
+  $("done").hidden=!done||!ready; $("pick").hidden=!ready||!!REC||!!done; $("itemcard").hidden=!REC; $("shoot").hidden=!REC; $("dock").hidden=!REC;
+  if(!REC) return;
+  const st=String(f(REC,"status")||"").trim(), nOnline=(ONLINE||[]).length;
+  const srcNote={loading:`<div class="note">Checking what's already in Lightspeed…</div>`,
+    Lightspeed:nOnline?`<div class="note">${nOnline} photo${nOnline>1?"s":""} already in Lightspeed. Add more, reorder, or ✕ to remove.</div>`:`<div class="note">No photos in Lightspeed yet.</div>`,
+    notinls:`<div class="note warn">Not found in Lightspeed by SKU yet.</div>`,
+    lserr:`<div class="note warn">Couldn't reach Lightspeed just now${nOnline?"; showing the photos Airtable has on record":""}.</div>`,
+    "lserr+airtable":`<div class="note warn">Couldn't reach Lightspeed just now; showing the ${nOnline} photo${nOnline>1?"s":""} Airtable has on record.</div>`,
+    nocode:`<div class="note">Add the Lightspeed relay code in Settings to see photos already in Lightspeed.</div>`,
+    "nocode+airtable":`<div class="note">${nOnline} photo${nOnline>1?"s":""} on record in Airtable (add the Lightspeed relay code in Settings to see Lightspeed's).</div>`,
+    airtable:`<div class="note">${nOnline} photo${nOnline>1?"s":""} on record in Airtable.</div>`,
+    none:""}[ONLINE_SRC]||"";
+  $("itemcard").innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(REC,"name"))}</h2><span class="sku">SKU ${esc(f(REC,"sku"))}</span> <span class="tag ${inPOS(REC)?"ok":"warn"}">${esc(st||"no status")}</span></div><button class="btn sec" data-act="change" style="min-height:40px;padding:8px 12px;flex:none">Change</button></div>
+    ${inPOS(REC)?"":`<div class="note warn">Not POS synced yet (Data Status "${esc(st||"blank")}"). Photos will save; tick Sync Photos once it's in Lightspeed.</div>`}${srcNote}`;
+  $("grid").innerHTML=SHOTS.map((s,i)=>{ const head=i===0; return `<div class="ph ${head?"head":""}"><img src="${esc(s.url)}" alt="Photo ${i+1}" loading="lazy"><span class="num">${i+1}${head?" · head":""}${s.kind==="new"?" · new":""}</span>
+    ${s.st==="up"?`<div class="st">${s.kind==="ls"?"Copying…":"Uploading…"}</div><div class="prog" data-prog="${i}" style="width:${Math.round((s.pct||0)*100)}%"></div>`:s.st==="ok"?`<div class="st ok">✓</div>`:s.st==="err"?`<div class="st err">Failed</div>`:""}
+    ${busy?"":`<div class="ctl"><button data-act="left" data-i="${i}" aria-label="Move earlier">◀</button><button data-act="del" data-i="${i}" aria-label="Remove">✕</button><button data-act="right" data-i="${i}" aria-label="Move later">▶</button></div>`}</div>`; }).join("");
+  $("mode").hidden=true;
+  const b=$("up"); delete b.dataset.sure; const n=newCount(), ch=changed();
+  b.disabled=busy||!ch||ONLINE_SRC==="loading"; b.textContent=busy?"Uploading…":ONLINE_SRC==="loading"?"Checking Lightspeed…":n?`Upload ${n} photo${n>1?"s":""}`:ch?"Save changes":"Take some photos"; }
+
+/* ---------- events ---------- */
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); WHO=$("who").value.trim(); store.set("mrm-photos-who",WHO); const rc=$("relay").value.trim(); if(rc){ RELAY=rc; store.set("mrm-photos-relay",rc); $("relay").value=""; }
+  if(!t&&TOKEN){ view(); return; } if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">That doesn't look like an Airtable key (they start with "pat").</div>`; return; }
+  const prev=TOKEN; TOKEN=t; $("setmsg").innerHTML=`<div class="note">Testing…</div>`;
+  try{ await query("FALSE()",1); store.set("mrm-photos-token",t); $("tok").value=""; $("setmsg").innerHTML=""; view(); fromUrl(); }
+  catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+$("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); find($("q").value); });
+$("cam").addEventListener("change",e=>{ addFiles(e.target.files); e.target.value=""; });
+$("gal").addEventListener("change",e=>{ addFiles(e.target.files); e.target.value=""; });
+document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const a=el.dataset.act, i=+el.dataset.i;
+  if(a==="pick") pick(results[i]); else if(a==="needs") needs(); else if(a==="scan") scan(); else if(a==="stopscan") stopScan();
+  else if(a==="upload") upload(); else if(a==="left") move(i,-1); else if(a==="right") move(i,1);
+  else if(a==="del"){ if(SHOTS[i].kind==="new") URL.revokeObjectURL(SHOTS[i].url); SHOTS.splice(i,1); view(); }
+  else if(a==="change"||a==="cancel"){ if(busy) return; const n=newCount(); if(n&&!el.dataset.sure){ el.dataset.sure="1"; el.classList.add("sure"); el.textContent=`Discard ${n} new photo${n>1?"s":""}?`; clearTimeout(el._t); el._t=setTimeout(()=>{ delete el.dataset.sure; el.classList.remove("sure"); el.textContent=a==="cancel"?"✕ Cancel":"Change"; },4000); return; } clearShots(); REC=null; ONLINE=null; say(""); view(); window.scrollTo(0,0); }
+  else if(a==="next"){ view(); scan(); } else if(a==="again"){ pick(LAST); }
+  else if(a==="settings"){ if(busy) return; $("setup").hidden=false; $("who").value=WHO; $("setmsg").innerHTML=`<div class="small muted">Leave a box blank to keep what is saved. Version ${APP_VERSION}.</div>`; $("setup").scrollIntoView(); } });
+window.addEventListener("beforeunload",e=>{ if(newCount()){ e.preventDefault(); e.returnValue=""; } });
+function fromUrl(){ const m=/[?&]sku=([^&#]+)/.exec(location.search)||/#s([A-Za-z0-9_-]+)$/.exec(location.hash); if(m&&TOKEN) find(decodeURIComponent(m[1])); }
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+view(); fromUrl();
+</script>
+</body>
+</html>
