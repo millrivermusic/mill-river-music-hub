@@ -114,7 +114,7 @@ const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTv
   repaired:"fld3NLcmOjkDruejF", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX" };
 // The queues techs can pick. "TBD" = not looked at yet.
 const KINDS=[
-  {k:"ALL", label:"Everything"},
+  {k:"ALL", label:"Everything (unlisted)"},
   {k:"TBD", label:"TBD (not checked yet)"},
   {k:"Needs Work: Guitar Repair", label:"Guitar repair"},
   {k:"Needs Work: Electronics Repair", label:"Electronics"},
@@ -123,9 +123,13 @@ const KINDS=[
   {k:"Needs Work: Misc", label:"Misc"},
   {k:"Needs Minor Work", label:"Needs minor (old)"},
   {k:"Needs Medium Work", label:"Needs medium (old)"},
+  {k:"ANY", label:"Everything (all items)", nocount:true},
 ];
 const SET_TO=["TBD","Needs Work: Guitar Repair","Needs Work: Electronics Repair","Needs Work: Tube Amp Repair","Needs Work: Horn Repair","Needs Work: Misc","Ready to Sell","Hold","Parts","Long Term Project","Tag Sale"];
 const ACTIVE="OR(TRIM({Data Status}&'')='Purchased / Approved',{Data Status}='POS Synced',{Data Status}='Ready For Ecommerce',{Data Status}='Pending')";
+// Everything (unlisted): not online yet and not ready to sell / listed / sold
+const UNLISTED="AND(OR(TRIM({Data Status}&'')='Purchased / Approved',{Data Status}='POS Synced',{Data Status}='Pending'),NOT(OR({Physical Status}='Ready to Sell',{Physical Status}='Listed',{Physical Status}='Sold')))";
+const SPECIAL={ALL:UNLISTED, ANY:"TRUE()"};
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -147,16 +151,16 @@ async function query(formula,max,dir){ let out=[], offset="";
   do{ let p=`?returnFieldsByFieldId=true&${FQ}&pageSize=100&filterByFormula=${encodeURIComponent(formula)}&sort%5B0%5D%5Bfield%5D=${FX.dateIn}&sort%5B0%5D%5Bdirection%5D=${dir||"desc"}`; if(offset) p+="&offset="+encodeURIComponent(offset);
     const j=await api(p); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<(max||300));
   return out; }
-async function countKind(k){ let n=0, offset="", pages=0; const fml=k==="ALL"?ACTIVE:`AND({Physical Status}=${quote(k)},${ACTIVE})`;
+async function countKind(k){ let n=0, offset="", pages=0; const fml=SPECIAL[k]||`AND({Physical Status}=${quote(k)},${ACTIVE})`;
   do{ const j=await api(`?pageSize=100&fields%5B%5D=${FX.name}&filterByFormula=${encodeURIComponent(fml)}${offset?"&offset="+encodeURIComponent(offset):""}`); n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<6);
   return offset?n+"+":n; }
 
 /* ---------- queue ---------- */
 function renderChips(){ $("chips").innerHTML=KINDS.map(x=>`<button class="chip ${PICK.includes(x.k)?"on":""}" data-act="kind" data-k="${esc(x.k)}">${esc(x.label)}<span class="n">${COUNTS[x.k]!==undefined?COUNTS[x.k]:""}</span></button>`).join(""); }
 async function loadQueue(){ searchMode=false; if(!PICK.length){ ROWS=[]; renderList("Pick at least one kind of work above."); return; } renderList("Loading…");
-  const fml=PICK.includes("ALL")?ACTIVE:`AND(OR(${PICK.map(k=>`{Physical Status}=${quote(k)}`).join(",")}),${ACTIVE})`;
-  try{ ROWS=await query(fml,300,SORT==="old"?"asc":"desc"); renderList(ROWS.length?(PICK.includes("ALL")?`Everything in stock, any physical status${ROWS.length>=300?" (newest 300; search for older)":""}.`:""):"Nothing waiting in those queues."); }catch(e){ ROWS=[]; renderList(esc(e.message)); } }
-async function loadCounts(){ await Promise.all(KINDS.map(async x=>{ try{ COUNTS[x.k]=await countKind(x.k); }catch(e){ COUNTS[x.k]="?"; } })); renderChips(); }
+  const sp=PICK.find(k=>SPECIAL[k]); const fml=sp?SPECIAL[sp]:`AND(OR(${PICK.map(k=>`{Physical Status}=${quote(k)}`).join(",")}),${ACTIVE})`;
+  try{ ROWS=await query(fml,300,SORT==="old"?"asc":"desc"); renderList(ROWS.length?(sp==="ALL"?`Everything not listed yet and not ready to sell${ROWS.length>=300?" (newest 300; search for older)":""}.`:sp==="ANY"?`Every item, any status, including sold${ROWS.length>=300?" (newest 300; search for older)":""}. Use this to add notes to anything.`:""):"Nothing waiting in those queues."); }catch(e){ ROWS=[]; renderList(esc(e.message)); } }
+async function loadCounts(){ await Promise.all(KINDS.filter(x=>!x.nocount).map(async x=>{ try{ COUNTS[x.k]=await countKind(x.k); }catch(e){ COUNTS[x.k]="?"; } })); renderChips(); }
 async function find(q){ q=String(q||"").trim(); if(!q) return loadQueue(); searchMode=true; renderList("Looking…");
   try{ let recs=[]; try{ recs=await query(`{SKU}&''=${quote(q)}`,5); }catch(e){}
     if(recs.length===1) return openItem(recs[0]);
@@ -219,7 +223,7 @@ function stopScan(){ scanning=false; $("scanner").hidden=true; if(stream){ strea
 
 /* ---------- events ---------- */
 document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const a=el.dataset.act;
-  if(a==="kind"){ const k=el.dataset.k; if(k==="ALL") PICK=["ALL"]; else { PICK=PICK.filter(x=>x!=="ALL"); PICK=PICK.includes(k)?PICK.filter(x=>x!==k):[...PICK,k]; if(!PICK.length) PICK=["ALL"]; } renderChips(); loadQueue(); }
+  if(a==="kind"){ const k=el.dataset.k; if(SPECIAL[k]) PICK=[k]; else { PICK=PICK.filter(x=>!SPECIAL[x]); PICK=PICK.includes(k)?PICK.filter(x=>x!==k):[...PICK,k]; if(!PICK.length) PICK=["ALL"]; } renderChips(); loadQueue(); }
   else if(a==="open") openItem(ROWS[+el.dataset.i]);
   else if(a==="close"){ closeItem(); if(!searchMode) loadQueue(); }
   else if(a==="back"){ e.preventDefault(); $("q").value=""; loadQueue(); }
