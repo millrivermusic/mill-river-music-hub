@@ -130,8 +130,8 @@ async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/$
 async function loadAll(){ let out=[], offset="";
   do{ const j=await api(`?returnFieldsByFieldId=true&pageSize=100&sort%5B0%5D%5Bfield%5D=${R.date}&sort%5B0%5D%5Bdirection%5D=desc${offset?"&offset="+encodeURIComponent(offset):""}`); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<2000);
   ALL=out; }
-async function patch(id,fields){ const j=await api(`/${id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,typecast:true})}); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
-async function create(fields){ const j=await api(`?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields,typecast:true})}); ALL.unshift(j); return j; }
+async function patch(id,fields){ const j=await api(`/${id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})}); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
+async function create(fields){ const j=await api(`?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})}); ALL.unshift(j); return j; }
 async function getOne(id){ const j=await api(`/${id}?returnFieldsByFieldId=true`); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
 
 /* uploads go straight to Airtable (5 MB per file). Photos are shrunk first. */
