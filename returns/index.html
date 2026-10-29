@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2E4A7A">
+<title>Returns</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* MRM Returns: customer returns from first contact to refund. Built on the Customer Returns table. */
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --sunk:#F6F8FB; --ink:#18202C; --muted:#5E6878; --line:#DCE2EA;
+  --accent:#2E4A7A; --accent-ink:#FFFFFF; --accent-soft:#E1E8F4;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0F131A; --surface:#171C25; --sunk:#131820; --ink:#E7ECF3; --muted:#9AA5B5; --line:#283141;
+  --accent:#8FB0E8; --accent-ink:#0B1422; --accent-soft:#1E2B42;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --sugg:#F0C14D; --sugg-soft:#3A2E10; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:#2E4A7A;color:#fff;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.bar select{font:inherit;font-size:14px;border-radius:9px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#18202C}
+.wrap{max-width:960px;margin:0 auto;padding-top:14px;padding-bottom:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 8px;font-size:18px;font-weight:800}
+.card h3{margin:14px 0 6px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:44px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input.t,select.t,textarea.t{border:1px solid var(--line);background:var(--sunk);border-radius:11px;padding:10px 12px;font-size:16px;min-width:0;width:100%}
+input.t:focus,select.t:focus,textarea.t:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+textarea.t{min-height:70px;resize:vertical}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);white-space:nowrap;display:inline-flex;gap:6px;flex:none}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .n{opacity:.85;font-variant-numeric:tabular-nums}
+.pick{display:flex;gap:6px;flex-wrap:wrap}
+.pick .chip{color:var(--ink)}
+.pick .chip.on{color:var(--accent-ink)}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:10px 12px;cursor:pointer}
+.res:hover{border-color:var(--accent)}
+.res .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--accent-soft);color:var(--accent)}
+.tag.ok{background:var(--ok-soft);color:var(--ok)} .tag.warn{background:var(--warn-soft);color:var(--warn)} .tag.need{background:var(--sugg-soft);color:var(--sugg)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
+.f.wide{grid-column:1/-1}
+.deets{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px 14px}
+.deets div{min-width:0} .deets dt{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase} .deets dd{margin:0;overflow-wrap:anywhere}
+.notebox{border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 10px 10px 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.thumbs{display:flex;gap:6px;overflow-x:auto}
+.thumbs a{flex:none}
+.thumbs img{width:104px;height:104px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--sunk);display:block}
+.files{display:flex;flex-direction:column;gap:6px}
+.files a{border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:8px 12px;color:inherit;text-decoration:none;font-size:14px;overflow-wrap:anywhere}
+.filebtn{position:relative;overflow:hidden;display:inline-flex;align-items:center}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--accent-soft);color:var(--accent);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+.confirm{margin-top:10px;border:2px solid var(--accent);border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.queue{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.queue span{font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:3px 8px;background:var(--sunk)}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>↩️ Returns</h1>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+<main class="wrap">
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device</h2>
+    <p class="small muted" style="margin:0 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices with the Photo Uploader, Hub, Tech Bench or Lookup set up are connected automatically.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card" id="browse" hidden>
+    <div class="chips" id="chips"></div>
+    <div class="row" style="margin-top:10px"><input class="t" id="q" inputmode="search" placeholder="Search customer, item, order #, SKU, tracking" autocomplete="off" style="flex:1 1 200px;width:auto"><button class="btn" id="newbtn" type="button">+ New return</button></div>
+    <div id="bmsg"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section id="view" hidden></section>
+</main>
+
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", TABLE="tblkWYK4EudB8tW7G";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const R={ name:"fldVim5LDQ89b8qAd", date:"fldhkimEYedfUSOzV", platform:"fld4muJ28GRGMdbk1", notes:"fld700olqZG5C4914", next:"fldJTyaEvFrXTS30T", reason:"fld9wBg8Vg3xc5w7S", status:"fldUrDMkm0nO96hXc",
+  cust:"fldpQcELJgDxlItQ9", email:"fldswFlQaMB62aWE6", phone:"fldgo86VfIEqI5yX4", order:"fldAXNK9nO9zmoQo2", sku:"fld4XYif7YXWOaOfJ", track:"fldp0hQ93vQZabtsO", refund:"fldLZV5kIeEL7uviC", method:"fldd0lmfhENENvkZK", photos:"fldnXGhHUz7Aukmi7", files:"fld6vi1RnSLew0pYN" };
+const STATUSES=["Customer Contacted Us","Return Approved","Return Received","Customer Refunded","Closed","Done"];
+const CLOSED=["Closed","Done"];
+const PLATFORMS=["Reverb","eBay","Website","In store","Phone order"];
+const REASONS=["Item Not as Described","Item Broken/Not to Spec","Incorrect Item Sent","Shipping Damage","Changed Mind","Other"];
+const METHODS=["Original payment","Store credit","Reverb refund","eBay refund","Exchange","No refund"];
+const SHOP={ name:"Mill River Music", addr:"135 King St., Northampton, MA 01060", phone:"" };
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let ALL=[], FILTER="open", Q="", REC=null, MODE="list", EDIT=null, ASK=null, MSG="", EMAIL=null, NEWQ={photos:[],files:[]}, BUSY=false;
+
+const v=(r,k)=>{ const x=r&&r.fields&&r.fields[R[k]]; if(x==null) return ""; if(Array.isArray(x)) return x; if(typeof x==="object") return x.name??x.text??""; return x; };
+const money=x=>typeof x==="number"?"$"+x.toLocaleString("en-US",{minimumFractionDigits:x%1?2:0,maximumFractionDigits:2}):"";
+const today=()=>{ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const stamp=()=>new Date().toLocaleString("en-US",{month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+const isOpen=r=>!CLOSED.includes(v(r,"status"));
+
+/* ---------- Airtable ---------- */
+async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
+async function loadAll(){ let out=[], offset="";
+  do{ const j=await api(`?returnFieldsByFieldId=true&pageSize=100&sort%5B0%5D%5Bfield%5D=${R.date}&sort%5B0%5D%5Bdirection%5D=desc${offset?"&offset="+encodeURIComponent(offset):""}`); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<2000);
+  ALL=out; }
+async function patch(id,fields){ const j=await api(`/${id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,typecast:true})}); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
+async function create(fields){ const j=await api(`?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields,typecast:true})}); ALL.unshift(j); return j; }
+async function getOne(id){ const j=await api(`/${id}?returnFieldsByFieldId=true`); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
+
+/* uploads go straight to Airtable (5 MB per file). Photos are shrunk first. */
+function readB64(blob){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.onerror=()=>rej(new Error("Couldn't read the file.")); fr.readAsDataURL(blob); }); }
+async function shrink(file){ if(!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+  try{ const bmp=await createImageBitmap(file); const k=Math.min(1,2000/Math.max(bmp.width,bmp.height)); if(k===1&&file.size<3.5e6) return file;
+    const c=document.createElement("canvas"); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k); c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",0.85)); return b?new File([b],file.name.replace(/\.\w+$/,"")+".jpg",{type:"image/jpeg"}):file; }catch(e){ return file; } }
+async function upload(recId, fieldId, file){ const f=fieldId===R.photos?await shrink(file):file;
+  if(f.size>5e6) throw new Error(`${file.name} is over 5 MB. Shrink it or attach it in Airtable.`);
+  const r=await fetch(`https://content.airtable.com/v0/${BASE}/${recId}/${fieldId}/uploadAttachment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify({contentType:f.type||"application/octet-stream",file:await readB64(f),filename:f.name||"file"})});
+  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(`${file.name}: `+((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status))); }
+
+/* ---------- list ---------- */
+function counts(){ const c={open:0,all:ALL.length}; STATUSES.forEach(s=>c[s]=0); ALL.forEach(r=>{ const s=v(r,"status"); if(c[s]!==undefined) c[s]++; if(isOpen(r)) c.open++; }); return c; }
+function renderChips(){ const c=counts(); const items=[["open","Open"],...STATUSES.map(s=>[s,s]),["all","All"]];
+  $("chips").innerHTML=items.map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-act="filter" data-k="${esc(k)}">${esc(l)}<span class="n">${c[k]??""}</span></button>`).join(""); }
+function hay(r){ return [v(r,"name"),v(r,"cust"),v(r,"email"),v(r,"phone"),v(r,"order"),v(r,"sku"),v(r,"track"),v(r,"notes")].join(" ").toLowerCase(); }
+function shown(){ const words=Q.toLowerCase().split(/\s+/).filter(Boolean);
+  return ALL.filter(r=>(FILTER==="all"||(FILTER==="open"?isOpen(r):v(r,"status")===FILTER)) && words.every(w=>hay(r).includes(w))); }
+function tagFor(s){ return `<span class="tag ${s==="Customer Contacted Us"?"warn":s==="Customer Refunded"||CLOSED.includes(s)?"ok":s==="Return Received"?"need":""}">${esc(s||"no status")}</span>`; }
+function renderList(){ renderChips(); const rows=shown();
+  $("bmsg").innerHTML=MSG?`<div class="note ${/^Couldn|didn't/.test(MSG)?"warn":"ok"}">${esc(MSG)}</div>`:(!rows.length?`<p class="small muted" style="margin:12px 0 0">${ALL.length?"No returns match.":"No returns yet."}</p>`:"");
+  $("list").innerHTML=rows.map(r=>`<button class="res" data-act="open" data-id="${r.id}"><b>${esc(v(r,"name")||"(no item)")}</b>${tagFor(v(r,"status"))}
+    <span class="meta">${esc([v(r,"cust"),v(r,"platform"),v(r,"date"),v(r,"order")&&"#"+v(r,"order")].filter(Boolean).join(" · "))}${v(r,"next")?" · next: "+esc(v(r,"next")):""}</span></button>`).join(""); }
+
+/* ---------- one return ---------- */
+function openRet(id){ REC=ALL.find(x=>x.id===id); if(!REC) return; MODE="view"; EDIT=null; ASK=null; EMAIL=null; MSG=""; show(); window.scrollTo(0,0); }
+function back(){ REC=null; MODE="list"; EDIT=null; ASK=null; EMAIL=null; show(); }
+function pickRow(name, list, cur){ return `<div class="pick">${list.map(o=>`<button type="button" class="chip ${cur===o?"on":""}" data-pick="${name}" data-v="${esc(o)}">${esc(o)}</button>`).join("")}</div>`; }
+function formHTML(d){ return `<div class="form">
+  <label class="f wide">Item<input class="t" data-e="name" value="${esc(d.name)}" placeholder="Brand + model"></label>
+  <label class="f">Customer<input class="t" data-e="cust" value="${esc(d.cust)}" autocomplete="off"></label>
+  <label class="f">Email<input class="t" data-e="email" type="email" value="${esc(d.email)}" autocomplete="off"></label>
+  <label class="f">Phone<input class="t" data-e="phone" type="tel" value="${esc(d.phone)}" autocomplete="off"></label>
+  <label class="f">Order / ticket #<input class="t" data-e="order" value="${esc(d.order)}"></label>
+  <label class="f">SKU<input class="t" data-e="sku" inputmode="numeric" value="${esc(d.sku)}"></label>
+  <label class="f">Date<input class="t" data-e="date" type="date" value="${esc(d.date)}"></label>
+  <div class="f wide">Sold on${pickRow("platform",PLATFORMS,d.platform)}</div>
+  <div class="f wide">Reason${pickRow("reason",REASONS,d.reason)}</div>
+  <label class="f">Return tracking #<input class="t" data-e="track" value="${esc(d.track)}"></label>
+  <label class="f">Refund amount<input class="t" data-e="refund" inputmode="decimal" value="${esc(d.refund)}" placeholder="$"></label>
+  <div class="f wide">Refund method${pickRow("method",METHODS,d.method)}</div>
+  <label class="f wide">Next step<input class="t" data-e="next" value="${esc(d.next)}" placeholder="What has to happen next, and who"></label>
+</div>`; }
+function draftFrom(r){ const g=k=>v(r,k); return { name:g("name"), cust:g("cust"), email:g("email"), phone:g("phone"), order:g("order"), sku:g("sku"), date:g("date")||today(), platform:g("platform"), reason:g("reason"), track:g("track"), refund:typeof g("refund")==="number"?String(g("refund")):"", method:g("method"), next:g("next"), status:g("status")||"Customer Contacted Us", note:"" }; }
+function fieldsFrom(d){ const f={}; ["name","cust","order","sku","track","next"].forEach(k=>f[R[k]]=String(d[k]||"").trim()||null);
+  f[R.email]=String(d.email||"").trim()||null; f[R.phone]=String(d.phone||"").trim()||null; f[R.date]=d.date||null;
+  f[R.platform]=d.platform||null; f[R.reason]=d.reason||null; f[R.method]=d.method||null;
+  const a=parseFloat(String(d.refund||"").replace(/[$,]/g,"")); f[R.refund]=isFinite(a)?a:null; return f; }
+function viewHTML(){ const r=REC, s=v(r,"status"), ph=v(r,"photos")||[], fl=v(r,"files")||[];
+  const dd=(l,x)=>x?`<div><dt>${l}</dt><dd>${esc(x)}</dd></div>`:"";
+  return `<section class="card">
+    <div class="row" style="justify-content:space-between"><button class="btn sec" data-act="back">← All returns</button><button class="btn sec" data-act="edit">Change details</button></div>
+    <h2 style="margin-top:12px">${esc(v(r,"name")||"(no item)")}</h2>
+    <h3>Status</h3>
+    <div class="pick">${STATUSES.map(x=>`<button class="chip ${s===x?"on":""}" data-act="askstatus" data-v="${esc(x)}">${esc(x)}</button>`).join("")}</div>
+    ${ASK?`<div class="confirm"><span>Change status to <b>${esc(ASK)}</b>?</span><button class="btn" data-act="setstatus">Yes, change it</button><button class="btn sec" data-act="nostatus">No</button></div>`:""}
+    <h3>Details</h3>
+    <dl class="deets">${dd("Customer",v(r,"cust"))}${dd("Email",v(r,"email"))}${dd("Phone",v(r,"phone"))}${dd("Order / ticket #",v(r,"order"))}${dd("SKU",v(r,"sku"))}${dd("Date",v(r,"date"))}${dd("Sold on",v(r,"platform"))}${dd("Reason",v(r,"reason"))}${dd("Return tracking",v(r,"track"))}${dd("Refund",money(v(r,"refund")))}${dd("Refund method",v(r,"method"))}</dl>
+    ${v(r,"next")?`<div class="note" style="margin-top:12px">Next: ${esc(v(r,"next"))}</div>`:""}
+    <h3>Notes</h3>
+    ${v(r,"notes")?`<div class="notebox">${esc(v(r,"notes"))}</div>`:`<p class="small muted" style="margin:0">No notes yet.</p>`}
+    <div class="row" style="margin-top:8px"><textarea class="t" id="newnote" placeholder="Add a note (phone call, what the customer said, what we did)" style="flex:1 1 240px"></textarea><button class="btn" data-act="addnote">Save note</button></div>
+    <h3>Photos</h3>
+    ${ph.length?`<div class="thumbs">${ph.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener"><img src="${esc(a.thumbnails&&a.thumbnails.large?a.thumbnails.large.url:a.url)}" alt="${esc(a.filename)}" loading="lazy"></a>`).join("")}</div>`:`<p class="small muted" style="margin:0">No photos yet.</p>`}
+    <div class="row" style="margin-top:8px"><span class="btn sec filebtn">📷 Add photos<input type="file" accept="image/*" multiple data-up="photos"></span></div>
+    <h3>Attachments</h3>
+    ${fl.length?`<div class="files">${fl.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:`<p class="small muted" style="margin:0">Labels, receipts, screenshots, PDFs.</p>`}
+    <div class="row" style="margin-top:8px"><span class="btn sec filebtn">📎 Add files<input type="file" multiple data-up="files"></span></div>
+    <h3>Email the customer</h3>
+    ${emailHTML()}
+    ${MSG?`<div class="note ${/^Couldn|didn't|over 5/.test(MSG)?"warn":"ok"}">${esc(MSG)}</div>`:""}
+  </section>`; }
+
+/* ---------- email: drafted here, sent by a person from Gmail ---------- */
+const TEMPLATES={
+  "Got your request":d=>({ s:`Your return request: ${d.item}`, b:`Hi ${d.first},\n\nThanks for reaching out about the ${d.item}. We're looking into it and will get back to you shortly with next steps.\n\nThanks,\n${d.who}\nMill River Music` }),
+  "Return approved":d=>({ s:`Return approved: ${d.item}`, b:`Hi ${d.first},\n\nYour return for the ${d.item} is approved. Please pack it carefully and ship it to:\n\nMill River Music\n${SHOP.addr}\n\nOnce it's on the way, reply with the tracking number so we can watch for it. We'll process your refund as soon as it arrives and we've checked it over.\n\nThanks,\n${d.who}\nMill River Music` }),
+  "We got it back":d=>({ s:`We received your return: ${d.item}`, b:`Hi ${d.first},\n\nThe ${d.item} arrived back at the shop. We're checking it over now and will let you know as soon as the refund is processed.\n\nThanks,\n${d.who}\nMill River Music` }),
+  "Refund sent":d=>({ s:`Your refund for the ${d.item}`, b:`Hi ${d.first},\n\nWe've processed your refund${d.amount?` of ${d.amount}`:""}${d.method?` (${d.method.toLowerCase()})`:""}. Depending on your bank it can take a few business days to show up.\n\nThanks for your patience, and let us know if there's anything else we can help with.\n\n${d.who}\nMill River Music` }),
+  "Blank":d=>({ s:`${d.item}`, b:`Hi ${d.first},\n\n\n\nThanks,\n${d.who}\nMill River Music` }),
+};
+const AUTO={"Customer Contacted Us":"Got your request","Return Approved":"Return approved","Return Received":"We got it back","Customer Refunded":"Refund sent"};
+function emailData(){ const r=REC; return { first:(String(v(r,"cust")||"").trim().split(/\s+/)[0])||"there", item:(()=>{ const n=String(v(r,"name")||"item"), c=String(v(r,"cust")||"").trim(); return c&&n.endsWith(" - "+c)?n.slice(0,-(c.length+3)):n; })(), amount:money(v(r,"refund")), method:v(r,"method"), who:WHO||"" }; }
+function startEmail(k){ const t=TEMPLATES[k](emailData()); EMAIL={k, to:v(REC,"email")||"", s:t.s, b:t.b}; }
+function emailHTML(){ if(!EMAIL){ const k=AUTO[v(REC,"status")]||"Blank"; startEmail(k); }
+  return `<div class="pick">${Object.keys(TEMPLATES).map(k=>`<button class="chip ${EMAIL.k===k?"on":""}" data-act="tpl" data-k="${esc(k)}">${esc(k)}</button>`).join("")}</div>
+  <div class="form" style="margin-top:8px"><label class="f wide">To<input class="t" id="em-to" type="email" value="${esc(EMAIL.to)}" placeholder="customer@email.com"></label>
+  <label class="f wide">Subject<input class="t" id="em-s" value="${esc(EMAIL.s)}"></label>
+  <label class="f wide">Message<textarea class="t" id="em-b" style="min-height:190px">${esc(EMAIL.b)}</textarea></label></div>
+  <div class="row" style="margin-top:8px"><button class="btn" data-act="gmail">Open in Gmail to send</button><button class="btn sec" data-act="copy">Copy text</button></div>
+  <p class="small muted" style="margin:6px 0 0">Nothing is sent from here. Gmail opens with this filled in, signed in as you; read it over and press Send there. Opening it adds a line to the notes.</p>`; }
+
+/* ---------- new return ---------- */
+function newHTML(){ const d=EDIT;
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">New return</h2><button class="btn sec" data-act="back">Cancel</button></div>
+    <h3>Status</h3>${pickRow("status",STATUSES.slice(0,4),d.status)}
+    <h3>Details</h3>${formHTML(d)}
+    <h3>Notes</h3><textarea class="t" data-e="note" placeholder="What happened, what the customer wants">${esc(d.note)}</textarea>
+    <h3>Photos and files</h3>
+    <div class="row"><span class="btn sec filebtn">📷 Add photos<input type="file" accept="image/*" multiple data-q="photos"></span><span class="btn sec filebtn">📎 Add files<input type="file" multiple data-q="files"></span></div>
+    <div class="queue">${NEWQ.photos.map(f=>`<span>📷 ${esc(f.name)}</span>`).join("")}${NEWQ.files.map(f=>`<span>📎 ${esc(f.name)}</span>`).join("")}</div>
+    <div class="row" style="margin-top:14px"><button class="btn" data-act="savenew" ${BUSY?"disabled":""}>${BUSY?"Saving…":"Save return"}</button></div>
+    ${MSG?`<div class="note warn">${esc(MSG)}</div>`:""}</section>`; }
+function editHTML(){ return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Change details</h2><button class="btn sec" data-act="canceledit">Cancel</button></div>
+  <div style="margin-top:10px">${formHTML(EDIT)}</div><div class="row" style="margin-top:14px"><button class="btn" data-act="saveedit" ${BUSY?"disabled":""}>${BUSY?"Saving…":"Save changes"}</button></div>${MSG?`<div class="note warn">${esc(MSG)}</div>`:""}</section>`; }
+
+function show(){ const ok=!!TOKEN; $("setup").hidden=ok; $("browse").hidden=!ok||MODE!=="list"; $("view").hidden=!ok||MODE==="list";
+  if(!ok) return; if(MODE==="list"){ renderList(); return; }
+  $("view").innerHTML = MODE==="new"?newHTML() : MODE==="edit"?editHTML() : viewHTML(); }
+function needWho(){ if(WHO) return false; MSG="Pick your name at the top first."; show(); $("who").focus(); return true; }
+function noteLine(t){ return `[${stamp()}${WHO?" "+WHO:""}] ${t}`; }
+function appendNote(r,t){ const old=String(v(r,"notes")||"").replace(/\s+$/,""); return (old?old+"\n":"")+noteLine(t); }
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e=>{
+  const p=e.target.closest("[data-pick]"); if(p&&EDIT){ const k=p.dataset.pick; EDIT[k]=EDIT[k]===p.dataset.v&&k!=="status"?"":p.dataset.v; show(); return; }
+  const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+  if(a==="filter"){ FILTER=b.dataset.k; MSG=""; renderList(); return; }
+  if(a==="open"){ openRet(b.dataset.id); return; }
+  if(a==="back"){ MSG=""; NEWQ={photos:[],files:[]}; back(); return; }
+  if(a==="edit"){ EDIT=draftFrom(REC); MODE="edit"; MSG=""; show(); return; }
+  if(a==="canceledit"){ EDIT=null; MODE="view"; MSG=""; show(); return; }
+  if(a==="askstatus"){ if(b.dataset.v===v(REC,"status")) return; ASK=b.dataset.v; show(); return; }
+  if(a==="nostatus"){ ASK=null; show(); return; }
+  if(a==="setstatus"){ if(needWho()) return; const to=ASK; ASK=null; try{ await patch(REC.id,{[R.status]:to,[R.notes]:appendNote(REC,`Status → ${to}`)}); MSG="Status changed to "+to+"."; EMAIL=null; }catch(err){ MSG="Couldn't save: "+err.message; } show(); return; }
+  if(a==="addnote"){ const t=$("newnote").value.trim(); if(!t) return; if(needWho()) return; try{ await patch(REC.id,{[R.notes]:appendNote(REC,t)}); MSG="Note saved."; }catch(err){ MSG="Couldn't save the note: "+err.message; } show(); return; }
+  if(a==="saveedit"){ if(needWho()) return; BUSY=true; show(); try{ await patch(REC.id,fieldsFrom(EDIT)); MODE="view"; EDIT=null; MSG="Saved."; EMAIL=null; }catch(err){ MSG="Couldn't save: "+err.message; } BUSY=false; show(); return; }
+  if(a==="savenew"){ if(needWho()) return; if(!EDIT.name.trim()&&!EDIT.cust.trim()){ MSG="Add the item or the customer's name."; show(); return; }
+    BUSY=true; MSG=""; show();
+    try{ const f=fieldsFrom(EDIT); if(!f[R.name]) f[R.name]=EDIT.cust.trim(); else if(EDIT.cust.trim()&&!f[R.name].includes(EDIT.cust.trim())) f[R.name]=f[R.name]+" - "+EDIT.cust.trim();
+      f[R.status]=EDIT.status; f[R.notes]=noteLine("Return entered"+(EDIT.note.trim()?": "+EDIT.note.trim():""));
+      const rec=await create(f); const errs=[];
+      for(const x of NEWQ.photos){ try{ await upload(rec.id,R.photos,x); }catch(err){ errs.push(err.message); } }
+      for(const x of NEWQ.files){ try{ await upload(rec.id,R.files,x); }catch(err){ errs.push(err.message); } }
+      if(NEWQ.photos.length||NEWQ.files.length) await getOne(rec.id).catch(()=>{});
+      NEWQ={photos:[],files:[]}; EDIT=null; BUSY=false; REC=ALL.find(x=>x.id===rec.id)||rec; MODE="view"; EMAIL=null; MSG=errs.length?"Saved, but some files didn't upload: "+errs.join("; "):"Return saved."; show(); window.scrollTo(0,0);
+    }catch(err){ BUSY=false; MSG="Couldn't save: "+err.message; show(); }
+    return; }
+  if(a==="tpl"){ startEmail(b.dataset.k); show(); return; }
+  if(a==="copy"){ syncEmail(); const txt=`To: ${EMAIL.to}\nSubject: ${EMAIL.s}\n\n${EMAIL.b}`; try{ await navigator.clipboard.writeText(txt); MSG="Email copied."; }catch(err){ MSG="Couldn't copy. Select the text and copy it."; } show(); return; }
+  if(a==="gmail"){ syncEmail(); if(!EMAIL.to){ MSG="Add the customer's email first."; show(); return; }
+    const u=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(EMAIL.to)}&su=${encodeURIComponent(EMAIL.s)}&body=${encodeURIComponent(EMAIL.b)}`;
+    window.open(u,"_blank","noopener");
+    const f={[R.notes]:appendNote(REC,`Email opened in Gmail: "${EMAIL.s}" to ${EMAIL.to}`)}; if(!v(REC,"email")) f[R.email]=EMAIL.to;
+    try{ await patch(REC.id,f); MSG="Gmail opened in a new tab. Send it from there."; }catch(err){ MSG="Gmail opened, but the note didn't save: "+err.message; } show(); return; }
+});
+function syncEmail(){ if(!EMAIL) return; EMAIL.to=$("em-to").value.trim(); EMAIL.s=$("em-s").value; EMAIL.b=$("em-b").value; }
+document.addEventListener("input", e=>{ const el=e.target; if(el.dataset.e&&EDIT){ EDIT[el.dataset.e]=el.value; } if(el.id==="q"){ Q=el.value; MSG=""; renderList(); } });
+document.addEventListener("change", async e=>{ const el=e.target;
+  if(el.dataset.q){ NEWQ[el.dataset.q]=NEWQ[el.dataset.q].concat([...el.files]); el.value=""; show(); return; }
+  if(el.dataset.up){ const files=[...el.files]; el.value=""; if(!files.length) return; if(needWho()) return; const fid=el.dataset.up==="photos"?R.photos:R.files;
+    MSG=`Uploading ${files.length} file${files.length>1?"s":""}…`; show(); const errs=[];
+    for(const f of files){ try{ await upload(REC.id,fid,f); }catch(err){ errs.push(err.message); } }
+    try{ await getOne(REC.id); if(files.length>errs.length) await patch(REC.id,{[R.notes]:appendNote(REC,`Added ${files.length-errs.length} ${el.dataset.up==="photos"?"photo":"file"}${files.length-errs.length>1?"s":""}`)}); }catch(err){}
+    MSG=errs.length?"Couldn't upload: "+errs.join("; "):"Uploaded."; show(); }
+});
+$("newbtn").addEventListener("click",()=>{ EDIT=draftFrom({fields:{}}); NEWQ={photos:[],files:[]}; MODE="new"; MSG=""; show(); window.scrollTo(0,0); });
+
+/* ---------- setup ---------- */
+$("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); if(MSG.startsWith("Pick your name")) { MSG=""; } if(EMAIL) EMAIL=null; show(); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!t) return; TOKEN=t; $("setmsg").innerHTML=`<div class="note">Testing…</div>`;
+  try{ await loadAll(); store.set("mrm-photos-token",t); $("setmsg").innerHTML=""; show(); }catch(err){ TOKEN=""; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+(async()=>{ show(); if(!TOKEN) return; $("bmsg").innerHTML=`<p class="small muted">Loading…</p>`;
+  try{ await loadAll(); const m=/[?&]id=(rec\w+)/.exec(location.search); if(m&&ALL.some(x=>x.id===m[1])) openRet(m[1]); else show(); }
+  catch(err){ MSG="Couldn't load returns: "+err.message; show(); } })();
+</script>
+</body>
+</html>
