@@ -58,6 +58,7 @@ textarea.t{min-height:64px;resize:vertical}
 .res .why{grid-column:1/-1;font-size:13px;color:var(--warn);font-weight:700}
 .price{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
 .sku{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.skubig{font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.02em}
 .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line)}
 .tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent} .tag.need{background:var(--sugg-soft);color:var(--sugg);border-color:transparent} .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent} .tag.info{background:var(--info-soft);color:var(--info);border-color:transparent}
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
@@ -204,7 +205,7 @@ function renderItem(extra){ const r=REC, s=st(r), live=f(r,"live");
     ["Date in",f(r,"dateIn")],["Intake",f(r,"intakeType")],["Seller",f(r,"seller")],["Location",f(r,"location")],["Shipping",f(r,"ship")],["Repair est.",money(f(r,"repairEst"))],["Repair cost",money(f(r,"repairCost"))],["Listed by",f(r,"listedBy")],["Date sold",f(r,"dateSold")]].filter(x=>x[1]!==""&&x[1]!=null);
   const box=(t,v)=>v?`<div class="notebox"><b>${t}</b>${esc(v)}</div>`:""; const p=pics(r); const why=s==="Purchased / Approved"?stuck(r):[];
   const term=encodeURIComponent(searchTerms(r));
-  $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2><span class="sku">SKU ${esc(f(r,"sku"))}</span></div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
+  $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2>${f(r,"sku")?`<span class="skubig">SKU ${esc(f(r,"sku"))}</span>`:`<span class="tag warn">No SKU yet</span>`}</div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
     <div class="tags">${tags.join("")}</div>
     <dl class="prices">${priceBox}</dl>
     ${why.length?`<div class="note warn">Probably holding up the POS sync: ${esc(why.join("; "))}.</div>`:""}
@@ -244,13 +245,13 @@ async function history(){ const el=$("hist"); el.innerHTML=`<div class="small mu
 
 /* ---------- changes: always reviewed and confirmed ---------- */
 const CONDS=["Mint","Excellent","Very Good","Good","Fair","Poor","Non Functioning","As-Is"];
-const EDIT=[["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["cond","Condition (Reverb)","select",CONDS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["cost","Purchase price","money"],["repairEst","Repair estimate","money"],["serial","Serial #","text"],["model","Model","text"],["year","Year","text"],["finish","Finish / color","text"]];
+const EDIT=[["sku","SKU","sku"],["phys","Physical Status","select",PHYS],["location","Location","select",LOCS],["cond","Condition (Reverb)","select",CONDS],["pos","POS price","money"],["online","Online price","money"],["esp","Expected sale","money"],["cost","Purchase price","money"],["repairEst","Repair estimate","money"],["serial","Serial #","text"],["model","Model","text"],["year","Year","text"],["finish","Finish / color","text"]];
 function editForm(){ return `<div class="form" style="margin-top:14px">${EDIT.map(([k,l,t,opts])=>{ const v=f(REC,k);
   if(t==="select") return `<label class="f">${l}<select class="t" data-e="${k}"><option value="">(blank)</option>${opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}${v&&!opts.includes(v)?`<option selected>${esc(v)}</option>`:""}</select></label>`;
-  return `<label class="f ${t==="wide"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':""}></label>`; }).join("")}</div>
+  return `<label class="f ${t==="wide"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':t==="sku"?'inputmode="numeric" style="font-family:var(--mono)"':""}></label>`; }).join("")}</div>
   <div id="pendsum" class="small" style="margin-top:10px"></div><div class="row" style="margin-top:8px"><button class="btn" data-act="savefields" id="savefields" disabled>Save changes</button><button class="btn sec" data-act="lock">Cancel</button></div>`; }
 function updSum(){ const el=$("pendsum"); if(!el) return; const ch=collect(); const live=st(REC)==="Ready For Ecommerce"&&ch.some(c=>c.k==="online"||c.k==="pos"); $("savefields").disabled=!ch.length;
-  el.innerHTML=ch.length?`<b>${ch.length} change${ch.length>1?"s":""}:</b> ${ch.map(c=>`${esc(c.label)} ${esc(c.from)} → <b>${esc(c.to)}</b>`).join("; ")}${live?`<div style="color:var(--warn);font-weight:700;margin-top:4px">This item is live online; a price change may sync to Reverb and the website.</div>`:""}`:`<span class="muted">Edit any field, then Save changes.</span>`; }
+  el.innerHTML=ch.length?`<b>${ch.length} change${ch.length>1?"s":""}:</b> ${ch.map(c=>`${esc(c.label)} ${esc(c.from)} → <b>${esc(c.to)}</b>`).join("; ")}${live?`<div style="color:var(--warn);font-weight:700;margin-top:4px">This item is live online; a price change may sync to Reverb and the website.</div>`:""}${ch.some(c=>c.k==="sku")?`<div style="color:var(--warn);font-weight:700;margin-top:4px">${ch.some(c=>c.k==="sku"&&c.val&&!/^\d+$/.test(c.val))?"SKUs should be numbers only. ":""}${st(REC)&&st(REC)!=="Purchased / Approved"&&st(REC)!=="Pending"?"This item is already in Lightspeed under the old SKU; change it there too.":""}</div>`:""}`:`<span class="muted">Edit any field, then Save changes.</span>`; }
 function collect(){ const ch=[]; document.querySelectorAll("[data-e]").forEach(el=>{ const k=el.dataset.e, def=EDIT.find(x=>x[0]===k); const before=f(REC,k); let after=el.value.trim();
   if(def[2]==="money"){ const a=num(after), b=num(before); if(a!==b) ch.push({k,label:def[1],from:money(b)||"(blank)",to:money(a)||"(blank)",val:a}); }
   else if(after!==String(before||"")) ch.push({k,label:def[1],from:before||"(blank)",to:after||"(blank)",val:after||null}); }); return ch; }
@@ -267,7 +268,7 @@ function review(kind){ if(!WHO){ $("review").innerHTML=`<div class="note warn">P
     ${live?`<div class="small" style="margin-bottom:10px;color:var(--warn);font-weight:700">This item is online; a price change may sync to Reverb and the website.</div>`:""}
     <div class="row"><button class="btn warnb" data-act="confirm">Yes, save it</button><button class="btn sec" data-act="cancelreview">Cancel</button></div></div>`; }
 async function commit(){ if(busy||!pending) return; busy=true; $("review").innerHTML=`<div class="note">Saving…</div>`;
-  try{ const fields={}; pending.changes.forEach(c=>fields[FX[c.k]]=c.val);
+  try{ const fields={}; pending.changes.forEach(c=>fields[FX[c.k]]= c.k==="sku" ? (c.val?{text:String(c.val)}:null) : c.val);
     const fresh=await api(`/${REC.id}?returnFieldsByFieldId=true`); const cur=String((fresh.fields||{})[FX.notes]||"").replace(/\s+$/,"");
     const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
     const parts=[]; if(pending.note) parts.push(pending.note); if(pending.changes.length) parts.push("Changed "+pending.changes.map(c=>`${c.label} ${c.from} → ${c.to}`).join("; "));
