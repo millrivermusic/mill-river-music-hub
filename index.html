@@ -75,7 +75,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
 
   <section class="card" id="setup" hidden>
     <h2>Connect this device to Airtable</h2>
-    <p style="margin:0 0 10px;color:var(--muted)">Paste the MRM Photos Airtable key (starts with pat) to see live counts on the tiles. It stays on this device only. Phones that already have MRM Photos set up are connected automatically.</p>
+    <p style="margin:0 0 10px;color:var(--muted)">Paste the MRM Photos Airtable key (starts with pat) to see live counts on the tiles. It stays on this device only. Phones that already have the Photo Uploader set up are connected automatically.</p>
     <form id="setform" style="display:flex;flex-direction:column;gap:8px" autocomplete="off">
       <input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" autocomplete="off">
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">Save and test</button><button class="btn sec" type="button" id="skip">Not now</button></div>
@@ -97,7 +97,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
     </div>
   </section>
 
-  <div class="foot"><span>Intake and Listing open in a new tab on the shop login.</span><button id="setbtn">Airtable key</button></div>
+  <div class="foot"><span>Intake Desk and Listing Desk open in a new tab.</span><button id="setbtn">Airtable key</button></div>
 </main>
 
 <script>
@@ -124,11 +124,11 @@ const COUNTS={
   ecom:{label:"Going to Reverb tonight", f:"AND({Ecommerce Sync},{Data Status}='Ready For Ecommerce',NOT({Reverb URL}))"},
 };
 const TILES=[
-  {ic:"🤝", t:"Intake", p:"Buy, trade or consign gear at the counter. Offers, receipts, check #.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P", counts:["posWait"]},
-  {ic:"🔧", t:"Tech Bench", p:"Pick the work you do: guitars, electronics, tube amps, horns, misc, or TBD. Log work, mark ready to sell.", where:"Phone or computer", href:"tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
-  {ic:"📷", t:"Photos", p:"Scan the SKU, shoot, upload. Goes straight to Cloudinary and Lightspeed.", where:"Phone app", href:"photos/", counts:["needsPhotos"]},
-  {ic:"✍️", t:"Listing", p:"Write up used listings manually or with Claude: research, fields, house format, save.", where:"Computer", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
-  {ic:"🔎", t:"Lookup & Notes", p:"Find any item: where it stands, price checks, our history. View-only; notes and changes are confirmed first.", where:"Phone or computer", href:"lookup/", counts:["live","going"]},
+  {ic:"🤝", t:"Intake Desk", p:"Start a buy, trade or consignment.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P", counts:["posWait"]},
+  {ic:"🔧", t:"Tech Bench", p:"Pick your queue, log work, mark ready.", where:"Phone or computer", href:"tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
+  {ic:"📷", t:"Photo Uploader", p:"Scan the SKU, shoot, upload.", where:"Phone app", href:"photos/", counts:["needsPhotos"]},
+  {ic:"✍️", t:"Listing Desk", p:"Pick an item and write it up, manually or with Claude.", where:"Computer", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
+  {ic:"🔎", t:"Lookup & Notes", p:"Search an item, check prices, add a note.", where:"Phone or computer", href:"lookup/", counts:["live","going"]},
 ];
 const VAL={};
 

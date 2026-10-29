@@ -1,7 +1,7 @@
 {
   "id": "mrm-photos",
-  "name": "MRM Photos",
-  "short_name": "MRM Photos",
+  "name": "MRM Photo Uploader",
+  "short_name": "Photo Uploader",
   "description": "Mill River Music product photos: scan, shoot, send to Lightspeed.",
   "start_url": "./",
   "scope": "./",
