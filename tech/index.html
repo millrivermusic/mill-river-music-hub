@@ -66,6 +66,7 @@ textarea.t{min-height:70px;resize:vertical}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
 label.f.wide{grid-column:1/-1}
+.locked{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--line);border-radius:12px;padding:10px 12px;color:var(--muted);font-size:14px;margin-top:12px}
 .check{display:flex;gap:8px;align-items:center;font-size:15px;font-weight:700;color:var(--ink)}
 .check input{width:20px;height:20px;accent-color:var(--accent)}
 .note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
@@ -111,7 +112,10 @@ const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", phys:"fldM1ajllQvTvdKwI", cat:"fldRSem0EtiWihkN1", cond:"fldYuGbUJO4a0bNvu", notes:"fldW0Sgi7TVduheu1",
   serial:"fldt6OBgEhIwhEvjP", dateIn:"fldf0h1eW3dxrlufr", seller:"fldTyF7VCWXfIcpJm", cost:"fldg6j6emzCkDiGaI", esp:"fldkODnsYDRYqeOOm", repairEst:"fldSuGcsrYx8FGajQ", repairCost:"fldQdlwr3NdLnkNxW",
-  repaired:"fld3NLcmOjkDruejF", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX" };
+  repaired:"fld3NLcmOjkDruejF", location:"fldZICzZjZ7MEwPs3", urls:"fldsABSqaxA6WfmUL", intakeType:"fldUhYtVjkyGTZgw4", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX", finish:"flduMrOukLdpZa903" };
+const CONDS=["Mint","Excellent","Very Good","Good","Fair","Poor","Non Functioning"];
+const LOCS=["Intake Room","Sales Floor","Repair","Repair(Humidifying)","Front caseland","Shop Stock","Mezzanine Overflow","Drum Loft","Easthampton Storage","Climate Controlled Storage","Eho 2","J&N Garage","Rust Temple"];
+const EDIT=[["sku","SKU","sku"],["name","Title","wide"],["cond","Condition","select",CONDS],["location","Location","select",LOCS],["serial","Serial #","text"],["make","Make","text"],["model","Model","text"],["year","Year","text"],["finish","Finish / color","text"],["esp","Expected sale ($)","money"]];
 // The queues techs can pick. "TBD" = not looked at yet.
 const KINDS=[
   {k:"ALL", label:"Everything (unlisted)"},
@@ -137,7 +141,7 @@ const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return
 let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
 let PICK=["ALL"];   // Everything is the default each time the app opens
 let SORT=store.get("mrm-tech-sort")||"new";
-let ROWS=[], COUNTS={}, REC=null, busy=false, searchMode=false, FLASH="";
+let ROWS=[], COUNTS={}, REC=null, busy=false, searchMode=false, FLASH="", EDITING=false;
 
 const money=v=>{ const x=Number(v); return isFinite(x)&&x?"$"+x.toLocaleString("en-US"):""; };
 const f=(r,k)=>{ const v=r&&r.fields&&r.fields[FX[k]]; if(v==null) return ""; if(Array.isArray(v)) return v.map(x=>x&&typeof x==="object"?(x.name??""):x).join(", "); if(typeof v==="object") return v.text??v.name??""; return v; };
@@ -174,17 +178,19 @@ function renderList(msg){ $("qmsg").innerHTML=(FLASH?`<div class="note ok">${FLA
       <span class="meta"><span class="sku">${esc(f(r,"sku"))}</span> · ${esc(String(f(r,"cat")||"no category").split(">").pop())} · in ${esc(ageDays(f(r,"dateIn")))}${note?" · "+esc(note):""}</span></button>`; }).join(""); }
 
 /* ---------- item ---------- */
-function openItem(r){ REC=r; $("queue").hidden=true; $("item").hidden=false; renderItem(); window.scrollTo(0,0); }
+function openItem(r){ REC=r; EDITING=false; $("queue").hidden=true; $("item").hidden=false; renderItem(); window.scrollTo(0,0); }
 function closeItem(){ REC=null; $("item").hidden=true; $("queue").hidden=false; }
 function renderItem(extra){ const r=REC; const ps=f(r,"phys");
-  const rows=[["Status",ps],["Data",String(f(r,"status")).trim()],["Category",f(r,"cat")],["Condition",f(r,"cond")],["Make",f(r,"make")],["Model",f(r,"model")],["Year",f(r,"year")],["Serial #",f(r,"serial")],
+  const rows=[["Status",ps],["Data",String(f(r,"status")).trim()],["Category",f(r,"cat")],["Condition",f(r,"cond")],["Make",f(r,"make")],["Model",f(r,"model")],["Year",f(r,"year")],["Finish",f(r,"finish")],["Serial #",f(r,"serial")],
     ["Date in",f(r,"dateIn")],["Intake",f(r,"intakeType")],["Seller",f(r,"seller")],["Paid",money(f(r,"cost"))],["Expected sale",money(f(r,"esp"))],["Repair est.",money(f(r,"repairEst"))],["Repair cost",money(f(r,"repairCost"))],["Repaired",REC.fields[FX.repaired]?"Yes":""],["Problem",f(r,"problem")],["Location",f(r,"location")]].filter(x=>x[1]!==""&&x[1]!=null);
   const pics=String(f(r,"urls")||"").split(/\s+/).filter(u=>/^https:\/\/res\.cloudinary\.com\//.test(u)).slice(0,8).map(u=>u.replace(/\/upload\/[^/]*(?:\/[^/]*)*?\/v(\d+)\//,"/upload/c_fill,w_200,h_200,q_auto,f_jpg/v$1/"));
   const box=(t,v)=>v?`<div class="notebox"><b>${t}</b>${esc(v)}</div>`:"";
-  $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2><span class="sku">SKU ${esc(f(r,"sku"))}</span></div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Queue</button></div>
+  $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2>${f(r,"sku")?`<span class="sku" style="font-size:15px;font-weight:700">SKU ${esc(f(r,"sku"))}</span>`:`<span class="tag need">No SKU yet</span>`}</div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Queue</button></div>
     ${pics.length?`<div class="thumbs">${pics.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
     <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
-    ${box("Notes",f(r,"notes"))}</div>
+    ${box("Notes",f(r,"notes"))}
+    ${EDITING?editForm():`<div class="locked"><span>🔒 Item details are locked.</span><button class="btn sec" data-act="unlock">✏️ Change fields</button></div>`}
+    <div id="emsg"></div></div>
   <div class="card" style="margin-top:12px"><h2>Log work</h2>
     <div class="form">
       <label class="f wide">What you found or did (added to Notes with your name and the time)<textarea class="t" id="work" placeholder="e.g. Set up, new strings, cleaned pots, output jack replaced. Frets fine. Still needs: reverb tank."></textarea></label>
@@ -213,6 +219,31 @@ async function save(done){ if(busy||!REC) return; busy=true; const msg=$("imsg")
     renderItem(`<div class="note ok">Saved.</div>`); loadCounts(); }
   catch(e){ busy=false; let m=e.message; if(/select option|Insufficient permissions to create new select option/i.test(m)) m+=" (The new statuses may not exist yet: run the Physical Status cleanup script in Airtable first.)"; msg.innerHTML=`<div class="note warn">${esc(m)}</div>`; } }
 
+/* ---------- change fields (like Lookup) ---------- */
+function editForm(){ return `<div class="form" style="margin-top:14px">${EDIT.map(([k,l,t,opts])=>{ const v=f(REC,k);
+  if(t==="select") return `<label class="f">${l}<select class="t" data-e="${k}"><option value="">(blank)</option>${opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}${v&&!opts.includes(v)?`<option selected>${esc(v)}</option>`:""}</select></label>`;
+  return `<label class="f ${t==="wide"?"wide":""}">${l}<input class="t" data-e="${k}" value="${esc(v)}" ${t==="money"?'inputmode="decimal"':t==="sku"?'inputmode="numeric"':""}></label>`; }).join("")}</div>
+  <div id="pendsum" class="small muted" style="margin-top:10px">Edit any field, then Save changes.</div>
+  <div class="row" style="margin-top:8px"><button class="btn" data-act="savefields" id="savefields" disabled>Save changes</button><button class="btn sec" data-act="lock">Cancel</button></div>`; }
+const numv=v=>{ const x=parseFloat(String(v??"").replace(/[$,]/g,"")); return isFinite(x)?x:null; };
+function collect(){ const ch=[]; document.querySelectorAll("[data-e]").forEach(el=>{ const k=el.dataset.e, def=EDIT.find(x=>x[0]===k); const before=String(f(REC,k)??""); const after=el.value.trim();
+  if(def[2]==="money"){ const a=numv(after), b=numv(before); if(a!==b) ch.push({k,label:def[1],from:b==null?"(blank)":"$"+b,to:a==null?"(blank)":"$"+a,val:a}); }
+  else if(after!==before) ch.push({k,label:def[1],from:before||"(blank)",to:after||"(blank)",val:after||null}); }); return ch; }
+function updSum(){ const el=$("pendsum"); if(!el) return; const ch=collect(); $("savefields").disabled=!ch.length;
+  const badSku=ch.some(c=>c.k==="sku"&&c.val&&!/^\d+$/.test(c.val));
+  el.innerHTML=ch.length?`<b>${ch.length} change${ch.length>1?"s":""}:</b> ${ch.map(c=>`${esc(c.label)} ${esc(c.from)} → <b>${esc(c.to)}</b>`).join("; ")}${badSku?`<div style="color:var(--warn);font-weight:700">SKUs should be numbers only.</div>`:""}`:"Edit any field, then Save changes."; }
+async function saveFields(){ if(busy) return; const ch=collect(); if(!ch.length) return; const msg=$("emsg");
+  if(!WHO){ msg.innerHTML=`<div class="note warn">Pick your name at the top first, so the change is signed.</div>`; return; }
+  busy=true; msg.innerHTML=`<div class="note">Saving…</div>`;
+  try{ const fields={}; ch.forEach(c=>fields[FX[c.k]]= c.k==="sku" ? (c.val?{text:String(c.val)}:null) : c.val);
+    const fresh=await api(`/${REC.id}?returnFieldsByFieldId=true`); const cur=String((fresh.fields||{})[FX.notes]||"").replace(/\s+$/,"");
+    const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+    fields[FX.notes]=(cur?cur+"\n":"")+`[${stamp} ${WHO}] Changed `+ch.map(c=>`${c.label} ${c.from} → ${c.to}`).join("; ");
+    const out=await api(`/${REC.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,returnFieldsByFieldId:true})});
+    REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; busy=false; EDITING=false;
+    renderItem(); $("emsg").innerHTML=`<div class="note ok">Saved: ${esc(ch.map(c=>`${c.label} → ${c.to}`).join("; "))}. Logged in Notes.</div>`; }
+  catch(e){ busy=false; msg.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+
 /* ---------- scan ---------- */
 let stream=null, scanning=false;
 async function scan(){ if(!("BarcodeDetector" in window)){ $("qmsg").innerHTML=`<div class="note warn">This browser can't scan barcodes. Type the SKU instead.</div>`; return; }
@@ -228,9 +259,14 @@ document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); 
   else if(a==="close"){ closeItem(); if(!searchMode) loadQueue(); }
   else if(a==="back"){ e.preventDefault(); $("q").value=""; loadQueue(); }
   else if(a==="save") save(false);
+  else if(a==="unlock"){ EDITING=true; renderItem(); }
+  else if(a==="lock"){ EDITING=false; renderItem(); }
+  else if(a==="savefields") saveFields();
   else if(a==="done") $("confirm").innerHTML=`<div class="confirm"><p>Mark this Ready to Sell? It moves into the listing queue and gets ticked Repaired. Anything you typed above saves too.</p><div class="row"><button class="btn ok" data-act="doneyes">Yes, ready to sell</button><button class="btn sec" data-act="doneno">Not yet</button></div></div>`;
   else if(a==="doneyes") save(true);
   else if(a==="doneno") $("confirm").innerHTML=""; });
+document.addEventListener("input",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
+document.addEventListener("change",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
 $("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); find($("q").value); });
 $("scanbtn").addEventListener("click",scan); $("stopscan").addEventListener("click",stopScan);
 $("sort").value=SORT; $("sort").addEventListener("change",e=>{ SORT=e.target.value; store.set("mrm-tech-sort",SORT); loadQueue(); });
