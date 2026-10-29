@@ -29,6 +29,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16p
 .bar{background:var(--accent);color:var(--accent-ink);padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .bar .in{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .bar h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em}
+.barr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lsbtn{color:inherit;text-decoration:none;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);border-radius:10px;padding:7px 12px}
+.lsbtn:hover{background:rgba(255,255,255,.24)}
 .bar .who{display:flex;align-items:center;gap:8px;font-size:14px}
 .bar select{font:inherit;font-size:15px;border-radius:10px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:6px 10px}
 .bar select option{color:#1E1B16}
@@ -69,7 +72,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
 </head>
 <body>
 <header class="bar"><div class="in"><h1>MRM Hub</h1>
-  <label class="who">Who's working?<select id="who"><option value="">Pick your name</option></select></label></div></header>
+  <div class="barr"><a class="lsbtn" href="https://us.merchantos.com/?form_name=ui_tab&amp;tab=register" target="_blank" rel="noopener">🧾 Lightspeed register</a><label class="who">Who's working?<select id="who"><option value="">Pick your name</option></select></label></div></div></header>
 <main class="wrap">
   <div class="greet"><h2 id="hello">Mill River Music tools</h2><span class="small" id="fresh"></span></div>
 
@@ -92,7 +95,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
       <a href="https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR/viwuD9J3f1Ie9Q9yY" target="_blank" rel="noopener">Purchased – Not POS Synced</a>
       <a href="https://reverb.com/my/selling/listings" target="_blank" rel="noopener">Reverb listings</a>
       <a href="https://reverb.com/shop/millrivermusic" target="_blank" rel="noopener">Our Reverb shop</a>
-      <a href="https://us.merchantos.com/" target="_blank" rel="noopener">Lightspeed</a>
+      <a href="https://us.merchantos.com/?form_name=ui_tab&amp;tab=register" target="_blank" rel="noopener">Lightspeed register</a>
       <a href="https://www.millrivermusic.com/" target="_blank" rel="noopener">Our website</a>
     </div>
   </section>
