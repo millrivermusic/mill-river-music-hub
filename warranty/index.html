@@ -82,6 +82,14 @@ label.f.wide{grid-column:1/-1}
 .sugg button{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer}
 .confirm{border:2px solid var(--accent);border-radius:14px;padding:12px;background:var(--accent-soft);margin-top:10px}
 .files{display:flex;flex-wrap:wrap;gap:6px}
+.flist{display:flex;flex-direction:column;gap:6px}
+.frow{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:8px 10px}
+.frow .th{width:52px;height:52px;border-radius:8px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden}
+.frow .th img{width:100%;height:100%;object-fit:cover}
+.frow .nm{min-width:0;overflow-wrap:anywhere;font-weight:700;font-size:14.5px}
+.frow .nm small{display:block;font-weight:400;color:var(--muted)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:12px;margin-top:8px}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .files a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:5px 11px;font-size:13.5px;font-weight:700;color:inherit;text-decoration:none}
 </style>
 </head>
@@ -219,7 +227,13 @@ function openCase(id,keep){ const c=CASES.find(x=>x.id===id); if(!c) return; CUR
     <h3>Notes & history</h3>
     <div class="notebox">${esc(c.notes)||'<span class="muted">No notes yet.</span>'}</div>
     <form class="row" id="nform" style="margin-top:8px"><input class="t" id="nt" placeholder="Add a note (saved with today's date and your name)" style="flex:1 1 240px;width:auto"><button class="btn sec" type="submit">Add note</button></form>
-    ${c.files.length?`<h3>Files</h3><div class="files">${c.files.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}
+    <h3>Files</h3>
+    <div class="flist">${c.files.length?c.files.map((a,i)=>fileRow(a,i)).join(""):'<div class="small muted">No files yet.</div>'}</div>
+    <div class="drop" id="drop"><div class="row"><select class="t" id="ftag" style="width:auto;flex:0 0 auto"><option value="">Label (optional)</option><option>Unsigned</option><option>Signed</option><option>Warranty form</option><option>Auth</option><option>Photo</option><option>Receipt</option><option>Registration</option></select>
+      <label class="btn sec" style="cursor:pointer">＋ Add files<input type="file" id="fin" multiple accept="image/*,application/pdf,.doc,.docx" hidden></label>
+      <label class="btn sec" style="cursor:pointer">📷 Take photo<input type="file" id="fcam" accept="image/*" capture="environment" hidden></label></div>
+      <div class="small muted" style="margin-top:6px">Or drag files here. PDFs and photos, up to 5 MB each (big photos are shrunk automatically).</div><div id="fmsg"></div></div>
+    <div id="frm"></div>
   </div>
   <div class="card" id="mailcard"></div>`;
   renderMail(); show("detail"); }
@@ -239,6 +253,24 @@ function mailFor(c,kind){ const u=CUST[c.custId]||{}, B=BR[c.b], me=WHO||"Mill R
   if(kind==="follow") return { su:`Following up: ${c.num?`ticket #${c.num}`:"warranty request"}, ${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nFollowing up on ${c.num?`ticket #${c.num}`:"our warranty request"} for ${custName(c)}'s ${gtr}${c.req?`, sent ${fmtD(c.req)}`:""}. Is there anything else you need from us?${sig}` };
   return { su:`Work complete: ${c.num?`ticket #${c.num}, `:""}${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nThe warranty repair for ${custName(c)}'s ${gtr}${c.num?` (ticket #${c.num})`:""} is complete. The completed service paperwork is attached for reimbursement.${sig}` };
 }
+/* ---------- files ---------- */
+function fileRow(a,i){ const img=/^image\//.test(a.type||""); const th=img&&a.thumbnails&&a.thumbnails.small?`<img src="${esc(a.thumbnails.small.url)}" alt="">`:(/pdf/.test(a.type||"")?"📄":"📎");
+  const kb=a.size?(a.size>1048576?(a.size/1048576).toFixed(1)+" MB":Math.round(a.size/1024)+" KB"):"";
+  return `<div class="frow"><div class="th">${th}</div><div class="nm">${esc(a.filename)}<small>${esc(kb)}</small></div>
+    <div class="row" style="gap:6px"><a class="btn sec sm" href="${esc(a.url)}" target="_blank" rel="noopener">Open / print</a><button class="btn sec sm" data-act="frm" data-i="${i}" title="Remove from this case">✕</button></div></div>`; }
+const toB64=buf=>{ let bin=""; const u8=new Uint8Array(buf); for(let i=0;i<u8.length;i+=0x8000) bin+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(bin); };
+async function shrinkImage(file){ if(!/^image\/(jpeg|png|webp|heic|heif)/.test(file.type)||file.size<3.5e6) return file;
+  try{ const bmp=await createImageBitmap(file); const k=Math.min(1,2400/Math.max(bmp.width,bmp.height)); const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*k); cv.height=Math.round(bmp.height*k); cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
+    const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.85)); return new File([blob],file.name.replace(/\.\w+$/,"")+".jpg",{type:"image/jpeg"}); }catch(e){ return file; } }
+async function uploadFiles(c,files){ const msg=$("fmsg"); const tag=$("ftag")?$("ftag").value:""; const F=BR[c.b].F.files; let ok=0; const errs=[];
+  for(const f0 of files){ msg.innerHTML=`<div class="note">Uploading ${esc(f0.name)}…</div>`;
+    try{ const f=await shrinkImage(f0); if(f.size>5*1024*1024) throw new Error(f0.name+" is over 5 MB. Shrink it or save as a smaller PDF.");
+      const name=(tag?tag+" - ":"")+f.name; const r=await fetch(`https://content.airtable.com/v0/${BASE}/${c.id}/${F}/uploadAttachment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify({contentType:f.type||"application/octet-stream",filename:name,file:toB64(await f.arrayBuffer())})});
+      const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status)); ok++;
+    }catch(e){ errs.push(e.message); } }
+  if(ok){ await patch(c,{[BR[c.b].F.notes]:(c.notes?c.notes+"\n\n":"")+noteLine("Added "+ok+" file"+(ok>1?"s":"")+(tag?" ("+tag+")":""))}).catch(()=>{}); await refreshCase(c); }
+  const m=$("fmsg"); if(m) m.innerHTML=(ok?`<div class="note ok">Added ${ok} file${ok>1?"s":""}.</div>`:"")+errs.map(x=>`<div class="note warn">${esc(x)}</div>`).join(""); }
+async function refreshCase(c){ const j=await at(BR[c.b].table,"/"+c.id+"?returnFieldsByFieldId=true"); Object.assign(c,norm(c.b,j)); render(); openCase(c.id,true); }
 /* ---------- Martin Warranty Request Form (PDF) ---------- */
 function wrfBlock(c){ const u=CUST[c.custId]||{}; const tech=RECSTAFF[c.techId]||WHO||""; const d=new Date();
   const k="mrm-wrf-"+c.id; let saved={}; try{ saved=JSON.parse(store.get(k)||"{}"); }catch(e){}
@@ -375,6 +407,9 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   else if(a==="markemailed"){ b.disabled=true; try{ await setStatus("emailed","Emailed "+BR[CUR.b].toName+" the warranty request"); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="markpaper"){ b.disabled=true; try{ await setStatus("paperwork","Sent completion paperwork to "+BR[CUR.b].toName); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="wrf"){ b.disabled=true; $("wrfmsg").textContent="Making the PDF…"; try{ const r=await makeWrf(CUR); $("wrfmsg").innerHTML=`Downloaded <b>${esc(r.name)}</b>. `+(r.saved?"A copy is saved to this case's files.":"Couldn't save a copy to Airtable; attach the downloaded file."); if(r.saved) setTimeout(load,1500); }catch(err){ $("wrfmsg").textContent=err.message; } b.disabled=false; }
+  else if(a==="frm"){ const f=CUR.files[+b.dataset.i]; if(!f) return; $("frm").innerHTML=`<div class="confirm"><b>Remove “${esc(f.filename)}” from this case?</b><div class="small" style="margin-top:4px">Download it first if you might need it again.</div><div class="row" style="margin-top:8px"><button class="btn" data-act="frmok" data-id="${esc(f.id)}">Yes, remove it</button><button class="btn sec" data-act="frmno">Cancel</button></div></div>`; $("frm").scrollIntoView({block:"nearest"}); }
+  else if(a==="frmno") $("frm").innerHTML="";
+  else if(a==="frmok"){ b.disabled=true; try{ const keep=CUR.files.filter(x=>x.id!==b.dataset.id).map(x=>({id:x.id})); await patch(CUR,{[BR[CUR.b].F.files]:keep}); await refreshCase(CUR); }catch(err){ $("frm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="nb"){ NEW.b=b.dataset.k; drawCreate(); }
   else if(a==="nclear"){ NEW.cust=null; drawCreate(); }
 });
@@ -399,6 +434,10 @@ document.addEventListener("submit",async e=>{ e.preventDefault(); const fm=e.tar
     }catch(err){ $("cmsg").textContent=err.message; btn.disabled=false; } }
 });
 function alertBox(m){ const n=document.createElement("div"); n.className="note warn"; n.textContent=m; $("detail").prepend(n); }
+document.addEventListener("change",e=>{ if((e.target.id==="fin"||e.target.id==="fcam")&&CUR&&e.target.files.length){ uploadFiles(CUR,[...e.target.files]); e.target.value=""; } });
+document.addEventListener("dragover",e=>{ const d=e.target.closest&&e.target.closest("#drop"); if(d){ e.preventDefault(); d.classList.add("over"); } });
+document.addEventListener("dragleave",e=>{ const d=e.target.closest&&e.target.closest("#drop"); if(d) d.classList.remove("over"); });
+document.addEventListener("drop",e=>{ const d=e.target.closest&&e.target.closest("#drop"); if(d&&CUR){ e.preventDefault(); d.classList.remove("over"); if(e.dataTransfer.files.length) uploadFiles(CUR,[...e.dataTransfer.files]); } });
 $("newbtn").onclick=openCreate;
 $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
 $("who").onchange=e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); if(CUR&&!$("detail").hidden) updMail(); };
