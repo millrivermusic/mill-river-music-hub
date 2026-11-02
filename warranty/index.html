@@ -111,6 +111,7 @@ label.f.wide{grid-column:1/-1}
   <section id="create" hidden></section>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 "use strict";
 const BASE="appZD2jJGbSlvofcV", UDB="tblGJnacXCV52gZdS";
@@ -238,15 +239,66 @@ function mailFor(c,kind){ const u=CUST[c.custId]||{}, B=BR[c.b], me=WHO||"Mill R
   if(kind==="follow") return { su:`Following up: ${c.num?`ticket #${c.num}`:"warranty request"}, ${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nFollowing up on ${c.num?`ticket #${c.num}`:"our warranty request"} for ${custName(c)}'s ${gtr}${c.req?`, sent ${fmtD(c.req)}`:""}. Is there anything else you need from us?${sig}` };
   return { su:`Work complete: ${c.num?`ticket #${c.num}, `:""}${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nThe warranty repair for ${custName(c)}'s ${gtr}${c.num?` (ticket #${c.num})`:""} is complete. The completed service paperwork is attached for reimbursement.${sig}` };
 }
-const firstLine=t=>String(t||"").split(/\n/).map(x=>x.trim()).filter(x=>x&&!/^\[/.test(x))[0]||"";
+/* ---------- Martin Warranty Request Form (PDF) ---------- */
+function wrfBlock(c){ const u=CUST[c.custId]||{}; const tech=RECSTAFF[c.techId]||WHO||""; const d=new Date();
+  const k="mrm-wrf-"+c.id; let saved={}; try{ saved=JSON.parse(store.get(k)||"{}"); }catch(e){}
+  const v=(n,def)=>esc(saved[n]!=null?saved[n]:def);
+  return `<div class="mail" style="margin-top:10px;background:var(--surface)"><b>Martin Warranty Request Form</b>
+  <p class="small muted" style="margin:4px 0 8px">Fill this in and press Make PDF. It downloads the form in Martin's layout and saves a copy to this case's files.</p>
+  <div class="form">
+    <label class="f">Technician name<input class="t wrf" data-n="tech" value="${v("tech",tech)}"></label>
+    <label class="f">Customer name<input class="t wrf" data-n="cust" value="${v("cust",custName(c))}"></label>
+    <label class="f">Product model<input class="t wrf" data-n="model" value="${v("model",c.model)}"></label>
+    <label class="f">Serial number<input class="t wrf" data-n="serial" value="${v("serial",c.serial)}"></label>
+    <label class="f wide">Instrument condition<textarea class="t wrf" data-n="cond" rows="3" placeholder="Overall condition, humidity signs, action at 12th, saddle height…">${v("cond",firstLine(c.notes))}</textarea></label>
+    <label class="f wide">Required repairs<textarea class="t wrf" data-n="rep" rows="3" placeholder="e.g. Neck reset; reglue back brace">${v("rep","")}</textarea></label>
+    <label class="f wide">Additional comments<textarea class="t wrf" data-n="com" rows="2" placeholder="Purchase date/place, registration, anything Martin should know">${v("com","")}</textarea></label>
+    <label class="f">Pictures provided<select class="t wrf" data-n="pics"><option ${saved.pics!=="No"?"selected":""}>Yes</option><option ${saved.pics==="No"?"selected":""}>No</option></select></label>
+    <label class="f">Date<input class="t wrf" data-n="date" type="date" value="${v("date",today())}"></label>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="btn" data-act="wrf">Make PDF</button><span id="wrfmsg" class="small"></span></div></div>`; }
+function wrfVals(){ const o={}; document.querySelectorAll(".wrf").forEach(el=>o[el.dataset.n]=el.value); return o; }
+async function makeWrf(c){ if(!window.PDFLib) throw new Error("The PDF tool didn't load. Check the internet connection and reload.");
+  const V=wrfVals(); store.set("mrm-wrf-"+c.id,JSON.stringify(V));
+  const {PDFDocument,StandardFonts,rgb}=PDFLib; const pdf=await PDFDocument.create(); const pg=pdf.addPage([612,792]);
+  const F=await pdf.embedFont(StandardFonts.Helvetica), FB=await pdf.embedFont(StandardFonts.HelveticaBold);
+  const logo=await pdf.embedPng(await (await fetch("martin-form-logo.png")).arrayBuffer());
+  const L=72, R=540, W=R-L, ink=rgb(0,0,0), blue=rgb(0.09,0.16,0.45);
+  pg.drawImage(logo,{x:(612-176)/2,y:792-36-73,width:176,height:73});
+  let y=792-36-73-34;
+  const t="Warranty Request Form"; pg.drawText(t,{x:(612-FB.widthOfTextAtSize(t,16))/2,y,size:16,font:FB,color:ink}); y-=36;
+  const head=h=>{ pg.drawText(h,{x:L,y,size:12,font:FB,color:ink}); y-=18; };
+  const wrap=(txt,font,size,width)=>{ const out=[]; String(txt||"").split(/\n/).forEach(par=>{ let line=""; par.split(/\s+/).filter(Boolean).forEach(w=>{ const tryL=line?line+" "+w:w; if(font.widthOfTextAtSize(tryL,size)>width&&line){ out.push(line); line=w; } else line=tryL; }); out.push(line); }); return out; };
+  const field=(label,val,multi)=>{ pg.drawText(label,{x:L,y,size:11,font:F,color:ink}); const lx=L+F.widthOfTextAtSize(label,11)+5;
+    const lines=wrap(val,F,11,multi?W:R-lx); if(!multi){ pg.drawText(lines[0]||"",{x:lx,y,size:11,font:F,color:blue}); y-=16; lines.slice(1).forEach(l=>{ pg.drawText(l,{x:lx,y,size:11,font:F,color:blue}); y-=16; }); }
+    else { const first=wrap(val,F,11,R-lx); if(first.length===1){ pg.drawText(first[0],{x:lx,y,size:11,font:F,color:blue}); y-=16; } else { y-=16; lines.forEach(l=>{ pg.drawText(l,{x:L+12,y,size:11,font:F,color:blue}); y-=15; }); } } };
+  head("Service Center Information");
+  field("Service Center Name:",SHOP.name); field("Address:",SHOP.addr+" · "+SHOP.phone+" · "+SHOP.email); field("Technician Name:",V.tech); y-=12;
+  head("Customer & Product Details");
+  field("Customer Name:",V.cust); field("Product Model:",V.model); field("Serial Number:",V.serial); y-=12;
+  head("Repair Details");
+  field("Instrument Condition:",V.cond,true); y-=6; field("Required Repairs:",V.rep,true); y-=12; field("Additional Comments:",V.com,true); y-=12;
+  head("Attachments");
+  const box=(x,on)=>{ pg.drawRectangle({x,y:y-2,width:10,height:10,borderColor:ink,borderWidth:0.8}); if(on){ pg.drawLine({start:{x:x+2,y:y},end:{x:x+8,y:y+6},thickness:1.2,color:blue}); pg.drawLine({start:{x:x+2,y:y+6},end:{x:x+8,y:y},thickness:1.2,color:blue}); } };
+  pg.drawText("Pictures Provided:",{x:L,y,size:11,font:F,color:ink}); box(L+130,V.pics!=="No"); pg.drawText("Yes",{x:L+144,y,size:11,font:F,color:ink}); box(L+190,V.pics==="No"); pg.drawText("No",{x:L+204,y,size:11,font:F,color:ink}); y-=40;
+  const dd=V.date?V.date.split("-"):["","",""]; const ds=`Date: ${dd[1]||"____"} / ${dd[2]||"____"} / ${dd[0]||"____"}`; pg.drawText(ds,{x:R-F.widthOfTextAtSize(ds,11),y,size:11,font:F,color:ink});
+  pdf.setTitle("Warranty Request Form - "+V.cust); pdf.setAuthor(SHOP.name);
+  const bytes=await pdf.save(); const name=`WRF ${V.cust||"customer"} ${V.serial||""}`.trim().replace(/[\\/:*?"<>|]+/g,"")+".pdf";
+  const blob=new Blob([bytes],{type:"application/pdf"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },4000);
+  let saved=false; try{ let bin=""; const u8=new Uint8Array(bytes); for(let i=0;i<u8.length;i+=0x8000) bin+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
+    const r=await fetch(`https://content.airtable.com/v0/${BASE}/${c.id}/${BR.martin.F.files}/uploadAttachment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify({contentType:"application/pdf",filename:name,file:btoa(bin)})});
+    saved=r.ok; }catch(e){}
+  return {name,saved}; }
+const firstLine=t=>String(t||"").split(/\n/).map(x=>x.replace(/^\[[^\]]*\]\s*/,"").trim()).filter(Boolean)[0]||"";
 function renderMail(){ const c=CUR, B=BR[c.b]; const kinds=[["request","Warranty request"],["follow","Follow-up"],["paperwork","Completion paperwork"]];
   const prevI=$("mi")?$("mi").value:firstLine(c.notes), prevB=$("mb")?$("mb").value:"";
   $("mailcard").innerHTML=`<h2>Email ${esc(B.toName)}</h2>
     <p class="small muted" style="margin:0 0 10px">Goes to <b>${esc(B.to)}</b> from info@. Check the text, then open it in Gmail, attach the files and press Send yourself.</p>
     <div class="tabs2">${kinds.map(([k,l])=>`<button class="chip ${MAILKIND===k?"brand on":""}" data-act="mk" data-k="${k}">${l}</button>`).join("")}</div>
     ${MAILKIND==="request"?`<div class="form"><label class="f wide">Issue (for the email)<textarea class="t" id="mi" rows="3">${esc(prevI)}</textarea></label><label class="f wide">Purchased (where / when, optional)<input class="t" id="mb" value="${esc(prevB)}" placeholder="e.g. Mill River Music, March 2026"></label></div>`:`<input type="hidden" id="mi" value="${esc(prevI)}"><input type="hidden" id="mb" value="${esc(prevB)}">`}
+    ${c.b==="martin"&&MAILKIND==="request"?wrfBlock(c):""}
     <div class="mail" style="margin-top:10px"><div class="small"><b>To:</b> ${esc(B.to)}</div><div class="small"><b>Subject:</b> <span id="msu"></span></div><pre id="mbody"></pre></div>
-    <div class="note" style="margin-top:10px">📎 Attach: ${MAILKIND==="request"?(c.b==="martin"?"the Martin Warranty Request Form (PDF), photos and the receipt":"photos and the sales receipt"):MAILKIND==="paperwork"?(c.b==="martin"?"the signed completion form":"the completed service paperwork"):"nothing needed"}.${c.b==="martin"&&MAILKIND==="request"?" Auto-filling Martin's form is coming next.":""}</div>
+    <div class="note" style="margin-top:10px">📎 Attach: ${MAILKIND==="request"?(c.b==="martin"?"the Martin Warranty Request Form (PDF), photos and the receipt":"photos and the sales receipt"):MAILKIND==="paperwork"?(c.b==="martin"?"the signed completion form":"the completed service paperwork"):"nothing needed"}.</div>
     <div class="row" style="margin-top:10px"><a class="btn" id="gm" target="_blank" rel="noopener">Open in Gmail</a><button class="btn sec" data-act="copy">Copy text</button>
       ${MAILKIND==="request"&&(c.status==="pending"||c.status==="waiting")?`<button class="btn sec" data-act="markemailed">I sent it: mark Emailed</button>`:""}
       ${MAILKIND==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid"?`<button class="btn sec" data-act="markpaper">I sent it: mark Paperwork submitted</button>`:""}</div>
@@ -302,6 +354,7 @@ let tq=null;
 document.addEventListener("input",e=>{
   if(e.target.id==="q"){ Q=e.target.value; render(); }
   if(e.target.id==="mi"||e.target.id==="mb") updMail();
+  if(e.target.classList&&e.target.classList.contains("wrf")&&CUR) store.set("mrm-wrf-"+CUR.id,JSON.stringify(wrfVals()));
   if(e.target.id==="cq"||e.target.id==="ncq"){ clearTimeout(tq); const el=e.target; tq=setTimeout(()=>{
     if(el.id==="cq") custSearch(el.value,$("csugg"),async u=>{ try{ await patch(CUR,{[BR[CUR.b].F.cust]:[u.id]}); render(); openCase(CUR.id,true); }catch(err){ $("csugg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
     else custSearch(el.value,$("nsugg"),u=>{ NEW.cust=u; drawCreate(); }); },300); }
@@ -321,6 +374,7 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
     try{ await navigator.clipboard.writeText(t); $("mmsg").innerHTML=`<div class="note ok">Copied.</div>`; }catch(err){ const r=document.createRange(); r.selectNodeContents($("mbody")); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); $("mmsg").innerHTML=`<div class="note">Text selected. Press Copy.</div>`; } }
   else if(a==="markemailed"){ b.disabled=true; try{ await setStatus("emailed","Emailed "+BR[CUR.b].toName+" the warranty request"); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="markpaper"){ b.disabled=true; try{ await setStatus("paperwork","Sent completion paperwork to "+BR[CUR.b].toName); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="wrf"){ b.disabled=true; $("wrfmsg").textContent="Making the PDF…"; try{ const r=await makeWrf(CUR); $("wrfmsg").innerHTML=`Downloaded <b>${esc(r.name)}</b>. `+(r.saved?"A copy is saved to this case's files.":"Couldn't save a copy to Airtable; attach the downloaded file."); if(r.saved) setTimeout(load,1500); }catch(err){ $("wrfmsg").textContent=err.message; } b.disabled=false; }
   else if(a==="nb"){ NEW.b=b.dataset.k; drawCreate(); }
   else if(a==="nclear"){ NEW.cust=null; drawCreate(); }
 });
