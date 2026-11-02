@@ -126,7 +126,7 @@ label.f.wide{grid-column:1/-1}
     <ol class="how small">
       <li>Use the Mac at the <b>2nd register</b>.</li>
       <li>Make sure the Zebra is on, plugged into that Mac, and loaded with <b>2″ × 1″</b> labels.</li>
-      <li>Fill in the address below, check the preview, then click <b>Copy print command</b>.</li>
+      <li>Pick <b>Address</b> or <b>Any text</b>, fill it in, check the preview, then click <b>Copy print command</b>.</li>
       <li>Open <b>Terminal</b> (⌘ Space, type <code>Terminal</code>, Return), paste with ⌘V and press Return.</li>
     </ol>
     <details class="small" style="margin-top:8px"><summary><b>If something goes wrong</b></summary>
@@ -138,7 +138,8 @@ label.f.wide{grid-column:1/-1}
       </ul></details>
   </section>
 
-  <section class="card">
+  <div class="seg" id="kind" style="margin:0"><button data-act="kind" data-k="addr" class="on">Address</button><button data-act="kind" data-k="text">Any text</button></div>
+  <section class="card" id="srccard">
     <div class="seg" id="seg"><button data-act="src" data-s="cust" class="on">Customer</button><button data-act="src" data-s="web">Search online</button><button data-act="src" data-s="manual">Type it</button></div>
     <div id="src-cust">
       <div id="setup" hidden><p class="small muted" style="margin:0 0 8px">To look up customers, paste the MRM Photos Airtable key (starts with pat). Devices with the Hub set up are connected automatically.</p>
@@ -155,7 +156,15 @@ label.f.wide{grid-column:1/-1}
   </section>
 
   <div class="twocol">
-    <section class="card">
+    <section class="card" id="textcard" hidden>
+      <h2>Text</h2>
+      <label class="f">One line per row (up to 6)<textarea class="t" id="txt" rows="5" placeholder="e.g.&#10;HOLD FOR&#10;Gabe Walters&#10;Pick up Fri"></textarea></label>
+      <div class="row" style="margin-top:10px"><span class="small muted">Size</span><span class="tabs" style="margin:0" id="tsize"></span></div>
+      <div class="row" style="margin-top:8px"><span class="small muted">Align</span><span class="tabs" style="margin:0" id="talign"></span></div>
+      <div class="row" style="margin-top:8px"><label class="small"><input type="checkbox" id="tbold" checked> Bold first line</label></div>
+      <div class="row" style="margin-top:6px"><button class="btn sec" data-act="tclear">Clear</button></div>
+    </section>
+    <section class="card" id="addrcard">
       <h2>Address</h2>
       <div class="form" style="grid-template-columns:1fr">
         <label class="f">Name<input class="t" data-a="name"></label>
@@ -187,23 +196,36 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 const quote=s=>"'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
 let TOKEN=store.get("mrm-photos-token"), CUSTS=[], WEB=[];
+let KIND="addr", TSIZE="auto", TALIGN="left";
+const SIZES=[["auto","Auto"],["s","Small"],["m","Medium"],["l","Large"],["xl","Huge"]], ALIGNS=[["left","Left"],["center","Center"]];
+const SZ={s:26,m:38,l:56,xl:80};
 const A={name:"",co:"",street:"",street2:"",city:"",state:"",zip:"",country:""};
 
 /* ---------- label ---------- */
-function lines(){ const L=[]; if(A.name.trim()) L.push(A.name.trim()); if(A.co.trim()) L.push(A.co.trim()); if(A.street.trim()) L.push(A.street.trim()); if(A.street2.trim()) L.push(A.street2.trim());
+function tlines(){ return $("txt").value.split("\n").map(x=>x.trim()).filter(Boolean).slice(0,6); }
+function lines(){ if(KIND==="text") return tlines(); const L=[]; if(A.name.trim()) L.push(A.name.trim()); if(A.co.trim()) L.push(A.co.trim()); if(A.street.trim()) L.push(A.street.trim()); if(A.street2.trim()) L.push(A.street2.trim());
   const csz=[A.city.trim(), [A.state.trim().toUpperCase(), A.zip.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", "); if(csz) L.push(csz);
   const c=A.country.trim(); if(c&&!/^(us|usa|united states( of america)?)$/i.test(c)) L.push(c.toUpperCase()); return L; }
 const zsafe=s=>String(s).replace(/[\^~\\]/g," ").replace(/[‘’]/g,"'").replace(/[“”]/g,'"');
-function zpl(){ const L=lines(), from=$("from").checked; const W=406, H=203, M=18;
-  let y=from?34:14; const avail=H-y-10; const n=Math.max(L.length,1); const lh=Math.min(40, Math.floor(avail/n)); const fh=Math.max(18, lh-6);
+function layout(){ const L=lines(), from=KIND==="addr"&&$("from").checked, W=406, H=203, M=18; const n=Math.max(L.length,1);
+  if(KIND==="text"){ const bold=$("tbold").checked; const avail=H-20; let h=TSIZE==="auto"?Math.min(90,Math.floor(avail/n)-4):SZ[TSIZE]; h=Math.min(h,Math.floor(avail/n)-2);
+    const out=L.map((t,i)=>{ let hh=h; let w=Math.round(hh*(bold&&i===0?.95:.85)); const fit=Math.floor((W-2*M)/(Math.max(1,t.length)*0.58)); if(w>fit){ w=Math.max(12,fit); if(TSIZE==="auto"){ hh=Math.max(18,Math.min(hh,Math.round(w/.85))); } } return {t,h:hh,w,bold:bold&&i===0}; });
+    const total=out.reduce((a,x)=>a+x.h+4,0)-4; let y=Math.max(8,Math.round((H-total)/2)); out.forEach(x=>{ x.y=y; y+=x.h+4; }); return {from:false,rows:out,W,M,align:TALIGN}; }
+  let y=from?34:14; const lh=Math.min(40, Math.floor((H-y-10)/n)); const fh=Math.max(18, lh-6);
+  const rows=L.map((t,i)=>{ const h=i===0?Math.min(fh+4,lh):fh; let w=Math.round(h*.88); const fit=Math.floor((W-2*M)/(t.length*0.58)); if(w>fit) w=Math.max(12,fit); const r={t,h,w,y,bold:i===0}; y+=lh; return r; });
+  return {from,rows,W,M,align:"left"}; }
+function zpl(){ const Lo=layout(), W=406, H=203, M=18; const from=Lo.from;
   let z=`^XA^CI28^PW${W}^LL${H}^LH0,0`;
   if(from) z+=`^FO${M},12^A0N,17,14^FB${W-2*M},1,0,L^FDMill River Music, 135 King St, Northampton MA 01060^FS`;
-  L.forEach((t,i)=>{ const h=i===0?Math.min(fh+4,lh):fh; let w=Math.round(h*.88); const fit=Math.floor((W-2*M)/(t.length*0.58)); if(w>fit) w=Math.max(12,fit); z+=`^FO${M},${y}^A0N,${h},${w}^FB${W-2*M},1,0,L^FD${zsafe(t)}^FS`; y+=lh; });
+  const J=Lo.align==="center"?"C":"L";
+  Lo.rows.forEach(r=>{ z+=`^FO${M},${r.y}^A0N,${r.h},${r.w}^FB${W-2*M},1,0,${J}^FD${zsafe(r.t)}^FS`; if(r.bold&&KIND==="text") z+=`^FO${M+1},${r.y}^A0N,${r.h},${r.w}^FB${W-2*M},1,0,${J}^FD${zsafe(r.t)}^FS`; });
   const q=Math.max(1,Math.min(50,parseInt($("qty").value,10)||1)); z+=`^PQ${q}^XZ`; return z; }
 function command(){ const z=zpl().replace(/'/g,"'\\''"); return `printf '%s' '${z}' | lpr -P ${PRINTER} -o raw`; }
-function render(){ const L=lines(), from=$("from").checked; const n=Math.max(L.length,1); const y0=from?34:14, lh=Math.min(40,Math.floor((203-y0-10)/n)), fh=Math.max(18,lh-6); const cq=d=>(d/406*100).toFixed(2)+"cqw";
-  $("lab").innerHTML=(from?`<div class="from" style="font-size:${cq(15)};position:absolute;top:${cq(12)};left:${cq(18)}">Mill River Music, 135 King St, Northampton MA 01060</div>`:"")+(L.length?L.map((t,i)=>`<div class="ln ${i===0?"big":""}" style="position:absolute;left:${cq(18)};right:${cq(18)};top:${cq(y0+i*lh)};font-size:${cq(i===0?Math.min(fh+4,lh):fh)};line-height:1">${esc(t)}</div>`).join(""):`<div class="ln" style="color:#999;position:absolute;left:${cq(18)};top:${cq(y0)}">Address preview</div>`);
-  $("cmd").value=command(); $("copybtn").disabled=!L.length; }
+function render(){ const Lo=layout(), cq=d=>(d/406*100).toFixed(2)+"cqw";
+  $("lab").innerHTML=(Lo.from?`<div class="from" style="font-size:${cq(15)};position:absolute;top:${cq(12)};left:${cq(18)}">Mill River Music, 135 King St, Northampton MA 01060</div>`:"")+(Lo.rows.length?Lo.rows.map(r=>`<div class="ln" style="position:absolute;left:${cq(18)};right:${cq(18)};top:${cq(r.y)};font-size:${cq(r.h*.92)};line-height:1.15;text-align:${Lo.align};font-weight:${r.bold?700:400};${r.w<r.h*.8?`transform:scaleX(${(r.w/(r.h*.88)).toFixed(2)});transform-origin:${Lo.align==="center"?"center":"left"}`:""}">${esc(r.t)}</div>`).join(""):`<div class="ln" style="color:#999;position:absolute;left:${cq(18)};top:${cq(40)}">${KIND==="text"?"Text preview":"Address preview"}</div>`);
+  $("tsize").innerHTML=SIZES.map(([k,l])=>`<button class="tab ${TSIZE===k?"on":""}" data-act="tsize" data-k="${k}">${l}</button>`).join("");
+  $("talign").innerHTML=ALIGNS.map(([k,l])=>`<button class="tab ${TALIGN===k?"on":""}" data-act="talign" data-k="${k}">${l}</button>`).join("");
+  $("cmd").value=command(); $("copybtn").disabled=!lines().length; }
 function setA(o){ Object.keys(A).forEach(k=>{ A[k]=o[k]||""; const el=document.querySelector(`[data-a="${k}"]`); if(el) el.value=A[k]; }); render(); document.querySelector('[data-a="name"]').scrollIntoView({block:"center",behavior:"smooth"}); }
 async function copy(){ if(!lines().length) return; const c=command(); let ok=false;
   try{ await navigator.clipboard.writeText(c); ok=true; }catch(e){}
@@ -249,15 +271,20 @@ document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); 
   else if(a==="cpick") pickCust(CUSTS[+el.dataset.i]);
   else if(a==="wpick") pickWeb(WEB[+el.dataset.i]);
   else if(a==="copy") copy();
+  else if(a==="kind"){ KIND=el.dataset.k; store.set("mrm-labels-kind",KIND); document.querySelectorAll("#kind button").forEach(b=>b.classList.toggle("on",b===el)); $("srccard").hidden=KIND!=="addr"; $("addrcard").hidden=KIND!=="addr"; $("textcard").hidden=KIND!=="text"; $("copymsg").innerHTML=""; render(); if(KIND==="text") $("txt").focus(); }
+  else if(a==="tsize"){ TSIZE=el.dataset.k; render(); }
+  else if(a==="talign"){ TALIGN=el.dataset.k; render(); }
+  else if(a==="tclear"){ $("txt").value=""; render(); }
   else if(a==="clear"){ setA({}); $("copymsg").innerHTML=""; } });
 document.addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.a; if(k){ A[k]=e.target.value; render(); } });
-$("from").addEventListener("change",render); $("qty").addEventListener("input",render);
+$("from").addEventListener("change",render); $("txt").addEventListener("input",render); $("tbold").addEventListener("change",render); $("qty").addEventListener("input",render);
 $("cform").addEventListener("submit",e=>{ e.preventDefault(); findCusts(); });
 $("wform").addEventListener("submit",e=>{ e.preventDefault(); webSearch(); });
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
   const prev=TOKEN; TOKEN=t; try{ await apiT("?maxRecords=1&fields%5B%5D="+U.name); store.set("mrm-photos-token",t); $("setup").hidden=true; findCusts(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
 { const s=store.get("mrm-labels-src"); if(s&&s!=="cust"){ const b=document.querySelector(`#seg [data-s="${s}"]`); if(b) b.click(); } }
 $("lab").style.containerType="inline-size";
+if(store.get("mrm-labels-kind")==="text") document.querySelector('#kind [data-k="text"]').click();
 render();
 </script>
 </body>
