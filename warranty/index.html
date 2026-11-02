@@ -89,6 +89,9 @@ label.f.wide{grid-column:1/-1}
 .frow .nm{min-width:0;overflow-wrap:anywhere;font-weight:700;font-size:14.5px}
 .frow .nm small{display:block;font-weight:400;color:var(--muted)}
 .drop{border:2px dashed var(--line);border-radius:12px;padding:12px;margin-top:8px}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-bottom:6px}
+.ph{position:relative} .ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;background:var(--surface)}
+.ph .x{position:absolute;top:4px;right:4px;border:0;border-radius:999px;width:26px;height:26px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:13px}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .files a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:5px 11px;font-size:13.5px;font-weight:700;color:inherit;text-decoration:none}
 </style>
@@ -130,10 +133,10 @@ const TECHS=["Jeff","Chris","Jon","Sturgis"];
 const SHOP={ name:"Mill River Music and Guitars", addr:"135 King St., Northampton, MA 01060", phone:"413-505-0129", email:"info@millrivermusic.com" };
 const BR={
   taylor:{ label:"Taylor", table:"tblUR6Y7rfCLBSllO", to:"svnetwork@taylorguitars.com", toName:"SV Network",
-    F:{cust:"fld9Iym9sy5E7sQIS",model:"fldCd9DENx3VhCujn",serial:"fld2McIGsJW9un93M",notes:"fld8hpN5wgQ7LFAIM",tech:"fldyjazpXcJlkRKTp",status:"fldAgQWqOARycTlWc",files:"fldAq2IbSlyUKThQA",num:"fldYVUlLDkE8qnrop",req:"fldgCYZGyXAf4zAPT",wo:"fldhA7yMnskPN8PzW",wos:"fldtZxqN9jNpopbYz",woc:"fldAn9c5N87mZnFTH"},
+    F:{cust:"fld9Iym9sy5E7sQIS",model:"fldCd9DENx3VhCujn",serial:"fld2McIGsJW9un93M",notes:"fld8hpN5wgQ7LFAIM",tech:"fldyjazpXcJlkRKTp",status:"fldAgQWqOARycTlWc",files:"fldAq2IbSlyUKThQA",appr:"fldx9f5sQ0KZcwE0w",signed:"fldCEYjWONGlqH6Dc",photos:"fld5ufcje2a9hwXNs",num:"fldYVUlLDkE8qnrop",req:"fldgCYZGyXAf4zAPT",wo:"fldhA7yMnskPN8PzW",wos:"fldtZxqN9jNpopbYz",woc:"fldAn9c5N87mZnFTH"},
     numLabel:"Taylor Ticket #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Taylor",approved:"Approved by Taylor",rejected:"Rejected by Taylor",complete:"Work Complete",paperwork:"Work Done Paperwork Submitted",paid:"Payout Complete"} },
   martin:{ label:"Martin", table:"tblqbwCvWxNz1REQt", to:"mlawlor@martinguitar.com", toName:"Meagan",
-    F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
+    F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",appr:"fld6kJ1tCgP9Tmbhi",signed:"fldaBUinmAPu41LjZ",photos:"fldvMZEyCy5BS0ozb",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
     numLabel:"Martin Auth #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Martin",approved:"Approved by Martin",rejected:"Rejected by Martin",complete:"Work Complete",paperwork:"Work Done Paperwork Submitte",paid:"Payout Complete"} }
 };
 const ORDER=["pending","waiting","emailed","approved","complete","paperwork","paid","rejected"];
@@ -157,7 +160,7 @@ const shortD=()=>{ const d=new Date(); return (d.getMonth()+1)+"/"+d.getDate(); 
 
 function keyOf(b,label){ const S=BR[b].S; for(const k in S) if(S[k]===label) return k; if(/paperwork/i.test(label)) return "paperwork"; return label?"pending":"pending"; }
 function norm(b,r){ const F=BR[b].F, f=r.fields||{}; return { b, id:r.id, created:r.createdTime, custId:(f[F.cust]||[])[0]||"", model:s(f[F.model]), serial:s(f[F.serial]), notes:s(f[F.notes]), techId:(f[F.tech]||[])[0]||"",
-  status:keyOf(b,s(f[F.status])), rawStatus:s(f[F.status]), num:s(f[F.num]), req:s(f[F.req]), wo:s(f[F.wo]), wos:s(f[F.wos]), woc:s(f[F.woc]), files:f[F.files]||[], amount:F.amount?f[F.amount]:null }; }
+  status:keyOf(b,s(f[F.status])), rawStatus:s(f[F.status]), num:s(f[F.num]), req:s(f[F.req]), wo:s(f[F.wo]), wos:s(f[F.wos]), woc:s(f[F.woc]), files:f[F.files]||[], appr:f[F.appr]||[], signed:f[F.signed]||[], photos:f[F.photos]||[], amount:F.amount?f[F.amount]:null }; }
 function custName(c){ const u=CUST[c.custId]; if(u) return u.name; return c.custId?"(customer)":(/shop stock/i.test(c.model)?"Shop stock":"No customer linked"); }
 function flags(c){ const out=[]; const done=/done|paid|finished/i.test(c.wos);
   if(done && ["pending","waiting","emailed","approved","complete"].includes(c.status)) out.push("Lightspeed says the repair is "+c.wos+". Send the completion paperwork.");
@@ -227,12 +230,7 @@ function openCase(id,keep){ const c=CASES.find(x=>x.id===id); if(!c) return; CUR
     <h3>Notes & history</h3>
     <div class="notebox">${esc(c.notes)||'<span class="muted">No notes yet.</span>'}</div>
     <form class="row" id="nform" style="margin-top:8px"><input class="t" id="nt" placeholder="Add a note (saved with today's date and your name)" style="flex:1 1 240px;width:auto"><button class="btn sec" type="submit">Add note</button></form>
-    <h3>Files</h3>
-    <div class="flist">${c.files.length?c.files.map((a,i)=>fileRow(a,i)).join(""):'<div class="small muted">No files yet.</div>'}</div>
-    <div class="drop" id="drop"><div class="row"><select class="t" id="ftag" style="width:auto;flex:0 0 auto"><option value="">Label (optional)</option><option>Unsigned</option><option>Signed</option><option>Warranty form</option><option>Auth</option><option>Photo</option><option>Receipt</option><option>Registration</option></select>
-      <label class="btn sec" style="cursor:pointer">＋ Add files<input type="file" id="fin" multiple accept="image/*,application/pdf,.doc,.docx" hidden></label>
-      <label class="btn sec" style="cursor:pointer">📷 Take photo<input type="file" id="fcam" accept="image/*" capture="environment" hidden></label></div>
-      <div class="small muted" style="margin-top:6px">Or drag files here. PDFs and photos, up to 5 MB each (big photos are shrunk automatically).</div><div id="fmsg"></div></div>
+    ${BOXES.map(k=>fileBox(c,k)).join("")}
     <div id="frm"></div>
   </div>
   <div class="card" id="mailcard"></div>`;
@@ -254,22 +252,31 @@ function mailFor(c,kind){ const u=CUST[c.custId]||{}, B=BR[c.b], me=WHO||"Mill R
   return { su:`Work complete: ${c.num?`ticket #${c.num}, `:""}${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nThe warranty repair for ${custName(c)}'s ${gtr}${c.num?` (ticket #${c.num})`:""} is complete. The completed service paperwork is attached for reimbursement.${sig}` };
 }
 /* ---------- files ---------- */
-function fileRow(a,i){ const img=/^image\//.test(a.type||""); const th=img&&a.thumbnails&&a.thumbnails.small?`<img src="${esc(a.thumbnails.small.url)}" alt="">`:(/pdf/.test(a.type||"")?"📄":"📎");
+const BOXES=["appr","signed","files","photos"];
+const BOXLABEL=(c,k)=>({appr:BR[c.b].label+" Approved Form",signed:"Signed by Customer Form",files:"Other Attachments (receipts, request form, etc.)",photos:"Photos"})[k];
+function fileBox(c,k){ const list=c[k]||[]; const ph=k==="photos";
+  return `<h3>${esc(BOXLABEL(c,k))}</h3><div class="drop" data-box="${k}">
+    ${ph&&list.length?`<div class="thumbs">${list.map((a,i)=>`<div class="ph"><a href="${esc(a.url)}" target="_blank" rel="noopener"><img src="${esc((a.thumbnails&&a.thumbnails.large||a).url)}" alt="${esc(a.filename)}"></a><button class="x" data-act="frm" data-k="${k}" data-i="${i}" title="Remove">✕</button></div>`).join("")}</div>`:""}
+    ${!ph?`<div class="flist">${list.length?list.map((a,i)=>fileRow(a,i,k)).join(""):'<div class="small muted">Nothing here yet.</div>'}</div>`:(list.length?"":'<div class="small muted">No photos yet.</div>')}
+    <div class="row" style="margin-top:8px"><label class="btn sec sm" style="cursor:pointer">＋ Add ${ph?"photos":"file"}<input type="file" class="fin" data-k="${k}" multiple accept="${ph?"image/*":"image/*,application/pdf,.doc,.docx"}" hidden></label>
+      ${ph||k==="signed"?`<label class="btn sec sm" style="cursor:pointer">📷 Take photo<input type="file" class="fin" data-k="${k}" accept="image/*" capture="environment" hidden></label>`:""}
+      <span class="small muted">or drag here</span></div><div class="fmsg" data-k="${k}"></div></div>`; }
+function fileRow(a,i,k){ const img=/^image\//.test(a.type||""); const th=img&&a.thumbnails&&a.thumbnails.small?`<img src="${esc(a.thumbnails.small.url)}" alt="">`:(/pdf/.test(a.type||"")?"📄":"📎");
   const kb=a.size?(a.size>1048576?(a.size/1048576).toFixed(1)+" MB":Math.round(a.size/1024)+" KB"):"";
   return `<div class="frow"><div class="th">${th}</div><div class="nm">${esc(a.filename)}<small>${esc(kb)}</small></div>
-    <div class="row" style="gap:6px"><a class="btn sec sm" href="${esc(a.url)}" target="_blank" rel="noopener">Open / print</a><button class="btn sec sm" data-act="frm" data-i="${i}" title="Remove from this case">✕</button></div></div>`; }
+    <div class="row" style="gap:6px"><a class="btn sec sm" href="${esc(a.url)}" target="_blank" rel="noopener">Open / print</a><button class="btn sec sm" data-act="frm" data-k="${k}" data-i="${i}" title="Remove from this case">✕</button></div></div>`; }
 const toB64=buf=>{ let bin=""; const u8=new Uint8Array(buf); for(let i=0;i<u8.length;i+=0x8000) bin+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000)); return btoa(bin); };
 async function shrinkImage(file){ if(!/^image\/(jpeg|png|webp|heic|heif)/.test(file.type)||file.size<3.5e6) return file;
   try{ const bmp=await createImageBitmap(file); const k=Math.min(1,2400/Math.max(bmp.width,bmp.height)); const cv=document.createElement("canvas"); cv.width=Math.round(bmp.width*k); cv.height=Math.round(bmp.height*k); cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
     const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.85)); return new File([blob],file.name.replace(/\.\w+$/,"")+".jpg",{type:"image/jpeg"}); }catch(e){ return file; } }
-async function uploadFiles(c,files){ const msg=$("fmsg"); const tag=$("ftag")?$("ftag").value:""; const F=BR[c.b].F.files; let ok=0; const errs=[];
+async function uploadFiles(c,files,k){ const msg=document.querySelector(`.fmsg[data-k="${k}"]`); const F=BR[c.b].F[k]; let ok=0; const errs=[];
   for(const f0 of files){ msg.innerHTML=`<div class="note">Uploading ${esc(f0.name)}…</div>`;
     try{ const f=await shrinkImage(f0); if(f.size>5*1024*1024) throw new Error(f0.name+" is over 5 MB. Shrink it or save as a smaller PDF.");
-      const name=(tag?tag+" - ":"")+f.name; const r=await fetch(`https://content.airtable.com/v0/${BASE}/${c.id}/${F}/uploadAttachment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify({contentType:f.type||"application/octet-stream",filename:name,file:toB64(await f.arrayBuffer())})});
+      const r=await fetch(`https://content.airtable.com/v0/${BASE}/${c.id}/${F}/uploadAttachment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify({contentType:f.type||"application/octet-stream",filename:f.name,file:toB64(await f.arrayBuffer())})});
       const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status)); ok++;
     }catch(e){ errs.push(e.message); } }
-  if(ok){ await patch(c,{[BR[c.b].F.notes]:(c.notes?c.notes+"\n\n":"")+noteLine("Added "+ok+" file"+(ok>1?"s":"")+(tag?" ("+tag+")":""))}).catch(()=>{}); await refreshCase(c); }
-  const m=$("fmsg"); if(m) m.innerHTML=(ok?`<div class="note ok">Added ${ok} file${ok>1?"s":""}.</div>`:"")+errs.map(x=>`<div class="note warn">${esc(x)}</div>`).join(""); }
+  if(ok){ await patch(c,{[BR[c.b].F.notes]:(c.notes?c.notes+"\n\n":"")+noteLine("Added "+ok+" file"+(ok>1?"s":"")+" to "+BOXLABEL(c,k).replace(/ \(.*\)/,""))}).catch(()=>{}); await refreshCase(c); }
+  const m=document.querySelector(`.fmsg[data-k="${k}"]`); if(m) m.innerHTML=(ok?`<div class="note ok">Added ${ok} file${ok>1?"s":""}.</div>`:"")+errs.map(x=>`<div class="note warn">${esc(x)}</div>`).join(""); }
 async function refreshCase(c){ const j=await at(BR[c.b].table,"/"+c.id+"?returnFieldsByFieldId=true"); Object.assign(c,norm(c.b,j)); render(); openCase(c.id,true); }
 /* ---------- Martin Warranty Request Form (PDF) ---------- */
 function wrfBlock(c){ const u=CUST[c.custId]||{}; const tech=RECSTAFF[c.techId]||WHO||""; const d=new Date();
@@ -407,9 +414,9 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   else if(a==="markemailed"){ b.disabled=true; try{ await setStatus("emailed","Emailed "+BR[CUR.b].toName+" the warranty request"); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="markpaper"){ b.disabled=true; try{ await setStatus("paperwork","Sent completion paperwork to "+BR[CUR.b].toName); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="wrf"){ b.disabled=true; $("wrfmsg").textContent="Making the PDF…"; try{ const r=await makeWrf(CUR); $("wrfmsg").innerHTML=`Downloaded <b>${esc(r.name)}</b>. `+(r.saved?"A copy is saved to this case's files.":"Couldn't save a copy to Airtable; attach the downloaded file."); if(r.saved) setTimeout(load,1500); }catch(err){ $("wrfmsg").textContent=err.message; } b.disabled=false; }
-  else if(a==="frm"){ const f=CUR.files[+b.dataset.i]; if(!f) return; $("frm").innerHTML=`<div class="confirm"><b>Remove “${esc(f.filename)}” from this case?</b><div class="small" style="margin-top:4px">Download it first if you might need it again.</div><div class="row" style="margin-top:8px"><button class="btn" data-act="frmok" data-id="${esc(f.id)}">Yes, remove it</button><button class="btn sec" data-act="frmno">Cancel</button></div></div>`; $("frm").scrollIntoView({block:"nearest"}); }
+  else if(a==="frm"){ const k=b.dataset.k; const f=(CUR[k]||[])[+b.dataset.i]; if(!f) return; $("frm").innerHTML=`<div class="confirm"><b>Remove “${esc(f.filename)}” from this case?</b><div class="small" style="margin-top:4px">Download it first if you might need it again.</div><div class="row" style="margin-top:8px"><button class="btn" data-act="frmok" data-k="${k}" data-id="${esc(f.id)}">Yes, remove it</button><button class="btn sec" data-act="frmno">Cancel</button></div></div>`; $("frm").scrollIntoView({block:"nearest"}); }
   else if(a==="frmno") $("frm").innerHTML="";
-  else if(a==="frmok"){ b.disabled=true; try{ const keep=CUR.files.filter(x=>x.id!==b.dataset.id).map(x=>({id:x.id})); await patch(CUR,{[BR[CUR.b].F.files]:keep}); await refreshCase(CUR); }catch(err){ $("frm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="frmok"){ b.disabled=true; try{ const k=b.dataset.k; const keep=(CUR[k]||[]).filter(x=>x.id!==b.dataset.id).map(x=>({id:x.id})); await patch(CUR,{[BR[CUR.b].F[k]]:keep}); await refreshCase(CUR); }catch(err){ $("frm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="nb"){ NEW.b=b.dataset.k; drawCreate(); }
   else if(a==="nclear"){ NEW.cust=null; drawCreate(); }
 });
@@ -434,10 +441,10 @@ document.addEventListener("submit",async e=>{ e.preventDefault(); const fm=e.tar
     }catch(err){ $("cmsg").textContent=err.message; btn.disabled=false; } }
 });
 function alertBox(m){ const n=document.createElement("div"); n.className="note warn"; n.textContent=m; $("detail").prepend(n); }
-document.addEventListener("change",e=>{ if((e.target.id==="fin"||e.target.id==="fcam")&&CUR&&e.target.files.length){ uploadFiles(CUR,[...e.target.files]); e.target.value=""; } });
-document.addEventListener("dragover",e=>{ const d=e.target.closest&&e.target.closest("#drop"); if(d){ e.preventDefault(); d.classList.add("over"); } });
-document.addEventListener("dragleave",e=>{ const d=e.target.closest&&e.target.closest("#drop"); if(d) d.classList.remove("over"); });
-document.addEventListener("drop",e=>{ const d=e.target.closest&&e.target.closest("#drop"); if(d&&CUR){ e.preventDefault(); d.classList.remove("over"); if(e.dataTransfer.files.length) uploadFiles(CUR,[...e.dataTransfer.files]); } });
+document.addEventListener("change",e=>{ if(e.target.classList&&e.target.classList.contains("fin")&&CUR&&e.target.files.length){ uploadFiles(CUR,[...e.target.files],e.target.dataset.k); e.target.value=""; } });
+document.addEventListener("dragover",e=>{ const d=e.target.closest&&e.target.closest("[data-box]"); if(d){ e.preventDefault(); d.classList.add("over"); } });
+document.addEventListener("dragleave",e=>{ const d=e.target.closest&&e.target.closest("[data-box]"); if(d) d.classList.remove("over"); });
+document.addEventListener("drop",e=>{ const d=e.target.closest&&e.target.closest("[data-box]"); if(d&&CUR){ e.preventDefault(); d.classList.remove("over"); if(e.dataTransfer.files.length) uploadFiles(CUR,[...e.dataTransfer.files],d.dataset.box); } });
 $("newbtn").onclick=openCreate;
 $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
 $("who").onchange=e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); if(CUR&&!$("detail").hidden) updMail(); };
