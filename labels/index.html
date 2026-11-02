@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8A3B12">
+<title>Label Maker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* MRM Lookup: find any item, see where it stands, check prices. View-only until you choose to make a change, and every change is confirmed first. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; --sugg:#F0C14D; --sugg-soft:#3A2E10; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.bar select{font:inherit;font-size:14px;border-radius:9px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:960px;margin:0 auto;padding-top:14px;padding-bottom:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 8px;font-size:18px;font-weight:800}
+.card h3{margin:0 0 6px;font-size:15px;font-weight:800}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:44px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn.warnb{background:var(--warn);color:#fff}
+.btn:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input.t,select.t,textarea.t{border:1px solid var(--line);background:var(--sunk);border-radius:11px;padding:10px 12px;font-size:16px;min-width:0;width:100%}
+input.t:focus,select.t:focus,textarea.t:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+textarea.t{min-height:64px;resize:vertical}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-top:10px}
+.tab{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);white-space:nowrap;display:inline-flex;gap:6px}
+.tab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tab .n{opacity:.85;font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:10px 12px;cursor:pointer}
+.res:hover{border-color:var(--accent)}
+.res b{line-height:1.25}
+.res .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .why{grid-column:1/-1;font-size:13px;color:var(--warn);font-weight:700}
+.price{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sku{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.skubig{font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.02em}
+.seg{display:inline-flex;width:max-content;max-width:100%;justify-self:start;align-self:flex-start;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.seg button{border:0;background:var(--sunk);padding:9px 18px;font-weight:700;cursor:pointer;color:var(--muted);min-height:40px}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.dates{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.dates input[type=date]{min-height:40px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--surface);color:var(--ink);font:inherit}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin-top:12px;font-size:14.5px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line)}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent} .tag.need{background:var(--sugg-soft);color:var(--sugg);border-color:transparent} .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent} .tag.info{background:var(--info-soft);color:var(--info);border-color:transparent}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.prices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.prices div{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+.prices dt{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.prices dd{margin:2px 0 0;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.prices dd.none{color:var(--muted);font-weight:600}
+@media (max-width:420px){.prices{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.deets{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 14px;margin:12px 0 0}
+.deets div{min-width:0} .deets dt{font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase} .deets dd{margin:0;overflow-wrap:anywhere}
+.notebox{margin-top:12px;border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 10px 10px 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.notebox b{display:block;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;white-space:normal}
+.thumbs{display:flex;gap:6px;overflow-x:auto;margin-top:12px}
+.thumbs img{width:110px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex:none;background:var(--sunk)}
+.linkrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.linkrow a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;color:inherit;text-decoration:none}
+.linkrow a:hover{border-color:var(--accent)}
+table.hist{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+table.hist th{text-align:left;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);padding:6px 6px;border-bottom:1px solid var(--line)}
+table.hist td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.hist td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scrollx{overflow-x:auto}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
+label.f.wide{grid-column:1/-1}
+.locked{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--line);border-radius:12px;padding:10px 12px;color:var(--muted);font-size:14px}
+.review{margin-top:12px;border:2px solid var(--warn);border-radius:14px;padding:14px;background:var(--warn-soft)}
+.review p{margin:0 0 8px;font-weight:800;color:var(--warn)}
+.review ul{margin:0 0 10px;padding-left:20px}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+.scan{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
+.scan video{flex:1;width:100%;object-fit:cover;min-height:0}
+.scan .frame{position:absolute;left:10%;right:10%;top:38%;height:22%;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
+.scan .foot{position:absolute;left:0;right:0;bottom:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;align-items:center;color:#fff}
+
+/* label maker */
+.how{margin:0;padding-left:20px} .how li{margin:3px 0}
+.how code,.mono{font-family:var(--mono);font-size:13.5px;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+.lab{position:relative;container-type:inline-size;width:100%;max-width:400px;aspect-ratio:2/1;background:#fff;color:#000;border:1px solid #bbb;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.12);padding:4.5% 5%;display:flex;flex-direction:column;justify-content:center;overflow:hidden;font-family:Helvetica,Arial,sans-serif}
+.lab .from{color:#444;white-space:nowrap}
+.lab .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.lab .ln.big{font-weight:700}
+.cmd{width:100%;min-height:90px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);padding:8px;color:var(--ink)}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:760px){.twocol{grid-template-columns:1fr}}
+.qty{display:flex;gap:6px;align-items:center}
+.qty input{width:70px}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>🏷️ Label Maker</h1>
+  <div class="row"><a href="../">Hub</a></div></div></header>
+<main class="wrap">
+  <section class="card">
+    <h2>How to print</h2>
+    <ol class="how small">
+      <li>Use the Mac at the <b>2nd register</b>.</li>
+      <li>Make sure the Zebra is on, plugged into that Mac, and loaded with <b>2″ × 1″</b> labels.</li>
+      <li>Fill in the address below, check the preview, then click <b>Copy print command</b>.</li>
+      <li>Open <b>Terminal</b> (⌘ Space, type <code>Terminal</code>, Return), paste with ⌘V and press Return.</li>
+    </ol>
+    <details class="small" style="margin-top:8px"><summary><b>If something goes wrong</b></summary>
+      <ul class="how" style="margin-top:6px">
+        <li><b>Skips labels or prints across the gaps:</b> hold <b>Pause</b> and <b>Cancel</b> on the Zebra together for 2 seconds to recalibrate, then print again. Do this whenever the label size changes.</li>
+        <li><b>"Unknown destination":</b> run <code>lpstat -p</code> in Terminal and tell Jon what printer name it shows.</li>
+        <li><b>Stop a print that's running:</b> paste <code>printf '~JA' | lpr -P Zebra_Technologies_ZTC_ZD410_203dpi_ZPL -o raw</code></li>
+        <li><b>Terminal shows a <code>&gt;</code> and nothing happens:</b> quit Terminal, reopen it and paste again.</li>
+      </ul></details>
+  </section>
+
+  <section class="card">
+    <div class="seg" id="seg"><button data-act="src" data-s="cust" class="on">Customer</button><button data-act="src" data-s="web">Search online</button><button data-act="src" data-s="manual">Type it</button></div>
+    <div id="src-cust">
+      <div id="setup" hidden><p class="small muted" style="margin:0 0 8px">To look up customers, paste the MRM Photos Airtable key (starts with pat). Devices with the Hub set up are connected automatically.</p>
+        <form id="setform" class="row"><input class="t" id="tok" type="password" placeholder="Airtable key" spellcheck="false" style="flex:1 1 200px;width:auto"><button class="btn" type="submit">Save</button></form><div id="setmsg"></div></div>
+      <form id="cform" class="row"><input class="t" id="cq" inputmode="search" placeholder="Customer name, email or phone" autocomplete="off" style="flex:1 1 200px;width:auto"><button class="btn" type="submit">Find</button></form>
+      <div id="cmsg"></div><div class="list" id="clist"></div>
+    </div>
+    <div id="src-web" hidden>
+      <form id="wform" class="row"><input class="t" id="wq" inputmode="search" placeholder="Business or address, e.g. Sweetwater Fort Wayne" autocomplete="off" style="flex:1 1 200px;width:auto"><button class="btn" type="submit">Search</button></form>
+      <div class="small muted" style="margin-top:6px">Searches OpenStreetMap. Check the address before printing; for a business, double-check its mailing address on their website.</div>
+      <div id="wmsg"></div><div class="list" id="wlist"></div>
+    </div>
+    <div id="src-manual" hidden><div class="small muted">Type or paste the address straight into the fields below.</div></div>
+  </section>
+
+  <div class="twocol">
+    <section class="card">
+      <h2>Address</h2>
+      <div class="form" style="grid-template-columns:1fr">
+        <label class="f">Name<input class="t" data-a="name"></label>
+        <label class="f">Company / attention (optional)<input class="t" data-a="co"></label>
+        <label class="f">Street<input class="t" data-a="street"></label>
+        <label class="f">Apt, suite, unit (optional)<input class="t" data-a="street2"></label>
+        <div class="row" style="flex-wrap:nowrap"><label class="f" style="flex:2">City<input class="t" data-a="city"></label><label class="f" style="flex:0 0 70px">State<input class="t" data-a="state" maxlength="3"></label><label class="f" style="flex:1">ZIP<input class="t" data-a="zip"></label></div>
+        <label class="f">Country (leave blank for USA)<input class="t" data-a="country"></label>
+      </div>
+      <div class="row" style="margin-top:10px"><label class="small"><input type="checkbox" id="from" checked> Small return address line (Mill River Music)</label></div>
+      <div class="row" style="margin-top:6px"><button class="btn sec" data-act="clear">Clear</button></div>
+    </section>
+    <section class="card">
+      <h2>Preview</h2>
+      <div class="lab" id="lab"></div>
+      <div class="qty" style="margin-top:12px"><span class="small muted">How many</span><input class="t" id="qty" type="number" min="1" max="50" value="1"></div>
+      <div class="row" style="margin-top:12px"><button class="btn" data-act="copy" id="copybtn">Copy print command</button></div>
+      <div id="copymsg"></div>
+      <details class="small" style="margin-top:10px"><summary>Show the command</summary><textarea class="cmd" id="cmd" readonly></textarea></details>
+    </section>
+  </div>
+</main>
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", UT="tblGJnacXCV52gZdS", PRINTER="Zebra_Technologies_ZTC_ZD410_203dpi_ZPL";
+const U={ name:"fldyOzHd6uRNuaTHa", first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", email:"fldZz0HYc0OItKqrE", mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB", co:"fldVktTDTVUjza6TH", addr:"fld8ihGFPawc5sEFk", city:"fldQi9lXAU9XovuY5", state:"fldhBzyvVqq2kPfUj", zip:"fld3d9arNaGKwQ7Rs", country:"fldx3QaadeJiKJuCJ" };
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const quote=s=>"'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
+let TOKEN=store.get("mrm-photos-token"), CUSTS=[], WEB=[];
+const A={name:"",co:"",street:"",street2:"",city:"",state:"",zip:"",country:""};
+
+/* ---------- label ---------- */
+function lines(){ const L=[]; if(A.name.trim()) L.push(A.name.trim()); if(A.co.trim()) L.push(A.co.trim()); if(A.street.trim()) L.push(A.street.trim()); if(A.street2.trim()) L.push(A.street2.trim());
+  const csz=[A.city.trim(), [A.state.trim().toUpperCase(), A.zip.trim()].filter(Boolean).join(" ")].filter(Boolean).join(", "); if(csz) L.push(csz);
+  const c=A.country.trim(); if(c&&!/^(us|usa|united states( of america)?)$/i.test(c)) L.push(c.toUpperCase()); return L; }
+const zsafe=s=>String(s).replace(/[\^~\\]/g," ").replace(/[‘’]/g,"'").replace(/[“”]/g,'"');
+function zpl(){ const L=lines(), from=$("from").checked; const W=406, H=203, M=18;
+  let y=from?34:14; const avail=H-y-10; const n=Math.max(L.length,1); const lh=Math.min(40, Math.floor(avail/n)); const fh=Math.max(18, lh-6);
+  let z=`^XA^CI28^PW${W}^LL${H}^LH0,0`;
+  if(from) z+=`^FO${M},12^A0N,17,14^FB${W-2*M},1,0,L^FDMill River Music, 135 King St, Northampton MA 01060^FS`;
+  L.forEach((t,i)=>{ const h=i===0?Math.min(fh+4,lh):fh; let w=Math.round(h*.88); const fit=Math.floor((W-2*M)/(t.length*0.58)); if(w>fit) w=Math.max(12,fit); z+=`^FO${M},${y}^A0N,${h},${w}^FB${W-2*M},1,0,L^FD${zsafe(t)}^FS`; y+=lh; });
+  const q=Math.max(1,Math.min(50,parseInt($("qty").value,10)||1)); z+=`^PQ${q}^XZ`; return z; }
+function command(){ const z=zpl().replace(/'/g,"'\\''"); return `printf '%s' '${z}' | lpr -P ${PRINTER} -o raw`; }
+function render(){ const L=lines(), from=$("from").checked; const n=Math.max(L.length,1); const y0=from?34:14, lh=Math.min(40,Math.floor((203-y0-10)/n)), fh=Math.max(18,lh-6); const cq=d=>(d/406*100).toFixed(2)+"cqw";
+  $("lab").innerHTML=(from?`<div class="from" style="font-size:${cq(15)};position:absolute;top:${cq(12)};left:${cq(18)}">Mill River Music, 135 King St, Northampton MA 01060</div>`:"")+(L.length?L.map((t,i)=>`<div class="ln ${i===0?"big":""}" style="position:absolute;left:${cq(18)};right:${cq(18)};top:${cq(y0+i*lh)};font-size:${cq(i===0?Math.min(fh+4,lh):fh)};line-height:1">${esc(t)}</div>`).join(""):`<div class="ln" style="color:#999;position:absolute;left:${cq(18)};top:${cq(y0)}">Address preview</div>`);
+  $("cmd").value=command(); $("copybtn").disabled=!L.length; }
+function setA(o){ Object.keys(A).forEach(k=>{ A[k]=o[k]||""; const el=document.querySelector(`[data-a="${k}"]`); if(el) el.value=A[k]; }); render(); document.querySelector('[data-a="name"]').scrollIntoView({block:"center",behavior:"smooth"}); }
+async function copy(){ if(!lines().length) return; const c=command(); let ok=false;
+  try{ await navigator.clipboard.writeText(c); ok=true; }catch(e){}
+  if(!ok){ const t=$("cmd"); t.closest("details").open=true; t.focus(); t.select(); }
+  $("copymsg").innerHTML=`<div class="note">${ok?"Copied. Paste it into Terminal on the 2nd register Mac and press Return.":"Couldn't copy automatically. The command is selected below: press ⌘C, then paste it into Terminal."}</div>`; }
+
+/* ---------- customers ---------- */
+async function apiT(path){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${UT}${path}`,{headers:{Authorization:"Bearer "+TOKEN}}); const j=await r.json().catch(()=>({}));
+  if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't allow reading customers ("+m+").":m); } return j; }
+async function findCusts(){ const q=$("cq").value.trim(); if(!q) return; if(!TOKEN){ $("setup").hidden=false; return; }
+  $("cmsg").innerHTML=`<div class="small muted" style="margin-top:10px">Looking…</div>`; $("clist").innerHTML="";
+  const digits=q.replace(/\D/g,""), words=q.toLowerCase().split(/\s+/).filter(Boolean).slice(0,4);
+  let fml=`AND(${words.map(w=>`FIND(${quote(w)},LOWER({Name}&' '&{First Name}&' '&{Last Name}&' '&{E-mail}))`).join(",")})`;
+  if(digits.length>=4) fml=`OR(${fml},FIND(${quote(digits)},REGEX_REPLACE({Mobile}&' '&{Phone},'[^0-9]','')))`;
+  try{ const j=await apiT(`?returnFieldsByFieldId=true&pageSize=40&filterByFormula=${encodeURIComponent(fml)}&${Object.values(U).map(f=>"fields%5B%5D="+f).join("&")}`);
+    CUSTS=(j.records||[]).sort((a,b)=>(b.fields[U.addr]?1:0)-(a.fields[U.addr]?1:0));
+    $("cmsg").innerHTML=`<div class="small muted" style="margin-top:10px">${CUSTS.length?`${CUSTS.length} found. People with an address on file are listed first.`:`No customer found for “${esc(q)}”.`}</div>`;
+    $("clist").innerHTML=CUSTS.map((r,i)=>{ const v=r.fields, nm=v[U.name]||[v[U.first],v[U.last]].filter(Boolean).join(" ")||"(no name)"; const ad=[v[U.addr],v[U.city],v[U.state],v[U.zip]].filter(Boolean).join(", ");
+      return `<button class="res" data-act="cpick" data-i="${i}"><b>${esc(nm)}</b><span class="price small">${ad?"":"no address"}</span><span class="meta">${esc(ad||[v[U.email],v[U.mobile]||v[U.phone]].filter(Boolean).join(" · ")||"no contact info")}</span></button>`; }).join(""); }
+  catch(e){ $("cmsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+function pickCust(r){ const v=r.fields; const raw=String(v[U.addr]||""); const parts=raw.split(/\n|,\s*(?=(apt|suite|unit|#|ste)\b)/i).filter(x=>x&&!/^(apt|suite|unit|#|ste)$/i.test(x));
+  setA({ name:v[U.name]||[v[U.first],v[U.last]].filter(Boolean).join(" "), co:v[U.co]||"", street:(parts[0]||"").trim(), street2:(parts.slice(1).join(" ")||"").trim(), city:v[U.city]||"", state:v[U.state]||"", zip:v[U.zip]||"", country:v[U.country]||"" });
+  if(!raw) $("copymsg").innerHTML=`<div class="note warn">No address on file for this customer. Type it in, or search online.</div>`; else $("copymsg").innerHTML=""; }
+
+/* ---------- online search (OpenStreetMap) ---------- */
+let lastWeb=0;
+async function webSearch(){ const q=$("wq").value.trim(); if(!q) return; const wait=1100-(Date.now()-lastWeb); if(wait>0) await new Promise(r=>setTimeout(r,wait)); lastWeb=Date.now();
+  $("wmsg").innerHTML=`<div class="small muted" style="margin-top:10px">Searching…</div>`; $("wlist").innerHTML="";
+  try{ const r=await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&countrycodes=us,ca&q=${encodeURIComponent(q)}`,{headers:{"Accept-Language":"en"}});
+    if(!r.ok) throw new Error("Search didn't answer ("+r.status+"). Try again in a moment or type the address.");
+    WEB=(await r.json()).filter(x=>x.address&&(x.address.road||x.address.house_number||x.address.postcode));
+    $("wmsg").innerHTML=`<div class="small muted" style="margin-top:10px">${WEB.length?"Tap one to fill in the label.":"Nothing found with a street address. Try adding the town, or type it in."}</div>`;
+    $("wlist").innerHTML=WEB.map((x,i)=>`<button class="res" data-act="wpick" data-i="${i}"><b>${esc(x.name||[x.address.house_number,x.address.road].filter(Boolean).join(" "))}</b><span class="meta" style="white-space:normal">${esc(x.display_name)}</span></button>`).join(""); }
+  catch(e){ $("wmsg").innerHTML=`<div class="note warn">${esc(e.message||"Search failed.")}</div>`; } }
+const STATES={Alabama:"AL",Alaska:"AK",Arizona:"AZ",Arkansas:"AR",California:"CA",Colorado:"CO",Connecticut:"CT",Delaware:"DE","District of Columbia":"DC",Florida:"FL",Georgia:"GA",Hawaii:"HI",Idaho:"ID",Illinois:"IL",Indiana:"IN",Iowa:"IA",Kansas:"KS",Kentucky:"KY",Louisiana:"LA",Maine:"ME",Maryland:"MD",Massachusetts:"MA",Michigan:"MI",Minnesota:"MN",Mississippi:"MS",Missouri:"MO",Montana:"MT",Nebraska:"NE",Nevada:"NV","New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND",Ohio:"OH",Oklahoma:"OK",Oregon:"OR",Pennsylvania:"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD",Tennessee:"TN",Texas:"TX",Utah:"UT",Vermont:"VT",Virginia:"VA",Washington:"WA","West Virginia":"WV",Wisconsin:"WI",Wyoming:"WY"};
+function pickWeb(x){ const a=x.address||{}; const street=[a.house_number,a.road].filter(Boolean).join(" ");
+  const isPlace=x.name&&x.name!==street&&x.name!==a.road;
+  setA({ name:isPlace?x.name:A.name, co:isPlace?"":A.co, street, street2:"", city:a.city||a.town||a.village||a.hamlet||a.suburb||"", state:STATES[a.state]||a.state||"", zip:(a.postcode||"").split(/[;:]/)[0], country:a.country_code&&a.country_code!=="us"?(a.country||""):"" }); }
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const a=el.dataset.act;
+  if(a==="src"){ document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b===el)); ["cust","web","manual"].forEach(s=>$("src-"+s).hidden=s!==el.dataset.s); store.set("mrm-labels-src",el.dataset.s); if(el.dataset.s==="manual") document.querySelector('[data-a="name"]').focus(); }
+  else if(a==="cpick") pickCust(CUSTS[+el.dataset.i]);
+  else if(a==="wpick") pickWeb(WEB[+el.dataset.i]);
+  else if(a==="copy") copy();
+  else if(a==="clear"){ setA({}); $("copymsg").innerHTML=""; } });
+document.addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.a; if(k){ A[k]=e.target.value; render(); } });
+$("from").addEventListener("change",render); $("qty").addEventListener("input",render);
+$("cform").addEventListener("submit",e=>{ e.preventDefault(); findCusts(); });
+$("wform").addEventListener("submit",e=>{ e.preventDefault(); webSearch(); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  const prev=TOKEN; TOKEN=t; try{ await apiT("?maxRecords=1&fields%5B%5D="+U.name); store.set("mrm-photos-token",t); $("setup").hidden=true; findCusts(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+{ const s=store.get("mrm-labels-src"); if(s&&s!=="cust"){ const b=document.querySelector(`#seg [data-s="${s}"]`); if(b) b.click(); } }
+$("lab").style.containerType="inline-size";
+render();
+</script>
+</body>
+</html>

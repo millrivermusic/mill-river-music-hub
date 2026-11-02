@@ -39,6 +39,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16p
 .greet{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .greet h2{margin:0;font-size:20px}
 .greet .small{color:var(--muted);font-size:13.5px}
+.sec{margin:22px 0 10px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sec:first-child{margin-top:4px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0;color:inherit;text-decoration:none;position:relative}
 .tile .open{display:block;text-align:center;background:var(--accent);color:var(--accent-ink);border-radius:11px;padding:11px;font-weight:800;text-decoration:none}
@@ -86,7 +88,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
     <div id="setmsg"></div>
   </section>
 
-  <div class="grid" id="tiles"></div>
+  <div id="tiles"></div>
 
   <section class="card">
     <h2>Quick links</h2>
@@ -129,13 +131,19 @@ const COUNTS={
   ecom:{label:"Going to Reverb tonight", f:"AND({Ecommerce Sync},{Data Status}='Ready For Ecommerce',NOT({Reverb URL}))"},
 };
 const TILES=[
+  {sec:"Intake & Listing"},
   {ic:"🤝", t:"Intake Desk", p:"Start a buy, trade or consignment.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P", counts:["posWait"]},
   {ic:"🧾", t:"Finish an Intake", p:"Find a pending deal and close it.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P#finish", counts:["pendingItems"]},
   {ic:"🔧", t:"Tech Bench", p:"Pick your queue, log work, mark ready.", where:"Phone or computer", href:"tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
   {ic:"📷", t:"Photo Uploader", p:"Scan the SKU, shoot, upload.", where:"Phone app", href:"photos/", counts:["needsPhotos"]},
   {ic:"✍️", t:"Listing Desk", p:"Pick an item and write it up, manually or with Claude.", where:"Computer", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
+  {sec:"Customer Service · Ops Desk"},
   {ic:"↩️", t:"Returns", p:"Log a return, track it, email the customer.", where:"Phone or computer", href:"returns/", counts:["returnsOpen"]},
   {ic:"🔎", t:"Lookup & Notes", p:"Search an item, a deal or a customer's history; add notes.", where:"Phone or computer", href:"lookup/", counts:["live","going"]},
+  {sec:"Utilities"},
+  {ic:"🏷️", t:"Label Maker", p:"Print a 2×1 address label on the Zebra.", where:"2nd register Mac", href:"labels/", counts:[]},
+  {ic:"🎁", t:"Gift Card Labels", p:"Print gift card barcode stickers on the Zebra.", where:"2nd register Mac", href:"https://claude.ai/artifact/R94NpkQ2V2rBStckyNLkEJ", counts:[]},
+  {sec:"Help"},
   {ic:"📘", t:"Instructions", p:"How to use the Hub and its tools. Start here.", where:"Shop login", href:"https://claude.ai/artifact/Dpb2rXXipBWg3a9SRgdVZB", counts:[]},
 ];
 const VAL={};
@@ -147,10 +155,12 @@ async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
     n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<5);
   return offset?n+"+":n; }
 
-function renderTiles(){ $("tiles").innerHTML=TILES.map(t=>{ const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
+function renderTiles(){ const groups=[]; TILES.forEach(t=>{ if(t.sec) groups.push({sec:t.sec,items:[]}); else (groups[groups.length-1]||groups[groups.push({sec:"",items:[]})-1]).items.push(t); });
+  $("tiles").innerHTML=groups.map(g=>`${g.sec?`<h2 class="sec">${esc(g.sec)}</h2>`:""}<div class="grid">${g.items.map(tile).join("")}</div>`).join(""); }
+function tile(t){ { const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
   ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}"${/^https?:/.test(c.href)?' target="_blank" rel="noopener"':""}><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
   if(t.soon) return `<div class="tile soon"><span class="badge">Soon</span>${inner}</div>`;
-  const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; }).join(""); }
+  const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; } }
 
 async function refresh(){ if(!TOKEN){ renderTiles(); return; } renderTiles(); let err="";
   await Promise.all(Object.keys(COUNTS).map(async k=>{ try{ VAL[k]=await count(k); }catch(e){ err=e.message; VAL[k]="?"; } }));
