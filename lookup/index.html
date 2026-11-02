@@ -115,7 +115,7 @@ label.f.wide{grid-column:1/-1}
     <div id="setmsg"></div>
   </section>
 
-  <div class="seg" id="seg" hidden><button data-act="mode" data-m="items" class="on">Items</button><button data-act="mode" data-m="deals">Deals</button></div>
+  <div class="seg" id="seg" hidden><button data-act="mode" data-m="items" class="on">Items</button><button data-act="mode" data-m="deals">Deals</button><button data-act="mode" data-m="cust">Customers</button></div>
   <section class="card" id="deals" hidden>
     <form id="dform" class="row"><input class="t" id="dq" inputmode="search" placeholder="Customer name" autocomplete="off" style="flex:1 1 180px;width:auto"><button class="btn" type="submit">Find</button></form>
     <div class="dates"><span class="small muted">Date</span><input type="date" id="dfrom" aria-label="From"><span class="small muted">to</span><input type="date" id="dto" aria-label="To">
@@ -125,6 +125,12 @@ label.f.wide{grid-column:1/-1}
     <div class="list" id="dlist"></div>
   </section>
   <section id="deal" hidden></section>
+  <section class="card" id="custs" hidden>
+    <form id="cform" class="row"><input class="t" id="cq" inputmode="search" placeholder="Customer name, email or phone" autocomplete="off" style="flex:1 1 180px;width:auto"><button class="btn" type="submit">Find</button></form>
+    <div id="cmsg"><div class="small muted" style="margin-top:10px">Find a customer to see everything we've bought, traded or taken on consignment from them.</div></div>
+    <div class="list" id="clist"></div>
+  </section>
+  <section id="cust" hidden></section>
   <section class="card" id="browse" hidden>
     <div class="row"><form id="sform" class="row" style="flex:1 1 260px"><input class="t" id="q" inputmode="search" placeholder="SKU, name, brand, model…" autocomplete="off" style="flex:1 1 160px;width:auto"><button class="btn" type="submit">Find</button></form><button class="btn sec" id="scanbtn" type="button">▦ Scan</button></div>
     <div class="tabs" id="tabs"></div>
@@ -306,6 +312,46 @@ function stopScan(){ scanning=false; $("scanner").hidden=true; if(stream){ strea
 const D={ table:"tblPJ4W0G96ATXPjD", deal:"fld8H5TyZlVlgEPZ9", date:"fldOdTJkLKJTclB1w", customer:"fldfBK0ACHBpXhFZI", products:"fldJYuUeLsKwkLtql", status:"fldGpKgTDF97hv3rO", method:"fldAStilnWjgtXbYu", cash:"fldfubaeAPnUFzzT1", credit:"fldg6R9Tl4UKcgFgU", total:"fld0XPLrYoWUvazky", check:"fldAKZ892COzs3b08", posted:"fldPGWFjS4gS31T7a", approved:"fldIj8XBHDmIrIyMZ", notes:"fldZPysDGzKnZiWTO" };
 const UT="tblGJnacXCV52gZdS", U={ first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", email:"fldZz0HYc0OItKqrE", mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB" };
 const FINISH="https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P#finish";
+const UX={ name:"fldyOzHd6uRNuaTHa", log:"fldc4zkMVjHuKdssA", deals:"fldopijbeVa0w014L", notes:"fldTuBvtA7iSZ7jEq", city:"fldQi9lXAU9XovuY5" };
+let CUSTS=[], CUST=null, CITEMS=null, CDEALS=null, back=[];
+const uv=(r,k)=>{ const v=r&&r.fields&&r.fields[k]; return v==null?"":v; };
+const SECS=["browse","item","deals","deal","custs","cust"];
+function show(id){ SECS.forEach(x=>$(x).hidden=x!==id); window.scrollTo(0,0); }
+async function findCusts(){ const q=$("cq").value.trim(); if(!q) return; $("cmsg").innerHTML=`<div class="small muted" style="margin-top:10px">Looking…</div>`; $("clist").innerHTML="";
+  const digits=q.replace(/\D/g,""); const words=q.toLowerCase().split(/\s+/).filter(Boolean).slice(0,4);
+  const hay="LOWER({Name}&' '&{First Name}&' '&{Last Name}&' '&{E-mail})";
+  let fml=`AND(${words.map(w=>`FIND(${quote(w)},${hay})`).join(",")})`;
+  if(digits.length>=4) fml=`OR(${fml},FIND(${quote(digits)},REGEX_REPLACE({Mobile}&' '&{Phone},'[^0-9]','')))`;
+  try{ const j=await apiT(UT,`?returnFieldsByFieldId=true&pageSize=50&filterByFormula=${encodeURIComponent(fml)}&fields%5B%5D=${UX.name}&fields%5B%5D=${U.first}&fields%5B%5D=${U.last}&fields%5B%5D=${U.email}&fields%5B%5D=${U.mobile}&fields%5B%5D=${U.phone}&fields%5B%5D=${UX.log}&fields%5B%5D=${UX.deals}`);
+    CUSTS=(j.records||[]).sort((a,b)=>(uv(b,UX.log).length||0)-(uv(a,UX.log).length||0));
+    $("cmsg").innerHTML=`<div class="small muted" style="margin-top:10px">${CUSTS.length?`${CUSTS.length}${CUSTS.length>=50?"+":""} customer${CUSTS.length===1?"":"s"}, most history first.`:`No customer found for “${esc(q)}”.`}</div>`;
+    $("clist").innerHTML=CUSTS.map((c,i)=>{ const n=(uv(c,UX.log)||[]).length, d=(uv(c,UX.deals)||[]).length; const nm=uv(c,UX.name)||[uv(c,U.first),uv(c,U.last)].filter(Boolean).join(" ")||"(no name)";
+      return `<button class="res" data-act="copen" data-i="${i}"><b>${esc(nm)}</b><span class="price">${n} item${n===1?"":"s"}</span><span class="meta">${esc([uv(c,U.email),uv(c,U.mobile)||uv(c,U.phone)].filter(Boolean).join(" · ")||"no contact info")}${d?` · ${d} deal${d===1?"":"s"}`:""}</span></button>`; }).join(""); }
+  catch(e){ $("cmsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+async function openCust(id){ CUST={id}; CITEMS=null; CDEALS=null; show("cust"); renderCust();
+  try{ const c=await apiT(UT,`/${id}?returnFieldsByFieldId=true`); if(CUST.id!==id) return; CUST=c; renderCust();
+    const ids=(uv(c,UX.log)||[]).map(x=>x.id||x), dids=(uv(c,UX.deals)||[]).map(x=>x.id||x);
+    const parts=[]; for(let k=0;k<ids.length&&k<400;k+=50) parts.push(query(`OR(${ids.slice(k,k+50).map(x=>`RECORD_ID()=${quote(x)}`).join(",")})`,50));
+    const dp=dids.length?apiT(D.table,`?returnFieldsByFieldId=true&pageSize=100&filterByFormula=${encodeURIComponent(`OR(${dids.slice(0,90).map(x=>`RECORD_ID()=${quote(x)}`).join(",")})`)}&sort%5B0%5D%5Bfield%5D=${D.date}&sort%5B0%5D%5Bdirection%5D=desc`).then(j=>j.records||[]):Promise.resolve([]);
+    const [its,ds]=await Promise.all([Promise.all(parts).then(a=>a.flat()),dp]); if(CUST.id!==id) return;
+    CITEMS=its.sort((a,b)=>String(f(b,"dateIn")).localeCompare(String(f(a,"dateIn")))); CDEALS=ds; renderCust(); }
+  catch(e){ CUST._err=e.message; renderCust(); } }
+function renderCust(){ const c=CUST; if(!c) return; if(!c.fields){ $("cust").innerHTML=`<div class="card">${c._err?`<div class="note warn">${esc(c._err)}</div>`:`<div class="small muted">Loading customer…</div>`}</div>`; return; }
+  const nm=uv(c,UX.name)||[uv(c,U.first),uv(c,U.last)].filter(Boolean).join(" ");
+  const contact=[uv(c,U.email),uv(c,U.mobile),uv(c,U.phone),uv(c,UX.city)].filter(Boolean).map(esc).join(" · ");
+  let sum=""; if(CITEMS){ const by=t=>CITEMS.filter(r=>f(r,"intakeType")===t); const paid=CITEMS.reduce((a,r)=>a+(num(f(r,"cost"))||0),0);
+    const sold=CITEMS.filter(r=>st(r)==="Sold"||f(r,"phys")==="Sold").length; const passed=CITEMS.filter(r=>st(r)==="Potential Deal").length;
+    const cash=(CDEALS||[]).reduce((a,d)=>a+(num(dv(d,"cash"))||0),0), cr=(CDEALS||[]).reduce((a,d)=>a+(num(dv(d,"credit"))||0),0);
+    const first=CITEMS.length?CITEMS[CITEMS.length-1]:null;
+    sum=`<dl class="kv"><dt>Items</dt><dd>${CITEMS.length}${["Purchase","Trade","Consignment"].map(t=>by(t).length?` · ${by(t).length} ${t==="Purchase"?"bought":t==="Trade"?"traded":"consigned"}`:"").join("")}${passed?` · ${passed} passed on`:""}</dd>
+      <dt>We paid</dt><dd>${paid?money(paid):"–"}${(cash||cr)?` <span class="small muted">(deals since Oct 2026: ${[cash?money(cash)+" cash":"",cr?money(cr)+" credit":""].filter(Boolean).join(" + ")})</span>`:""}</dd>
+      <dt>Sold so far</dt><dd>${sold} of ${CITEMS.length}</dd>${first?`<dt>Customer since</dt><dd>${esc(fmtDate(f(first,"dateIn")))||"–"}</dd>`:""}</dl>`; }
+  $("cust").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(nm||"(no name)")}</h2>${contact?`<div class="small muted">${contact}</div>`:""}</div><button class="btn sec" data-act="cclose" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
+    ${sum}${uv(c,UX.notes)?`<div class="small" style="white-space:pre-wrap;margin-top:12px;padding:10px 12px;background:var(--sunk);border-radius:12px">${esc(uv(c,UX.notes))}</div>`:""}
+    ${CDEALS&&CDEALS.length?`<h3 style="margin:16px 0 6px">Deals</h3><div class="list">${CDEALS.map((d,i)=>{ const cash=num(dv(d,"cash")), cr=num(dv(d,"credit")); return `<button class="res" data-act="cdeal" data-i="${i}"><b>${esc(fmtDate(dv(d,"date")))}</b><span class="price">${esc([cash?money(cash)+" cash":"",cr?money(cr)+" credit":""].filter(Boolean).join(" + ")||"–")}</span><span class="meta">${esc(stLabel(dv(d,"status")))} · ${(d.fields[D.products]||[]).length} items</span></button>`; }).join("")}</div>`:""}
+    <h3 style="margin:16px 0 6px">Everything from ${esc((nm||"them").split(" ")[0])}</h3>
+    ${CITEMS===null?`<div class="small muted">Loading history…</div>`:!CITEMS.length?`<div class="small muted">Nothing in the Purchase Log is linked to this customer.</div>`:`<div class="list">${CITEMS.map((r,i)=>`<button class="res" data-act="citem" data-i="${i}"><b>${esc(f(r,"name")||"(no name)")}</b><span class="price">${esc(money(f(r,"cost"))?"paid "+money(f(r,"cost")):"")}</span>
+      <span class="meta">${[esc(fmtDate(f(r,"dateIn"))), f(r,"sku")?`<span class="sku">${esc(f(r,"sku"))}</span>`:"", esc(f(r,"intakeType")), esc(st(r)==="Potential Deal"?"passed on":st(r)||"no status"), esc(priceOf(r))].filter(Boolean).join(" · ")}</span></button>`).join("")}</div>`}</div>`; }
 const DST=[["all","All"],["Pending","Pending"],["Accepted","Accepted"],["Declined","Passed"]];
 let MODE="items", DSTAT="all", DEALS=[], DEAL=null, DITEMS=[], fromDeal=false;
 async function apiT(table,path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${table}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
@@ -314,8 +360,9 @@ const dv=(d,k)=>{ const v=d&&d.fields&&d.fields[D[k]]; return v&&typeof v==="obj
 const iso=d=>d.toISOString().slice(0,10);
 const fmtDate=s=>{ if(!s) return ""; const d=new Date(s+"T12:00:00"); return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"}); };
 const stLabel=s=>s==="Declined"?"Passed":s||"–";
+function segOn(m){ document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.m===m)); }
 function setMode(m){ MODE=m; store.set("mrm-lookup-mode",m); document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.m===m));
-  $("browse").hidden=m!=="items"||!!REC; $("item").hidden=m!=="items"||!REC; $("deals").hidden=m!=="deals"||!!DEAL; $("deal").hidden=m!=="deals"||!DEAL;
+  $("browse").hidden=m!=="items"||!!REC; $("item").hidden=m!=="items"||!REC; $("deals").hidden=m!=="deals"||!!DEAL; $("deal").hidden=m!=="deals"||!DEAL; $("custs").hidden=m!=="cust"||!!(CUST&&CUST.fields); $("cust").hidden=m!=="cust"||!(CUST&&CUST.fields);
   if(m==="deals"&&!DEALS.length&&!DEAL) loadDeals(); }
 function renderDTabs(){ $("dtabs").innerHTML=DST.map(([k,l])=>`<button class="tab ${DSTAT===k?"on":""}" data-act="dstat" data-k="${k}">${l}</button>`).join(""); }
 function drange(r){ const t=new Date(); if(r==="all"){ $("dfrom").value=""; $("dto").value=""; } else { $("dto").value=iso(t); const f=new Date(t); f.setDate(t.getDate()-(r==="today"?0:r==="week"?6:29)); $("dfrom").value=iso(f); } loadDeals(); }
@@ -345,7 +392,7 @@ function renderDeal(){ const d=DEAL; if(!d) return; const s=dv(d,"status"), cash
   const open=s==="Pending"||(s==="Accepted"&&(DITEMS||[]).some(r=>/Purchased \/ Approved/.test(st(r))));
   const rows=[["Date",esc(fmtDate(dv(d,"date")))],["Status",esc(stLabel(s))],["Cash paid",cash?money(cash):"–"],["Store credit",cr?money(cr):"–"],["Total",tot?money(tot):"–"],
     ["Paid by",esc(dv(d,"method"))+(dv(d,"check")?" · check #"+esc(dv(d,"check")):"")],["Credit in Lightspeed",dv(d,"posted")?"Yes":(cr?"Not marked":"–")],["Approved by",esc(dv(d,"approved"))||"–"]];
-  $("deal").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(cname)}</h2>${contact?`<div class="small muted">${contact}</div>`:""}</div><button class="btn sec" data-act="dclose" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
+  $("deal").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(cname)}</h2>${(d.fields[D.customer]||[])[0]?`<button class="tab" data-act="dcust" style="margin:4px 0">Full history for ${esc(cname.split(" ")[0])} →</button>`:""}${contact?`<div class="small muted">${contact}</div>`:""}</div><button class="btn sec" data-act="dclose" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
     <dl class="kv">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v||"–"}</dd>`).join("")}</dl>
     ${dv(d,"notes")?`<div class="small" style="white-space:pre-wrap;margin-top:12px;padding:10px 12px;background:var(--sunk);border-radius:12px">${esc(dv(d,"notes"))}</div>`:""}
     ${open?`<div class="row" style="margin-top:12px"><a class="btn" href="${FINISH}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">Finish this intake →</a><span class="small muted">Opens Finish an Intake; search for ${esc(cname)}.</span></div>`:""}
@@ -357,13 +404,18 @@ function renderDeal(){ const d=DEAL; if(!d) return; const s=dv(d,"status"), cash
 document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); if(!el) return; const a=el.dataset.act;
   if(a==="tab"){ TAB=el.dataset.k; store.set("mrm-lookup-tab",TAB); $("q").value=""; loadTab(); }
   else if(a==="open") openItem(ROWS[+el.dataset.i]);
-  else if(a==="close"){ closeItem(); if(fromDeal){ fromDeal=false; setMode("deals"); } }
-  else if(a==="mode") setMode(el.dataset.m);
+  else if(a==="close"){ closeItem(); const b=back.pop(); if(b){ setMode(b); } }
+  else if(a==="mode"){ back=[]; setMode(el.dataset.m); }
   else if(a==="dstat"){ DSTAT=el.dataset.k; loadDeals(); }
   else if(a==="drange") drange(el.dataset.r);
   else if(a==="dopen") openDeal(DEALS[+el.dataset.i]);
-  else if(a==="dclose") closeDeal();
-  else if(a==="dopenitem"){ fromDeal=true; const r=DITEMS[+el.dataset.i]; MODE="items"; document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.m==="items")); $("deal").hidden=true; $("deals").hidden=true; openItem(r); }
+  else if(a==="dclose"){ closeDeal(); if(back[back.length-1]==="cust"){ back.pop(); DEAL=null; setMode("cust"); } }
+  else if(a==="copen") openCust(CUSTS[+el.dataset.i].id);
+  else if(a==="cclose"){ CUST=null; if(back[back.length-1]==="deals"){ back.pop(); setMode("deals"); } else setMode("cust"); }
+  else if(a==="citem"){ back.push("cust"); MODE="items"; segOn("items"); const r=CITEMS[+el.dataset.i]; $("cust").hidden=true; openItem(r); }
+  else if(a==="cdeal"){ back.push("cust"); MODE="deals"; segOn("deals"); $("cust").hidden=true; openDeal(CDEALS[+el.dataset.i]); }
+  else if(a==="dcust"){ back.push("deals"); MODE="cust"; segOn("cust"); $("deal").hidden=true; openCust(DEAL.fields[D.customer][0]); }
+  else if(a==="dopenitem"){ back.push("deals"); const r=DITEMS[+el.dataset.i]; MODE="items"; segOn("items"); $("deal").hidden=true; $("deals").hidden=true; openItem(r); }
   else if(a==="clear"){ e.preventDefault(); $("q").value=""; loadTab(); }
   else if(a==="hist") history();
   else if(a==="unlock"){ editing=true; renderItem(); updSum(); setTimeout(()=>{ const x=document.querySelector("[data-e]"); if(x) x.scrollIntoView({block:"center"}); },50); }
@@ -375,6 +427,7 @@ document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); 
   else if(a==="confirm") commit(); });
 document.addEventListener("input",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
 document.addEventListener("change",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
+$("cform").addEventListener("submit",e=>{ e.preventDefault(); $("cq").blur(); findCusts(); });
 $("dform").addEventListener("submit",e=>{ e.preventDefault(); $("dq").blur(); loadDeals(); });
 ["dfrom","dto"].forEach(id=>$(id).addEventListener("change",()=>loadDeals()));
 $("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); find($("q").value); });
@@ -384,7 +437,7 @@ $("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photo
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
   const prev=TOKEN; TOKEN=t; try{ await api("?maxRecords=1&fields%5B%5D="+FX.name); store.set("mrm-photos-token",t); $("tok").value=""; start(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
 function start(){ $("setup").hidden=!!TOKEN; $("browse").hidden=!TOKEN; $("seg").hidden=!TOKEN; if(!TOKEN) return;
-  if(/[?&]mode=deals/.test(location.search)||(store.get("mrm-lookup-mode")==="deals"&&!/[?&](sku|q)=/.test(location.search))){ setMode("deals"); } const m=/[?&]sku=([^&#]+)/.exec(location.search)||/[?&]q=([^&#]+)/.exec(location.search);
+  { const mm=(/[?&]mode=(deals|cust)/.exec(location.search)||[])[1]||(!/[?&](sku|q)=/.test(location.search)&&store.get("mrm-lookup-mode")); if(mm==="deals"||mm==="cust") setMode(mm); } const m=/[?&]sku=([^&#]+)/.exec(location.search)||/[?&]q=([^&#]+)/.exec(location.search);
   if(m){ $("q").value=decodeURIComponent(m[1]); find($("q").value); } else loadTab(); loadCounts(); }
 start();
 </script>
