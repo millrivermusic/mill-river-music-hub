@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#8A3B12">
+<title>Warranty Desk</title>
+<link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<style>
+/* MRM Warranty Desk: Martin + Taylor warranty cases, one place. Emails are drafted here and sent by a person from Gmail. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --s-pending:#E8D6D3; --s-waiting:#F3DFC4; --s-emailed:#F6EAB8; --s-approved:#D3E1F7; --s-rejected:#E3E0DB; --s-complete:#F7D9C2; --s-paperwork:#D2EDD9; --s-paid:#CDEBE8;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; --sugg:#F0C14D; --sugg-soft:#3A2E10;
+  --s-pending:#4A2C28; --s-waiting:#4A3820; --s-emailed:#4A4218; --s-approved:#22344F; --s-rejected:#33302B; --s-complete:#4E3220; --s-paperwork:#1E4029; --s-paid:#1B3E3B; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.bar select{font:inherit;font-size:14px;border-radius:9px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:1000px;margin:0 auto;padding-top:14px;padding-bottom:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 8px;font-size:18px;font-weight:800}
+.card h3{margin:14px 0 6px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:44px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input.t,select.t,textarea.t{border:1px solid var(--line);background:var(--sunk);border-radius:11px;padding:10px 12px;font-size:16px;min-width:0;width:100%}
+input.t:focus,select.t:focus,textarea.t:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+textarea.t{min-height:70px;resize:vertical}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--ink);white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.chip .n{font-variant-numeric:tabular-nums;opacity:.8}
+.chip.on{outline:2px solid var(--accent);outline-offset:1px}
+.chip.brand.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);outline:none}
+.chip.alert{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.s-pending{background:var(--s-pending)} .s-waiting{background:var(--s-waiting)} .s-emailed{background:var(--s-emailed)} .s-approved{background:var(--s-approved)} .s-rejected{background:var(--s-rejected)} .s-complete{background:var(--s-complete)} .s-paperwork{background:var(--s-paperwork)} .s-paid{background:var(--s-paid)}
+.pill{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.top{display:flex;flex-direction:column;gap:10px}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.res{display:grid;grid-template-columns:1fr auto;gap:3px 10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:10px 12px;cursor:pointer}
+.res:hover{border-color:var(--accent)}
+.res b{line-height:1.25}
+.res .meta{grid-column:1/-1;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .why{grid-column:1/-1;font-size:13px;color:var(--warn);font-weight:700}
+.brandtag{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
+label.f.wide{grid-column:1/-1}
+.statusbar{display:flex;gap:6px;flex-wrap:wrap}
+.statusbar button{border:2px solid transparent;border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--ink)}
+.statusbar button.on{border-color:var(--ink)}
+.notebox{border-left:3px solid var(--accent);background:var(--sunk);border-radius:0 10px 10px 0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;max-height:340px;overflow:auto}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+.flags{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:14.5px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.mail{border:1px solid var(--line);border-radius:12px;background:var(--sunk);padding:12px}
+.mail pre{white-space:pre-wrap;font-family:var(--font);font-size:14.5px;margin:8px 0 0;overflow-wrap:anywhere}
+.tabs2{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.sugg{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.sugg button{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer}
+.confirm{border:2px solid var(--accent);border-radius:14px;padding:12px;background:var(--accent-soft);margin-top:10px}
+.files{display:flex;flex-wrap:wrap;gap:6px}
+.files a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:5px 11px;font-size:13.5px;font-weight:700;color:inherit;text-decoration:none}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>🛠️ Warranty Desk</h1>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+<main class="wrap">
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device</h2>
+    <p class="small muted" style="margin:0 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices with the Hub, Lookup or Tech Bench set up are connected automatically.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" style="flex:1 1 220px;width:auto"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card top" id="dash" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div class="chips" id="brands"></div>
+      <button class="btn" id="newbtn" type="button">+ New warranty case</button>
+    </div>
+    <div class="chips" id="statuses"></div>
+    <div class="row"><input class="t" id="q" inputmode="search" placeholder="Search customer, model, serial, auth or ticket #, WO #" autocomplete="off" style="flex:1 1 220px;width:auto"></div>
+    <div id="dmsg"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <section id="detail" hidden></section>
+  <section id="create" hidden></section>
+</main>
+
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", UDB="tblGJnacXCV52gZdS";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const STAFFREC={Jon:"rechZIpGZAIOuGaYJ",Jeff:"recLmkipyjft62jRL",Chris:"recEoekxSRq7EsQkO",Sturgis:"recbvNLEkdm4HNu3J",Sam:"rec0u7Ikoxfo5kJCX",Julia:"rec1McunLXCyJNc8b",Andy:"recNaeY3xVY0sKxhH",Nina:"recQpdH2QkplH8Sl0",Ben:"recriRN9RxxEa2PyC",Allie:"recroDei0NGN6CA1R",Ethan:"rect9RExJhI14zXfS"};
+const RECSTAFF=Object.fromEntries(Object.entries(STAFFREC).map(([k,v])=>[v,k]));
+const TECHS=["Jeff","Chris","Jon","Sturgis"];
+const SHOP={ name:"Mill River Music and Guitars", addr:"135 King St., Northampton, MA 01060", phone:"413-505-0129", email:"info@millrivermusic.com" };
+const BR={
+  taylor:{ label:"Taylor", table:"tblUR6Y7rfCLBSllO", to:"svnetwork@taylorguitars.com", toName:"SV Network",
+    F:{cust:"fld9Iym9sy5E7sQIS",model:"fldCd9DENx3VhCujn",serial:"fld2McIGsJW9un93M",notes:"fld8hpN5wgQ7LFAIM",tech:"fldyjazpXcJlkRKTp",status:"fldAgQWqOARycTlWc",files:"fldAq2IbSlyUKThQA",num:"fldYVUlLDkE8qnrop",req:"fldgCYZGyXAf4zAPT",wo:"fldhA7yMnskPN8PzW",wos:"fldtZxqN9jNpopbYz",woc:"fldAn9c5N87mZnFTH"},
+    numLabel:"Taylor Ticket #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Taylor",approved:"Approved by Taylor",rejected:"Rejected by Taylor",complete:"Work Complete",paperwork:"Work Done Paperwork Submitted",paid:"Payout Complete"} },
+  martin:{ label:"Martin", table:"tblqbwCvWxNz1REQt", to:"mlawlor@martinguitar.com", toName:"Meagan",
+    F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
+    numLabel:"Martin Auth #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Martin",approved:"Approved by Martin",rejected:"Rejected by Martin",complete:"Work Complete",paperwork:"Work Done Paperwork Submitte",paid:"Payout Complete"} }
+};
+const ORDER=["pending","waiting","emailed","approved","complete","paperwork","paid","rejected"];
+const SLABEL={pending:"Pending",waiting:"Waiting on customer",emailed:"Emailed",approved:"Approved",complete:"Work complete",paperwork:"Paperwork submitted",paid:"Paid",rejected:"Rejected"};
+const U={ name:"fldyOzHd6uRNuaTHa", first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", email:"fldZz0HYc0OItKqrE", mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB", addr:"fld8ihGFPawc5sEFk", city:"fldQi9lXAU9XovuY5", state:"fldhBzyvVqq2kPfUj", zip:"fld3d9arNaGKwQ7Rs" };
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let CASES=[], CUST={}, BRAND=store.get("mrm-war-brand")||"all", SFILT="", ALERT=false, Q="", CUR=null, MAILKIND="request";
+
+async function at(table,path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${table}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status)); return j; }
+async function all(table,fields){ let out=[],off=""; do{ const qs="?pageSize=100&returnFieldsByFieldId=true"+fields.map(f=>"&fields%5B%5D="+f).join("")+(off?"&offset="+encodeURIComponent(off):""); const j=await at(table,qs); out=out.concat(j.records||[]); off=j.offset||""; }while(off); return out; }
+const s=v=>v==null?"":Array.isArray(v)?v.map(x=>x&&typeof x==="object"?(x.name??x.filename??x.id??""):x).join(", "):typeof v==="object"?(v.name??""):String(v);
+const today=()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const fmtD=x=>{ if(!x) return ""; const d=new Date(x.length<=10?x+"T12:00:00":x); return isNaN(d)?x:d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
+const days=x=>x?Math.floor((Date.now()-new Date(x+"T12:00:00"))/864e5):null;
+const shortD=()=>{ const d=new Date(); return (d.getMonth()+1)+"/"+d.getDate(); };
+
+function keyOf(b,label){ const S=BR[b].S; for(const k in S) if(S[k]===label) return k; if(/paperwork/i.test(label)) return "paperwork"; return label?"pending":"pending"; }
+function norm(b,r){ const F=BR[b].F, f=r.fields||{}; return { b, id:r.id, created:r.createdTime, custId:(f[F.cust]||[])[0]||"", model:s(f[F.model]), serial:s(f[F.serial]), notes:s(f[F.notes]), techId:(f[F.tech]||[])[0]||"",
+  status:keyOf(b,s(f[F.status])), rawStatus:s(f[F.status]), num:s(f[F.num]), req:s(f[F.req]), wo:s(f[F.wo]), wos:s(f[F.wos]), woc:s(f[F.woc]), files:f[F.files]||[], amount:F.amount?f[F.amount]:null }; }
+function custName(c){ const u=CUST[c.custId]; if(u) return u.name; return c.custId?"(customer)":(/shop stock/i.test(c.model)?"Shop stock":"No customer linked"); }
+function flags(c){ const out=[]; const done=/done|paid|finished/i.test(c.wos);
+  if(done && ["pending","waiting","emailed","approved","complete"].includes(c.status)) out.push("Lightspeed says the repair is "+c.wos+". Send the completion paperwork.");
+  if(c.status==="approved" && !c.wo) out.push("Approved but no Lightspeed work order # yet.");
+  if(c.status==="emailed" && days(c.req)>14) out.push("Emailed "+days(c.req)+" days ago with no answer. Follow up.");
+  if((c.status==="pending"||c.status==="waiting") && days(c.req||c.created.slice(0,10))>30) out.push("Sitting in "+SLABEL[c.status]+" for a month+.");
+  if(/Not found/.test(c.wos)) out.push("Work order #"+c.wo+" wasn't found in Lightspeed. Check the number.");
+  return out; }
+
+async function load(){ $("dmsg").innerHTML=`<div class="small muted">Loading cases…</div>`;
+  try{ const [t,m]=await Promise.all(["taylor","martin"].map(b=>all(BR[b].table,Object.values(BR[b].F))));
+    CASES=t.map(r=>norm("taylor",r)).concat(m.map(r=>norm("martin",r))).filter(c=>c.custId||c.model||c.serial||c.notes);
+    const ids=[...new Set(CASES.map(c=>c.custId).filter(x=>x&&!CUST[x]))];
+    for(let i=0;i<ids.length;i+=40){ const chunk=ids.slice(i,i+40); const f="OR("+chunk.map(x=>`RECORD_ID()='${x}'`).join(",")+")";
+      const j=await at(UDB,"?returnFieldsByFieldId=true&pageSize=100&filterByFormula="+encodeURIComponent(f)+Object.values(U).map(x=>"&fields%5B%5D="+x).join(""));
+      (j.records||[]).forEach(r=>{ CUST[r.id]=cu(r); }); }
+    $("dmsg").innerHTML=""; render(); if(CUR){ const c=CASES.find(x=>x.id===CUR.id); if(c) openCase(c.id,true); }
+  }catch(e){ $("dmsg").innerHTML=`<div class="note warn">Couldn't load warranty cases: ${esc(e.message)}</div>`; } }
+function cu(r){ const f=r.fields||{}; const nm=(s(f[U.name])||[s(f[U.first]),s(f[U.last])].filter(Boolean).join(" ")).trim()||"(no name)";
+  return { id:r.id, name:nm, first:s(f[U.first]), last:s(f[U.last]), email:s(f[U.email]), phone:s(f[U.mobile])||s(f[U.phone]), addr:s(f[U.addr]), city:s(f[U.city]), state:s(f[U.state]), zip:s(f[U.zip]) }; }
+
+/* ---------- dashboard ---------- */
+function visible(){ const q=Q.toLowerCase().trim();
+  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=>(flags(b).length>0)-(flags(a).length>0)||ORDER.indexOf(a.status)-ORDER.indexOf(b.status)||String(b.req||b.created).localeCompare(String(a.req||a.created))); }
+function render(){
+  const inB=CASES.filter(c=>BRAND==="all"||c.b===BRAND);
+  $("brands").innerHTML=[["all","All"],["taylor","Taylor"],["martin","Martin"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>k==="all"||c.b===k).length}</span></button>`).join("");
+  const nA=inB.filter(c=>flags(c).length).length;
+  $("statuses").innerHTML=`<button class="chip alert ${ALERT?"on":""}" data-act="alert">⚠ Needs attention <span class="n">${nA}</span></button>`+
+    ORDER.map(k=>{ const n=inB.filter(c=>c.status===k).length; return `<button class="chip s-${k} ${SFILT===k?"on":""}" data-act="sfilt" data-k="${k}">${SLABEL[k]} <span class="n">${n}</span></button>`; }).join("");
+  const v=visible();
+  $("list").innerHTML=v.length?v.map(c=>{ const fl=flags(c); return `<button class="res" data-act="open" data-id="${c.id}"><b><span class="brandtag">${BR[c.b].label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</b><span class="pill s-${c.status}">${SLABEL[c.status]}</span>
+    <span class="meta">${[c.serial&&"S/N "+c.serial, c.num&&(c.b==="martin"?"Auth ":"Ticket ")+c.num, c.wo&&"WO "+c.wo+(c.wos?" ("+c.wos+")":""), c.techId&&RECSTAFF[c.techId], c.req&&"Requested "+fmtD(c.req)].filter(Boolean).map(esc).join(" · ")}</span>
+    ${fl.length?`<span class="why">⚠ ${esc(fl[0])}</span>`:""}</button>`; }).join(""):`<div class="small muted">No cases match.</div>`;
+}
+
+/* ---------- case detail ---------- */
+function show(which){ $("dash").hidden=which!=="dash"; $("detail").hidden=which!=="detail"; $("create").hidden=which!=="create"; window.scrollTo(0,0); }
+function openCase(id,keep){ const c=CASES.find(x=>x.id===id); if(!c) return; CUR=c; if(!keep) MAILKIND=defaultMail(c); const B=BR[c.b], u=CUST[c.custId];
+  const fl=flags(c);
+  $("detail").innerHTML=`<div class="card">
+    <div class="row" style="justify-content:space-between"><button class="btn sec sm" data-act="back">← All cases</button><a class="btn sec sm" href="https://airtable.com/${BASE}/${B.table}/${c.id}" target="_blank" rel="noopener">Open in Airtable</a></div>
+    <h2 style="margin-top:12px"><span class="brandtag">${B.label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</h2>
+    ${fl.length?`<div class="flags">${fl.map(x=>`<div class="note warn">⚠ ${esc(x)}</div>`).join("")}</div>`:""}
+    <h3>Status</h3>
+    <div class="statusbar">${ORDER.map(k=>`<button class="s-${k} ${c.status===k?"on":""}" data-act="setst" data-k="${k}">${SLABEL[k]}</button>`).join("")}</div>
+    <div id="stconfirm"></div>
+    ${c.wo?`<div class="small muted" style="margin-top:8px">Lightspeed WO #${esc(c.wo)}: <b>${esc(c.wos||"not checked yet")}</b>${c.woc?" · checked "+esc(fmtD(c.woc)):""}</div>`:""}
+
+    <h3>Customer</h3>
+    ${u?`<dl class="kv"><dt>Name</dt><dd>${esc(u.name)}</dd>${u.email?`<dt>Email</dt><dd>${esc(u.email)}</dd>`:""}${u.phone?`<dt>Phone</dt><dd>${esc(u.phone)}</dd>`:""}${u.addr||u.city?`<dt>Address</dt><dd>${esc([u.addr,[u.city,u.state].filter(Boolean).join(", "),u.zip].filter(Boolean).join(" "))}</dd>`:""}</dl>`:`<div class="small muted">${esc(custName(c))}</div>`}
+    <div class="row" style="margin-top:6px"><input class="t" id="cq" placeholder="${u?"Change customer: search name":"Link a customer: search name"}" autocomplete="off" style="flex:1 1 200px;width:auto"></div><div class="sugg" id="csugg"></div>
+
+    <h3>Details</h3>
+    <form class="form" id="eform">
+      <label class="f">Model<input class="t" name="model" value="${esc(c.model)}"></label>
+      <label class="f">Serial #<input class="t" name="serial" value="${esc(c.serial)}"></label>
+      <label class="f">${B.numLabel}<input class="t" name="num" value="${esc(c.num)}"></label>
+      <label class="f">Lightspeed work order #<input class="t" name="wo" value="${esc(c.wo)}" inputmode="numeric"></label>
+      <label class="f">Requested<input class="t" type="date" name="req" value="${esc(c.req)}"></label>
+      <label class="f">Tech<select class="t" name="tech"><option value="">—</option>${Object.keys(STAFFREC).map(n=>`<option value="${STAFFREC[n]}" ${c.techId===STAFFREC[n]?"selected":""}>${n}</option>`).join("")}</select></label>
+      ${c.b==="martin"?`<label class="f">Payout amount<input class="t" name="amount" inputmode="decimal" value="${c.amount??""}"></label>`:""}
+      <div class="row" style="grid-column:1/-1"><button class="btn" type="submit">Save details</button><span id="emsg" class="small"></span></div>
+    </form>
+
+    <h3>Notes & history</h3>
+    <div class="notebox">${esc(c.notes)||'<span class="muted">No notes yet.</span>'}</div>
+    <form class="row" id="nform" style="margin-top:8px"><input class="t" id="nt" placeholder="Add a note (saved with today's date and your name)" style="flex:1 1 240px;width:auto"><button class="btn sec" type="submit">Add note</button></form>
+    ${c.files.length?`<h3>Files</h3><div class="files">${c.files.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}
+  </div>
+  <div class="card" id="mailcard"></div>`;
+  renderMail(); show("detail"); }
+
+function defaultMail(c){ if(c.status==="pending"||c.status==="waiting") return "request"; if(c.status==="emailed") return "follow"; if(c.status==="approved"||c.status==="complete") return "paperwork"; return "follow"; }
+function mailFor(c,kind){ const u=CUST[c.custId]||{}, B=BR[c.b], me=WHO||"Mill River Music", last=(u.last||custName(c).split(" ").slice(-1)[0]||"").trim();
+  const issue=($("mi")&&$("mi").value.trim())||firstLine(c.notes); const bought=($("mb")&&$("mb").value.trim())||"";
+  const sig=`\n\nThank you,\n-${me}\n\n--\n${SHOP.name}\n${SHOP.addr}\n${SHOP.phone}\n${SHOP.email}`;
+  const gtr=`${B.label==="Martin"?"":"Taylor "}${c.model||"guitar"}${c.serial?`, serial ${c.serial}`:""}`;
+  if(c.b==="martin"){
+    if(kind==="request") return { su:`Warranty Request Form, ${last||custName(c)}`, body:`Hi Meagan,\n\nWe have a customer, ${custName(c)}, with a Martin ${c.model||""}${c.serial?` (serial ${c.serial})`:""}. ${issue}${bought?`\n\nPurchased: ${bought}.`:""}\n\nAttached are the warranty request form, photos and the receipt. Please let us know if you need anything else.${sig}` };
+    if(kind==="follow") return { su:`Following up: warranty request, ${last||custName(c)}${c.serial?` (${c.serial})`:""}`, body:`Hi Meagan,\n\nJust following up on the warranty request for ${custName(c)}'s Martin ${c.model||""}${c.serial?`, serial ${c.serial}`:""}${c.req?`, sent ${fmtD(c.req)}`:""}. Is there anything else you need from us?${sig}` };
+    return { su:`Completed warranty paperwork${c.num?`, Auth #${c.num}`:""}, ${last||custName(c)}`, body:`Hi Meagan,\n\nThe warranty work for ${custName(c)}'s Martin ${c.model||""}${c.serial?` (serial ${c.serial})`:""}${c.num?`, authorization #${c.num},`:""} is complete. The signed completion paperwork is attached.${sig}` };
+  }
+  const owner=[custName(c), u.email, u.phone, [u.addr,[u.city,u.state].filter(Boolean).join(", "),u.zip].filter(Boolean).join(" ")].filter(Boolean).join("\n");
+  if(kind==="request") return { su:`Warranty request: ${c.model||"Taylor"} ${c.serial||""} (${custName(c)})`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nWe have a warranty request for a ${gtr}.\n\nIssue: ${issue}\n${bought?`Purchased: ${bought}\n`:""}\nOwner:\n${owner}\n\nPhotos${bought?" and the sales receipt":""} are attached. Please let us know if you need anything else to open a ticket.${sig}` };
+  if(kind==="follow") return { su:`Following up: ${c.num?`ticket #${c.num}`:"warranty request"}, ${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nFollowing up on ${c.num?`ticket #${c.num}`:"our warranty request"} for ${custName(c)}'s ${gtr}${c.req?`, sent ${fmtD(c.req)}`:""}. Is there anything else you need from us?${sig}` };
+  return { su:`Work complete: ${c.num?`ticket #${c.num}, `:""}${c.model||""} ${c.serial||""}`.replace(/\s+/g," "), body:`Hi SV Network team,\n\nThe warranty repair for ${custName(c)}'s ${gtr}${c.num?` (ticket #${c.num})`:""} is complete. The completed service paperwork is attached for reimbursement.${sig}` };
+}
+const firstLine=t=>String(t||"").split(/\n/).map(x=>x.trim()).filter(x=>x&&!/^\[/.test(x))[0]||"";
+function renderMail(){ const c=CUR, B=BR[c.b]; const kinds=[["request","Warranty request"],["follow","Follow-up"],["paperwork","Completion paperwork"]];
+  const prevI=$("mi")?$("mi").value:firstLine(c.notes), prevB=$("mb")?$("mb").value:"";
+  $("mailcard").innerHTML=`<h2>Email ${esc(B.toName)}</h2>
+    <p class="small muted" style="margin:0 0 10px">Goes to <b>${esc(B.to)}</b> from info@. Check the text, then open it in Gmail, attach the files and press Send yourself.</p>
+    <div class="tabs2">${kinds.map(([k,l])=>`<button class="chip ${MAILKIND===k?"brand on":""}" data-act="mk" data-k="${k}">${l}</button>`).join("")}</div>
+    ${MAILKIND==="request"?`<div class="form"><label class="f wide">Issue (for the email)<textarea class="t" id="mi" rows="3">${esc(prevI)}</textarea></label><label class="f wide">Purchased (where / when, optional)<input class="t" id="mb" value="${esc(prevB)}" placeholder="e.g. Mill River Music, March 2026"></label></div>`:`<input type="hidden" id="mi" value="${esc(prevI)}"><input type="hidden" id="mb" value="${esc(prevB)}">`}
+    <div class="mail" style="margin-top:10px"><div class="small"><b>To:</b> ${esc(B.to)}</div><div class="small"><b>Subject:</b> <span id="msu"></span></div><pre id="mbody"></pre></div>
+    <div class="note" style="margin-top:10px">📎 Attach: ${MAILKIND==="request"?(c.b==="martin"?"the Martin Warranty Request Form (PDF), photos and the receipt":"photos and the sales receipt"):MAILKIND==="paperwork"?(c.b==="martin"?"the signed completion form":"the completed service paperwork"):"nothing needed"}.${c.b==="martin"&&MAILKIND==="request"?" Auto-filling Martin's form is coming next.":""}</div>
+    <div class="row" style="margin-top:10px"><a class="btn" id="gm" target="_blank" rel="noopener">Open in Gmail</a><button class="btn sec" data-act="copy">Copy text</button>
+      ${MAILKIND==="request"&&(c.status==="pending"||c.status==="waiting")?`<button class="btn sec" data-act="markemailed">I sent it: mark Emailed</button>`:""}
+      ${MAILKIND==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid"?`<button class="btn sec" data-act="markpaper">I sent it: mark Paperwork submitted</button>`:""}</div>
+    <div id="mmsg"></div>
+    <h3>Replies</h3>
+    <div class="row"><a class="btn sec sm" target="_blank" rel="noopener" href="${gmSearch(c)}">See all emails about this guitar in Gmail</a></div>`;
+  updMail(); }
+function gmSearch(c){ const terms=[c.serial, c.num].filter(Boolean).map(x=>`"${x}"`); const q=(terms.length?terms.join(" OR "):`"${custName(c)}"`); return "https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"#search/"+encodeURIComponent(q); }
+function updMail(){ const m=mailFor(CUR,MAILKIND); $("msu").textContent=m.su; $("mbody").textContent=m.body;
+  $("gm").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"&view=cm&fs=1&to="+encodeURIComponent(BR[CUR.b].to)+"&su="+encodeURIComponent(m.su)+"&body="+encodeURIComponent(m.body); }
+
+async function patch(c,fields){ const j=await at(BR[c.b].table,"",{method:"PATCH",body:JSON.stringify({records:[{id:c.id,fields}],typecast:true,returnFieldsByFieldId:true})}); const n=norm(c.b,j.records[0]); Object.assign(c,n); return c; }
+function noteLine(txt){ return `[${shortD()} ${WHO||"?"}] ${txt}`; }
+async function setStatus(k,extraNote){ const c=CUR, B=BR[c.b]; const fields={[B.F.status]:B.S[k]};
+  if(extraNote) fields[B.F.notes]=(c.notes?c.notes+"\n\n":"")+noteLine(extraNote);
+  if(k==="emailed"&&!c.req) fields[B.F.req]=today();
+  await patch(c,fields); render(); openCase(c.id,true); }
+
+/* ---------- create ---------- */
+let NEW={b:"martin",cust:null};
+function openCreate(){ NEW={b:BRAND==="taylor"?"taylor":"martin",cust:null}; drawCreate(); show("create"); }
+function drawCreate(){ const u=NEW.cust;
+  $("create").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between"><button class="btn sec sm" data-act="back">← All cases</button></div>
+  <h2 style="margin-top:12px">New warranty case</h2>
+  <div class="chips">${["martin","taylor"].map(b=>`<button class="chip brand ${NEW.b===b?"on":""}" data-act="nb" data-k="${b}">${BR[b].label}</button>`).join("")}</div>
+  <h3>Customer</h3>
+  ${u?`<div class="row"><b>${esc(u.name)}</b><span class="small muted">${esc([u.email,u.phone].filter(Boolean).join(" · "))}</span><button class="btn sec sm" data-act="nclear">Change</button></div>`:
+  `<input class="t" id="ncq" placeholder="Search existing customers by name" autocomplete="off"><div class="sugg" id="nsugg"></div>
+   <details style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:700">Not in the system? Add a new customer</summary>
+   <div class="form" style="margin-top:8px"><label class="f">First name<input class="t" id="nf"></label><label class="f">Last name<input class="t" id="nl"></label><label class="f">Email<input class="t" id="ne" type="email"></label><label class="f">Phone<input class="t" id="np" type="tel"></label>
+   <label class="f wide">Street address (Taylor needs it)<input class="t" id="na"></label><label class="f">Town<input class="t" id="nc"></label><label class="f">State<input class="t" id="ns"></label><label class="f">Zip<input class="t" id="nz"></label></div></details>
+   <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="nstock"> Shop stock (no customer)</label>`}
+  <h3>Guitar & problem</h3>
+  <form class="form" id="cform">
+    <label class="f">Model<input class="t" name="model" required placeholder="${NEW.b==="martin"?"e.g. D-18":"e.g. 314ce"}"></label>
+    <label class="f">Serial #<input class="t" name="serial" placeholder="From the neck block / label"></label>
+    <label class="f">Lightspeed work order #<input class="t" name="wo" inputmode="numeric"></label>
+    <label class="f">Tech<select class="t" name="tech"><option value="">—</option>${TECHS.map(n=>`<option value="${STAFFREC[n]}" ${n===WHO?"selected":""}>${n}</option>`).join("")}</select></label>
+    <label class="f wide">What's wrong (measurements, what you found)<textarea class="t" name="issue" rows="4" required></textarea></label>
+    <div class="row" style="grid-column:1/-1"><button class="btn" type="submit">Create case</button><span id="cmsg" class="small"></span></div>
+  </form></div>`; }
+async function custSearch(q,box,pick){ q=q.trim(); if(q.length<2){ box.innerHTML=""; return; }
+  const words=q.toLowerCase().split(/\s+/).filter(Boolean).slice(0,4).map(w=>w.replace(/\\/g,"\\\\").replace(/'/g,"\\'"));
+  const f="AND("+words.map(w=>`FIND('${w}',LOWER({Name}&' '&{First Name}&' '&{Last Name}&' '&{E-mail}))`).join(",")+")";
+  try{ const j=await at(UDB,"?pageSize=8&returnFieldsByFieldId=true&filterByFormula="+encodeURIComponent(f)+Object.values(U).map(x=>"&fields%5B%5D="+x).join(""));
+    const rs=(j.records||[]).map(cu); rs.forEach(r=>CUST[r.id]=r);
+    box.innerHTML=rs.length?rs.map(r=>`<button type="button" data-pick="${r.id}"><b>${esc(r.name)}</b> <span class="small muted">${esc([r.email,r.phone,r.city].filter(Boolean).join(" · "))}</span></button>`).join(""):`<div class="small muted">No match.</div>`;
+    box.onclick=e=>{ const b=e.target.closest("[data-pick]"); if(b) pick(CUST[b.dataset.pick]); };
+  }catch(e){ box.innerHTML=`<div class="small muted">Search failed: ${esc(e.message)}</div>`; } }
+
+/* ---------- events ---------- */
+let tq=null;
+document.addEventListener("input",e=>{
+  if(e.target.id==="q"){ Q=e.target.value; render(); }
+  if(e.target.id==="mi"||e.target.id==="mb") updMail();
+  if(e.target.id==="cq"||e.target.id==="ncq"){ clearTimeout(tq); const el=e.target; tq=setTimeout(()=>{
+    if(el.id==="cq") custSearch(el.value,$("csugg"),async u=>{ try{ await patch(CUR,{[BR[CUR.b].F.cust]:[u.id]}); render(); openCase(CUR.id,true); }catch(err){ $("csugg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+    else custSearch(el.value,$("nsugg"),u=>{ NEW.cust=u; drawCreate(); }); },300); }
+});
+document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+  if(a==="brand"){ BRAND=b.dataset.k; store.set("mrm-war-brand",BRAND); render(); }
+  else if(a==="sfilt"){ SFILT=SFILT===b.dataset.k?"":b.dataset.k; ALERT=false; render(); }
+  else if(a==="alert"){ ALERT=!ALERT; SFILT=""; render(); }
+  else if(a==="open") openCase(b.dataset.id);
+  else if(a==="back"){ CUR=null; show("dash"); render(); }
+  else if(a==="setst"){ const k=b.dataset.k; if(k===CUR.status) return;
+    $("stconfirm").innerHTML=`<div class="confirm"><b>Change to “${SLABEL[k]}”?</b><div class="form" style="margin-top:8px"><label class="f wide">Note (optional)<input class="t" id="stnote" placeholder="e.g. Martin approved, auth in email"></label></div><div class="row" style="margin-top:8px"><button class="btn" data-act="stok" data-k="${k}">Yes, change it</button><button class="btn sec" data-act="stno">Cancel</button></div></div>`; }
+  else if(a==="stno") $("stconfirm").innerHTML="";
+  else if(a==="stok"){ b.disabled=true; try{ await setStatus(b.dataset.k,($("stnote").value.trim()?SLABEL[b.dataset.k]+": "+$("stnote").value.trim():"Status → "+SLABEL[b.dataset.k])); }catch(err){ $("stconfirm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="mk"){ MAILKIND=b.dataset.k; renderMail(); }
+  else if(a==="copy"){ const m=mailFor(CUR,MAILKIND); const t="To: "+BR[CUR.b].to+"\nSubject: "+m.su+"\n\n"+m.body;
+    try{ await navigator.clipboard.writeText(t); $("mmsg").innerHTML=`<div class="note ok">Copied.</div>`; }catch(err){ const r=document.createRange(); r.selectNodeContents($("mbody")); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); $("mmsg").innerHTML=`<div class="note">Text selected. Press Copy.</div>`; } }
+  else if(a==="markemailed"){ b.disabled=true; try{ await setStatus("emailed","Emailed "+BR[CUR.b].toName+" the warranty request"); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="markpaper"){ b.disabled=true; try{ await setStatus("paperwork","Sent completion paperwork to "+BR[CUR.b].toName); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="nb"){ NEW.b=b.dataset.k; drawCreate(); }
+  else if(a==="nclear"){ NEW.cust=null; drawCreate(); }
+});
+document.addEventListener("submit",async e=>{ e.preventDefault(); const fm=e.target;
+  if(fm.id==="setform"){ const t=$("tok").value.trim(); const prev=TOKEN; TOKEN=t; try{ await at(BR.martin.table,"?maxRecords=1"); store.set("mrm-photos-token",t); start(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(fm.id==="eform"){ const B=BR[CUR.b], d=Object.fromEntries(new FormData(fm)); const fields={[B.F.model]:d.model.trim(),[B.F.serial]:d.serial.trim(),[B.F.num]:d.num.trim(),[B.F.wo]:d.wo.replace(/[^0-9]/g,""),[B.F.req]:d.req||null,[B.F.tech]:d.tech?[d.tech]:[]};
+    if(B.F.amount) fields[B.F.amount]=d.amount===""?null:parseFloat(String(d.amount).replace(/[$,]/g,""));
+    $("emsg").textContent="Saving…"; try{ await patch(CUR,fields); render(); openCase(CUR.id,true); }catch(err){ $("emsg").textContent=err.message; } }
+  else if(fm.id==="nform"){ const t=$("nt").value.trim(); if(!t) return; try{ await patch(CUR,{[BR[CUR.b].F.notes]:(CUR.notes?CUR.notes+"\n\n":"")+noteLine(t)}); openCase(CUR.id,true); }catch(err){ alertBox(err.message); } }
+  else if(fm.id==="cform"){ const B=BR[NEW.b], d=Object.fromEntries(new FormData(fm)); const btn=fm.querySelector("button[type=submit]"); btn.disabled=true; $("cmsg").textContent="Saving…";
+    try{ let custId=NEW.cust&&NEW.cust.id;
+      if(!custId && !($("nstock")&&$("nstock").checked)){ const nf=$("nf").value.trim(), nl=$("nl").value.trim();
+        if(!nf&&!nl) throw new Error("Pick a customer, add a new one, or tick Shop stock.");
+        const cf={[U.first]:nf,[U.last]:nl}; if($("ne").value.trim()) cf[U.email]=$("ne").value.trim(); if($("np").value.trim()) cf[U.mobile]=$("np").value.trim();
+        if($("na").value.trim()) cf[U.addr]=$("na").value.trim(); if($("nc").value.trim()) cf[U.city]=$("nc").value.trim(); if($("ns").value.trim()) cf[U.state]=$("ns").value.trim(); if($("nz").value.trim()) cf[U.zip]=$("nz").value.trim();
+        const j=await at(UDB,"",{method:"POST",body:JSON.stringify({records:[{fields:cf}],typecast:true,returnFieldsByFieldId:true})}); custId=j.records[0].id; CUST[custId]=cu(j.records[0]); }
+      const fields={[B.F.model]:d.model.trim(),[B.F.serial]:d.serial.trim(),[B.F.wo]:d.wo.replace(/[^0-9]/g,""),[B.F.status]:B.S.pending,[B.F.notes]:noteLine(d.issue.trim())};
+      if(custId) fields[B.F.cust]=[custId]; if(d.tech) fields[B.F.tech]=[d.tech];
+      const j=await at(B.table,"",{method:"POST",body:JSON.stringify({records:[{fields}],typecast:true,returnFieldsByFieldId:true})});
+      const c=norm(NEW.b,j.records[0]); CASES.unshift(c); MAILKIND="request"; render(); openCase(c.id,true);
+      setTimeout(()=>{ if($("mi")){ $("mi").value=d.issue.trim(); updMail(); } },0);
+    }catch(err){ $("cmsg").textContent=err.message; btn.disabled=false; } }
+});
+function alertBox(m){ const n=document.createElement("div"); n.className="note warn"; n.textContent=m; $("detail").prepend(n); }
+$("newbtn").onclick=openCreate;
+$("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("who").onchange=e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); if(CUR&&!$("detail").hidden) updMail(); };
+function start(){ $("setup").hidden=!!TOKEN; if(!TOKEN){ show("none"); $("setup").hidden=false; return; } show("dash"); load(); }
+start();
+</script>
+</body>
+</html>
