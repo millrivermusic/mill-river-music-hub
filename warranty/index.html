@@ -141,7 +141,7 @@ const BR={
     F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",appr:"fld6kJ1tCgP9Tmbhi",signed:"fldaBUinmAPu41LjZ",photos:"fldvMZEyCy5BS0ozb",em:"fldTBdv0QvK0FHxiK",threads:"fldwOwSVtR7rER66N",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
     numLabel:"Martin Auth #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Martin",approved:"Approved by Martin",rejected:"Rejected by Martin",complete:"Work Complete",paperwork:"Work Done Paperwork Submitte",paid:"Payout Complete"} }
 };
-const EM={ table:"tblEJMNYQqquKdAH7", subject:"flduAb86xDHLDvkIe", dir:"fld7plUKF9f1xgiYD", from:"fldDaqVri7Z30q1TL", to:"fldAFxzFUgJDiuHqt", date:"fldJ1w3ENP13tJX3o", body:"fld6qJaeu8GQZL6PM", files:"fldrMT3eleu7YNEeP", taylor:"fldPnLunZaz9e7BO1", martin:"fldAXS96YZBtMEI9T", seen:"fldHBUTfVZsjaGoIM", sentBy:"fldmbeyV3R2n3lMcF", match:"fld0SaCvatYliLDdD", thread:"fldUx2qKKilnwo1Ju" };
+const EM={ table:"tblEJMNYQqquKdAH7", subject:"flduAb86xDHLDvkIe", dir:"fld7plUKF9f1xgiYD", from:"fldDaqVri7Z30q1TL", to:"fldAFxzFUgJDiuHqt", date:"fldJ1w3ENP13tJX3o", body:"fld6qJaeu8GQZL6PM", files:"fldrMT3eleu7YNEeP", taylor:"fldPnLunZaz9e7BO1", martin:"fldAXS96YZBtMEI9T", seen:"fldHBUTfVZsjaGoIM", sentBy:"fldmbeyV3R2n3lMcF", match:"fld0SaCvatYliLDdD", thread:"fldUx2qKKilnwo1Ju", sendStatus:"fldiVh08toIicpJ25", sendError:"fldGNwSArBAg46HOG" };
 const ORDER=["pending","waiting","emailed","approved","complete","paperwork","paid","rejected"];
 const SLABEL={pending:"Pending",waiting:"Waiting on customer",emailed:"Emailed",approved:"Approved",complete:"Work complete",paperwork:"Paperwork submitted",paid:"Paid",rejected:"Rejected"};
 const U={ name:"fldyOzHd6uRNuaTHa", first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", email:"fldZz0HYc0OItKqrE", mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB", addr:"fld8ihGFPawc5sEFk", city:"fldQi9lXAU9XovuY5", state:"fldhBzyvVqq2kPfUj", zip:"fld3d9arNaGKwQ7Rs" };
@@ -206,7 +206,6 @@ function render(){
     (UNMATCHED.length?`<button class="chip ${SHOWUNM?"on":""}" data-act="unm">📥 Unmatched emails <span class="n">${UNMATCHED.length}</span></button>`:"")+
     ORDER.map(k=>{ const n=inB.filter(c=>c.status===k).length; return `<button class="chip s-${k} ${SFILT===k?"on":""}" data-act="sfilt" data-k="${k}">${SLABEL[k]} <span class="n">${n}</span></button>`; }).join("");
   if(SHOWUNM){ $("list").innerHTML=unmatchedView(); return; }
-  $("mailsetup").innerHTML=mailSetupCard();
   const v=visible();
   $("list").innerHTML=v.length?v.map(c=>{ const fl=flags(c); return `<button class="res" data-act="open" data-id="${c.id}"><b><span class="brandtag">${BR[c.b].label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</b><span class="pill s-${c.status}">${SLABEL[c.status]}</span>
     <span class="meta">${[c.serial&&"S/N "+c.serial, c.num&&(c.b==="martin"?"Auth ":"Ticket ")+c.num, c.wo&&"WO "+c.wo+(c.wos?" ("+c.wos+")":""), c.techId&&RECSTAFF[c.techId], c.req&&"Requested "+fmtD(c.req)].filter(Boolean).map(esc).join(" · ")}</span>
@@ -215,7 +214,7 @@ function render(){
 }
 
 /* ---------- email connection + unmatched ---------- */
-function mailReady(){ return !!(MAILURL&&MAILKEY); }
+function mailReady(){ return true; } /* sending goes through Airtable's outbox; no per-device setup */
 async function mailCall(body){ const r=await fetch(MAILURL,{method:"POST",body:JSON.stringify({...body,secret:MAILKEY})}); const t=await r.text(); let j; try{ j=JSON.parse(t); }catch(e){ throw new Error("The info@ mail script didn't answer properly. Check the Web app URL."); } if(!j.ok) throw new Error(j.error||"Mail script error"); return j; }
 function unmatchedView(){ const opts=CASES.map(c=>`<option value="${c.b}|${c.id}">${esc(BR[c.b].label+" · "+custName(c)+(c.model?" · "+c.model:"")+(c.serial?" · "+c.serial:""))}</option>`).join("");
   return `<div class="note">These came from Martin or Taylor but couldn't be matched to a case. Link each one, or hide it if it isn't about a warranty case.</div>`+UNMATCHED.map(r=>{ const F=r.fields||{};
@@ -384,10 +383,10 @@ function renderMail(){ const c=CUR, B=BR[c.b]; const kinds=[["request","Warranty
   updMail(); loadConvo(c); }
 async function loadConvo(c){ if(!c.emIds.length) return; const box=$("convo");
   try{ const ids=c.emIds.slice(0,90); const f="OR("+ids.map(x=>`RECORD_ID()='${x}'`).join(",")+")";
-    const rs=(await allF(EM.table,[EM.subject,EM.dir,EM.from,EM.to,EM.date,EM.body,EM.files,EM.seen,EM.sentBy],f)).sort((a,b)=>String(a.fields[EM.date]).localeCompare(String(b.fields[EM.date])));
+    const rs=(await allF(EM.table,[EM.subject,EM.dir,EM.from,EM.to,EM.date,EM.body,EM.files,EM.seen,EM.sentBy,EM.sendStatus,EM.sendError],f)).sort((a,b)=>String(a.fields[EM.date]).localeCompare(String(b.fields[EM.date])));
     if(CUR!==c||!$("convo")) return;
-    box.innerHTML=rs.map(r=>{ const F=r.fields||{}; const out=s(F[EM.dir])==="Sent"; const atts=F[EM.files]||[];
-      return `<div class="mail" style="margin-top:8px;${out?"margin-left:24px;background:var(--accent-soft)":"margin-right:24px"}"><div class="small muted">${out?"Sent"+(F[EM.sentBy]?" by "+esc(F[EM.sentBy]):""):"From "+esc(F[EM.from]||"")} · ${esc(new Date(F[EM.date]).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))}${!out&&!F[EM.seen]?' <span class="pill s-approved">new</span>':""}</div>
+    box.innerHTML=rs.map(r=>{ const F=r.fields||{}; const out=s(F[EM.dir])!=="Received"; const ss=s(F[EM.sendStatus]); const atts=F[EM.files]||[];
+      return `<div class="mail" style="margin-top:8px;${out?"margin-left:24px;background:var(--accent-soft)":"margin-right:24px"}"><div class="small muted">${out?"Sent"+(F[EM.sentBy]?" by "+esc(F[EM.sentBy]):""):"From "+esc(F[EM.from]||"")} · ${esc(new Date(F[EM.date]).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))}${!out&&!F[EM.seen]?' <span class="pill s-approved">new</span>':""}${ss&&ss!=="Sent"?` <span class="pill ${ss==="Failed"?"s-pending":"s-emailed"}">${esc(ss)}</span>`:""}</div>${ss==="Failed"?`<div class="note warn" style="margin-top:6px">Not sent: ${esc(F[EM.sendError]||"")}</div>`:""}
         <b>${esc(F[EM.subject]||"")}</b><pre>${esc(F[EM.body]||"")}</pre>${atts.length?`<div class="files" style="margin-top:6px">${atts.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}</div>`; }).join("")||'<div class="small muted">No emails yet.</div>';
     const unseen=rs.filter(r=>s(r.fields[EM.dir])==="Received"&&!r.fields[EM.seen]);
     for(let i=0;i<unseen.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:unseen.slice(i,i+10).map(r=>({id:r.id,fields:{[EM.seen]:true}}))})});
@@ -483,7 +482,13 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   else if(a==="msendok"){ b.disabled=true; const c=CUR, B=BR[c.b]; const m=curMail(); const files=allFiles(c); const picked=[...document.querySelectorAll(".matt:checked")].map(x=>files[+x.dataset.i]);
     const replyT=MAILKIND!=="request"&&c.threads.length?c.threads[c.threads.length-1]:"";
     $("mconfirm").innerHTML='<div class="note">Sending…</div>';
-    try{ await mailCall({action:"send",brand:c.b,caseId:c.id,to:B.to,subject:m.su,body:m.body,attachments:picked.map(x=>({url:x.url,filename:x.filename})),replyThreadId:replyT,sentBy:WHO});
+    try{ const rec=await at(EM.table,"",{method:"POST",body:JSON.stringify({typecast:true,returnFieldsByFieldId:true,records:[{fields:{[EM.subject]:m.su,[EM.dir]:"Outbox",[EM.to]:B.to,[EM.body]:m.body,[EM.date]:new Date().toISOString(),
+        [EM.files]:picked.map(x=>({url:x.url,filename:x.filename})),[c.b==="taylor"?EM.taylor:EM.martin]:[c.id],[EM.sentBy]:WHO,[EM.thread]:replyT,[EM.sendStatus]:"Queued",[EM.seen]:true,[EM.match]:"queued from app"}}]})});
+      const id=rec.records[0].id; let st="Queued", err="";
+      for(let i=0;i<30&&(st==="Queued"||st==="Sending");i++){ $("mconfirm").innerHTML=`<div class="note">${st==="Sending"?"Sending from info@…":"Queued, waiting for info@ to send…"}</div>`; await new Promise(r=>setTimeout(r,3000));
+        const j=await at(EM.table,"/"+id+"?returnFieldsByFieldId=true"); st=s(j.fields[EM.sendStatus]); err=s(j.fields[EM.sendError]); }
+      if(st==="Failed") throw new Error(err||"info@ couldn't send it.");
+      if(st!=="Sent"){ $("mconfirm").innerHTML='<div class="note">It\'s queued and info@ will send it within 10 minutes. It will show in the conversation below once sent. Change the status yourself after that.</div>'; await refreshCase(c); return; }
       $("mconfirm").innerHTML='<div class="note ok">Sent from info@.</div>';
       const kind=MAILKIND, lbl={request:"warranty request",follow:"follow-up",paperwork:"completion paperwork"}[kind];
       if(kind==="request"&&(c.status==="pending"||c.status==="waiting")) await setStatus("emailed","Emailed "+B.toName+" the "+lbl);

@@ -16,7 +16,8 @@
 const BASE = 'appZD2jJGbSlvofcV';
 const EMAILS = { table: 'tblEJMNYQqquKdAH7', subject: 'flduAb86xDHLDvkIe', dir: 'fld7plUKF9f1xgiYD', from: 'fldDaqVri7Z30q1TL', to: 'fldAFxzFUgJDiuHqt',
   date: 'fldJ1w3ENP13tJX3o', body: 'fld6qJaeu8GQZL6PM', files: 'fldrMT3eleu7YNEeP', taylor: 'fldPnLunZaz9e7BO1', martin: 'fldAXS96YZBtMEI9T',
-  msgId: 'fldYEO5Tw1ecbfyks', threadId: 'fldUx2qKKilnwo1Ju', seen: 'fldHBUTfVZsjaGoIM', sentBy: 'fldmbeyV3R2n3lMcF', match: 'fld0SaCvatYliLDdD' };
+  msgId: 'fldYEO5Tw1ecbfyks', threadId: 'fldUx2qKKilnwo1Ju', seen: 'fldHBUTfVZsjaGoIM', sentBy: 'fldmbeyV3R2n3lMcF', match: 'fld0SaCvatYliLDdD',
+  sendStatus: 'fldiVh08toIicpJ25', sendError: 'fldGNwSArBAg46HOG' };
 const CASES = {
   taylor: { table: 'tblUR6Y7rfCLBSllO', serial: 'fld2McIGsJW9un93M', num: 'fldYVUlLDkE8qnrop', cust: 'fld9Iym9sy5E7sQIS', threads: 'fldDCyt7LVfPNeVvi', appr: 'fldx9f5sQ0KZcwE0w', status: 'fldAgQWqOARycTlWc' },
   martin: { table: 'tblqbwCvWxNz1REQt', serial: 'fldy6Cm4X17XUmsyr', num: 'fld6WsAofFOzjA1b4', cust: 'fldF2Y0xXQgsxr9dx', threads: 'fldwOwSVtR7rER66N', appr: 'fld6kJ1tCgP9Tmbhi', status: 'fld6AgAOjS2mCSErR' },
@@ -30,6 +31,9 @@ const QUERY = '(from:martinguitar.com OR from:taylorguitars.com OR to:martinguit
 function doPost(e) {
   let req = {};
   try { req = JSON.parse(e.postData.contents || '{}'); } catch (err) { return out({ ok: false, error: 'Bad request' }); }
+  // Airtable calls this when the Warranty Desk queues an email. No secret needed: it only sends emails that are
+  // already queued in Airtable, to Martin/Taylor addresses, so a stray call can't send anything new.
+  if (req.action === 'sendQueued') { try { return out(processQueue(req.id)); } catch (err) { return out({ ok: false, error: String(err && err.message || err) }); } }
   if (!req.secret || req.secret !== prop('APP_SECRET')) return out({ ok: false, error: 'Not allowed (secret does not match).' });
   try {
     if (req.action === 'ping') return out({ ok: true, account: Session.getEffectiveUser().getEmail() });
@@ -68,19 +72,49 @@ function sendForCase(r) {
   for (const t of found) { const ms = t.getMessages(); const m = ms[ms.length - 1]; if (!msg || m.getDate() > msg.getDate()) msg = m; }
   const threadId = msg ? msg.getThread().getId() : (thread ? thread.getId() : '');
   const msgId = msg ? msg.getId() : '';
-  const fields = {
-    [EMAILS.subject]: r.subject, [EMAILS.dir]: 'Sent', [EMAILS.from]: me, [EMAILS.to]: r.to, [EMAILS.date]: new Date().toISOString(),
-    [EMAILS.body]: String(r.body).slice(0, 90000), [EMAILS.msgId]: msgId, [EMAILS.threadId]: threadId, [EMAILS.seen]: true,
-    [EMAILS.sentBy]: r.sentBy || '', [EMAILS.match]: 'sent from app', [CASES[brand] === CASES.taylor ? EMAILS.taylor : EMAILS.martin]: [r.caseId],
-  };
-  if ((r.attachments || []).length) fields[EMAILS.files] = r.attachments.map(a => ({ url: a.url, filename: a.filename }));
-  at('POST', EMAILS.table, '', { records: [{ fields }], typecast: true });
+  if (r.logId) {
+    at('PATCH', EMAILS.table, '', { records: [{ id: r.logId, fields: { [EMAILS.dir]: 'Sent', [EMAILS.from]: me, [EMAILS.date]: new Date().toISOString(),
+      [EMAILS.msgId]: msgId, [EMAILS.threadId]: threadId, [EMAILS.seen]: true, [EMAILS.sendStatus]: 'Sent', [EMAILS.match]: 'sent from app' } }], typecast: true });
+  } else {
+    const fields = {
+      [EMAILS.subject]: r.subject, [EMAILS.dir]: 'Sent', [EMAILS.from]: me, [EMAILS.to]: r.to, [EMAILS.date]: new Date().toISOString(),
+      [EMAILS.body]: String(r.body).slice(0, 90000), [EMAILS.msgId]: msgId, [EMAILS.threadId]: threadId, [EMAILS.seen]: true,
+      [EMAILS.sentBy]: r.sentBy || '', [EMAILS.match]: 'sent from app', [EMAILS.sendStatus]: 'Sent', [brand === 'taylor' ? EMAILS.taylor : EMAILS.martin]: [r.caseId],
+    };
+    if ((r.attachments || []).length) fields[EMAILS.files] = r.attachments.map(a => ({ url: a.url, filename: a.filename }));
+    at('POST', EMAILS.table, '', { records: [{ fields }], typecast: true });
+  }
   if (threadId) addThreadToCase(brand, r.caseId, threadId);
   return { ok: true, threadId, messageId: msgId };
 }
 
 /* ---------------- inbox sync (every 10 minutes) ---------------- */
-function syncInbox() { return importThreads(QUERY + ' newer_than:3d', 0, 60, true).added; }
+function syncInbox() { try { processQueue(); } catch (e) { Logger.log('Queue: ' + e); } return importThreads(QUERY + ' newer_than:3d', 0, 60, true).added; }
+
+/* ---------------- outbox: emails queued in Airtable by the Warranty Desk ---------------- */
+function processQueue(onlyId) {
+  const f = "AND({Send Status}='Queued',{Direction}='Outbox')";
+  const j = at('GET', EMAILS.table, '?pageSize=20&returnFieldsByFieldId=true&filterByFormula=' + encodeURIComponent(f));
+  let sent = 0, failed = 0;
+  for (const r of (j.records || [])) {
+    if (onlyId && r.id !== onlyId) continue;
+    const F = r.fields || {};
+    // claim it so a second run doesn't send it twice
+    at('PATCH', EMAILS.table, '', { records: [{ id: r.id, fields: { [EMAILS.sendStatus]: 'Sending' } }], typecast: true });
+    try {
+      const brand = (F[EMAILS.taylor] || []).length ? 'taylor' : 'martin';
+      const caseId = (F[EMAILS.taylor] || F[EMAILS.martin] || [])[0];
+      const res = sendForCase({ brand, caseId, to: F[EMAILS.to], subject: F[EMAILS.subject], body: F[EMAILS.body],
+        attachments: (F[EMAILS.files] || []).map(a => ({ url: a.url, filename: a.filename })), replyThreadId: F[EMAILS.threadId] || '',
+        sentBy: F[EMAILS.sentBy] || '', logId: r.id });
+      sent++;
+    } catch (err) {
+      failed++;
+      at('PATCH', EMAILS.table, '', { records: [{ id: r.id, fields: { [EMAILS.sendStatus]: 'Failed', [EMAILS.sendError]: String(err && err.message || err).slice(0, 2000) } }], typecast: true });
+    }
+  }
+  return { ok: true, sent, failed };
+}
 
 /* Remembers which recent Gmail messages are already in Airtable, so a quiet run makes zero Airtable calls. */
 function seenCache() { try { return JSON.parse(prop('SEEN_IDS') || '[]'); } catch (e) { return []; } }
