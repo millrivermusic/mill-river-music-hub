@@ -66,6 +66,7 @@ textarea.t{min-height:70px;resize:vertical}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em;min-width:0}
 label.f.wide{grid-column:1/-1}
+label.f .t{font-weight:400;color:var(--ink);letter-spacing:0;font-size:15px}
 .statusbar{display:flex;gap:6px;flex-wrap:wrap}
 .statusbar button{border:2px solid transparent;border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;cursor:pointer;color:var(--ink)}
 .statusbar button.on{border-color:var(--ink)}
@@ -115,6 +116,7 @@ label.f.wide{grid-column:1/-1}
     <div class="chips" id="statuses"></div>
     <div class="row"><input class="t" id="q" inputmode="search" placeholder="Search customer, model, serial, auth or ticket #, WO #" autocomplete="off" style="flex:1 1 220px;width:auto"></div>
     <div id="dmsg"></div>
+    <div id="mailsetup"></div>
     <div class="list" id="list"></div>
   </section>
 
@@ -133,12 +135,13 @@ const TECHS=["Jeff","Chris","Jon","Sturgis"];
 const SHOP={ name:"Mill River Music and Guitars", addr:"135 King St., Northampton, MA 01060", phone:"413-505-0129", email:"info@millrivermusic.com" };
 const BR={
   taylor:{ label:"Taylor", table:"tblUR6Y7rfCLBSllO", to:"svnetwork@taylorguitars.com", toName:"SV Network",
-    F:{cust:"fld9Iym9sy5E7sQIS",model:"fldCd9DENx3VhCujn",serial:"fld2McIGsJW9un93M",notes:"fld8hpN5wgQ7LFAIM",tech:"fldyjazpXcJlkRKTp",status:"fldAgQWqOARycTlWc",files:"fldAq2IbSlyUKThQA",appr:"fldx9f5sQ0KZcwE0w",signed:"fldCEYjWONGlqH6Dc",photos:"fld5ufcje2a9hwXNs",num:"fldYVUlLDkE8qnrop",req:"fldgCYZGyXAf4zAPT",wo:"fldhA7yMnskPN8PzW",wos:"fldtZxqN9jNpopbYz",woc:"fldAn9c5N87mZnFTH"},
+    F:{cust:"fld9Iym9sy5E7sQIS",model:"fldCd9DENx3VhCujn",serial:"fld2McIGsJW9un93M",notes:"fld8hpN5wgQ7LFAIM",tech:"fldyjazpXcJlkRKTp",status:"fldAgQWqOARycTlWc",files:"fldAq2IbSlyUKThQA",appr:"fldx9f5sQ0KZcwE0w",signed:"fldCEYjWONGlqH6Dc",photos:"fld5ufcje2a9hwXNs",em:"fldsKx1YlVuzG9hs9",threads:"fldDCyt7LVfPNeVvi",num:"fldYVUlLDkE8qnrop",req:"fldgCYZGyXAf4zAPT",wo:"fldhA7yMnskPN8PzW",wos:"fldtZxqN9jNpopbYz",woc:"fldAn9c5N87mZnFTH"},
     numLabel:"Taylor Ticket #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Taylor",approved:"Approved by Taylor",rejected:"Rejected by Taylor",complete:"Work Complete",paperwork:"Work Done Paperwork Submitted",paid:"Payout Complete"} },
   martin:{ label:"Martin", table:"tblqbwCvWxNz1REQt", to:"mlawlor@martinguitar.com", toName:"Meagan",
-    F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",appr:"fld6kJ1tCgP9Tmbhi",signed:"fldaBUinmAPu41LjZ",photos:"fldvMZEyCy5BS0ozb",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
+    F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",appr:"fld6kJ1tCgP9Tmbhi",signed:"fldaBUinmAPu41LjZ",photos:"fldvMZEyCy5BS0ozb",em:"fldTBdv0QvK0FHxiK",threads:"fldwOwSVtR7rER66N",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
     numLabel:"Martin Auth #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Martin",approved:"Approved by Martin",rejected:"Rejected by Martin",complete:"Work Complete",paperwork:"Work Done Paperwork Submitte",paid:"Payout Complete"} }
 };
+const EM={ table:"tblEJMNYQqquKdAH7", subject:"flduAb86xDHLDvkIe", dir:"fld7plUKF9f1xgiYD", from:"fldDaqVri7Z30q1TL", to:"fldAFxzFUgJDiuHqt", date:"fldJ1w3ENP13tJX3o", body:"fld6qJaeu8GQZL6PM", files:"fldrMT3eleu7YNEeP", taylor:"fldPnLunZaz9e7BO1", martin:"fldAXS96YZBtMEI9T", seen:"fldHBUTfVZsjaGoIM", sentBy:"fldmbeyV3R2n3lMcF", match:"fld0SaCvatYliLDdD", thread:"fldUx2qKKilnwo1Ju" };
 const ORDER=["pending","waiting","emailed","approved","complete","paperwork","paid","rejected"];
 const SLABEL={pending:"Pending",waiting:"Waiting on customer",emailed:"Emailed",approved:"Approved",complete:"Work complete",paperwork:"Paperwork submitted",paid:"Paid",rejected:"Rejected"};
 const U={ name:"fldyOzHd6uRNuaTHa", first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", email:"fldZz0HYc0OItKqrE", mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB", addr:"fld8ihGFPawc5sEFk", city:"fldQi9lXAU9XovuY5", state:"fldhBzyvVqq2kPfUj", zip:"fld3d9arNaGKwQ7Rs" };
@@ -147,6 +150,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let MAILURL=store.get("mrm-war-mailurl"), MAILKEY=store.get("mrm-war-mailkey"), UNSEEN={}, UNMATCHED=[], SHOWUNM=false, NEWONLY=false, MAILEDIT=false;
 let CASES=[], CUST={}, BRAND=store.get("mrm-war-brand")||"all", SFILT="", ALERT=false, Q="", CUR=null, MAILKIND="request";
 
 async function at(table,path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${table}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
@@ -160,7 +164,7 @@ const shortD=()=>{ const d=new Date(); return (d.getMonth()+1)+"/"+d.getDate(); 
 
 function keyOf(b,label){ const S=BR[b].S; for(const k in S) if(S[k]===label) return k; if(/paperwork/i.test(label)) return "paperwork"; return label?"pending":"pending"; }
 function norm(b,r){ const F=BR[b].F, f=r.fields||{}; return { b, id:r.id, created:r.createdTime, custId:(f[F.cust]||[])[0]||"", model:s(f[F.model]), serial:s(f[F.serial]), notes:s(f[F.notes]), techId:(f[F.tech]||[])[0]||"",
-  status:keyOf(b,s(f[F.status])), rawStatus:s(f[F.status]), num:s(f[F.num]), req:s(f[F.req]), wo:s(f[F.wo]), wos:s(f[F.wos]), woc:s(f[F.woc]), files:f[F.files]||[], appr:f[F.appr]||[], signed:f[F.signed]||[], photos:f[F.photos]||[], amount:F.amount?f[F.amount]:null }; }
+  status:keyOf(b,s(f[F.status])), rawStatus:s(f[F.status]), num:s(f[F.num]), req:s(f[F.req]), wo:s(f[F.wo]), wos:s(f[F.wos]), woc:s(f[F.woc]), files:f[F.files]||[], appr:f[F.appr]||[], signed:f[F.signed]||[], photos:f[F.photos]||[], emIds:f[F.em]||[], threads:s(f[F.threads]).split(",").map(x=>x.trim()).filter(Boolean), amount:F.amount?f[F.amount]:null }; }
 function custName(c){ const u=CUST[c.custId]; if(u) return u.name; return c.custId?"(customer)":(/shop stock/i.test(c.model)?"Shop stock":"No customer linked"); }
 function flags(c){ const out=[]; const done=/done|paid|finished/i.test(c.wos);
   if(done && ["pending","waiting","emailed","approved","complete"].includes(c.status)) out.push("Lightspeed says the repair is "+c.wos+". Send the completion paperwork.");
@@ -177,26 +181,50 @@ async function load(){ $("dmsg").innerHTML=`<div class="small muted">Loading cas
     for(let i=0;i<ids.length;i+=40){ const chunk=ids.slice(i,i+40); const f="OR("+chunk.map(x=>`RECORD_ID()='${x}'`).join(",")+")";
       const j=await at(UDB,"?returnFieldsByFieldId=true&pageSize=100&filterByFormula="+encodeURIComponent(f)+Object.values(U).map(x=>"&fields%5B%5D="+x).join(""));
       (j.records||[]).forEach(r=>{ CUST[r.id]=cu(r); }); }
+    await loadUnseen();
     $("dmsg").innerHTML=""; render(); if(CUR){ const c=CASES.find(x=>x.id===CUR.id); if(c) openCase(c.id,true); }
   }catch(e){ $("dmsg").innerHTML=`<div class="note warn">Couldn't load warranty cases: ${esc(e.message)}</div>`; } }
+async function loadUnseen(){ UNSEEN={}; UNMATCHED=[];
+  try{ const f=`AND({Direction}='Received',NOT({Seen}))`; const rs=await allF(EM.table,[EM.subject,EM.from,EM.date,EM.taylor,EM.martin,EM.match,EM.body],f);
+    rs.forEach(r=>{ const F=r.fields||{}; const ids=(F[EM.taylor]||[]).concat(F[EM.martin]||[]); if(ids.length) ids.forEach(id=>UNSEEN[id]=(UNSEEN[id]||0)+1); else UNMATCHED.push(r); });
+  }catch(e){ /* table may not be readable yet */ } }
+async function allF(table,fields,formula){ let out=[],off=""; do{ const qs="?pageSize=100&returnFieldsByFieldId=true"+fields.map(f=>"&fields%5B%5D="+f).join("")+(formula?"&filterByFormula="+encodeURIComponent(formula):"")+(off?"&offset="+encodeURIComponent(off):""); const j=await at(table,qs); out=out.concat(j.records||[]); off=j.offset||""; }while(off); return out; }
 function cu(r){ const f=r.fields||{}; const nm=(s(f[U.name])||[s(f[U.first]),s(f[U.last])].filter(Boolean).join(" ")).trim()||"(no name)";
   return { id:r.id, name:nm, first:s(f[U.first]), last:s(f[U.last]), email:s(f[U.email]), phone:s(f[U.mobile])||s(f[U.phone]), addr:s(f[U.addr]), city:s(f[U.city]), state:s(f[U.state]), zip:s(f[U.zip]) }; }
 
 /* ---------- dashboard ---------- */
 function visible(){ const q=Q.toLowerCase().trim();
-  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
+  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!NEWONLY||UNSEEN[c.id])&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>(flags(b).length>0)-(flags(a).length>0)||ORDER.indexOf(a.status)-ORDER.indexOf(b.status)||String(b.req||b.created).localeCompare(String(a.req||a.created))); }
 function render(){
   const inB=CASES.filter(c=>BRAND==="all"||c.b===BRAND);
   $("brands").innerHTML=[["all","All"],["taylor","Taylor"],["martin","Martin"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>k==="all"||c.b===k).length}</span></button>`).join("");
   const nA=inB.filter(c=>flags(c).length).length;
+  const nNew=inB.filter(c=>UNSEEN[c.id]).length;
   $("statuses").innerHTML=`<button class="chip alert ${ALERT?"on":""}" data-act="alert">⚠ Needs attention <span class="n">${nA}</span></button>`+
+    `<button class="chip ${NEWONLY?"on":""}" style="background:var(--info-soft);color:var(--info);border-color:transparent" data-act="newonly">✉ New replies <span class="n">${nNew}</span></button>`+
+    (UNMATCHED.length?`<button class="chip ${SHOWUNM?"on":""}" data-act="unm">📥 Unmatched emails <span class="n">${UNMATCHED.length}</span></button>`:"")+
     ORDER.map(k=>{ const n=inB.filter(c=>c.status===k).length; return `<button class="chip s-${k} ${SFILT===k?"on":""}" data-act="sfilt" data-k="${k}">${SLABEL[k]} <span class="n">${n}</span></button>`; }).join("");
+  if(SHOWUNM){ $("list").innerHTML=unmatchedView(); return; }
+  $("mailsetup").innerHTML=mailSetupCard();
   const v=visible();
   $("list").innerHTML=v.length?v.map(c=>{ const fl=flags(c); return `<button class="res" data-act="open" data-id="${c.id}"><b><span class="brandtag">${BR[c.b].label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</b><span class="pill s-${c.status}">${SLABEL[c.status]}</span>
     <span class="meta">${[c.serial&&"S/N "+c.serial, c.num&&(c.b==="martin"?"Auth ":"Ticket ")+c.num, c.wo&&"WO "+c.wo+(c.wos?" ("+c.wos+")":""), c.techId&&RECSTAFF[c.techId], c.req&&"Requested "+fmtD(c.req)].filter(Boolean).map(esc).join(" · ")}</span>
+    ${UNSEEN[c.id]?`<span class="why" style="color:var(--info)">✉ ${UNSEEN[c.id]} new repl${UNSEEN[c.id]>1?"ies":"y"} from ${BR[c.b].label}</span>`:""}
     ${fl.length?`<span class="why">⚠ ${esc(fl[0])}</span>`:""}</button>`; }).join(""):`<div class="small muted">No cases match.</div>`;
 }
+
+/* ---------- email connection + unmatched ---------- */
+function mailReady(){ return !!(MAILURL&&MAILKEY); }
+async function mailCall(body){ const r=await fetch(MAILURL,{method:"POST",body:JSON.stringify({...body,secret:MAILKEY})}); const t=await r.text(); let j; try{ j=JSON.parse(t); }catch(e){ throw new Error("The info@ mail script didn't answer properly. Check the Web app URL."); } if(!j.ok) throw new Error(j.error||"Mail script error"); return j; }
+function unmatchedView(){ const opts=CASES.map(c=>`<option value="${c.b}|${c.id}">${esc(BR[c.b].label+" · "+custName(c)+(c.model?" · "+c.model:"")+(c.serial?" · "+c.serial:""))}</option>`).join("");
+  return `<div class="note">These came from Martin or Taylor but couldn't be matched to a case. Link each one, or hide it if it isn't about a warranty case.</div>`+UNMATCHED.map(r=>{ const F=r.fields||{};
+    return `<div class="mail"><div class="small muted">${esc(F[EM.from]||"")} · ${esc(fmtD(F[EM.date]))}</div><b>${esc(F[EM.subject]||"")}</b><pre style="max-height:160px;overflow:auto">${esc((F[EM.body]||"").slice(0,1500))}</pre>
+      <div class="row" style="margin-top:6px"><select class="t" id="lk-${r.id}" style="flex:1 1 220px;width:auto"><option value="">Link to case…</option>${opts}</select><button class="btn sm" data-act="linkem" data-id="${r.id}">Link</button><button class="btn sec sm" data-act="hideem" data-id="${r.id}">Not warranty, hide</button></div></div>`; }).join(""); }
+function mailSetupCard(){ return `<details class="card" ${mailReady()?"":"open"}><summary style="cursor:pointer;font-weight:800">✉ Email connection ${mailReady()?'<span class="pill s-paperwork">connected on this device</span>':'<span class="pill s-pending">not set up on this device</span>'}</summary>
+  <p class="small muted">Paste the info@ mail script's Web app URL and secret (Jon has them). Once set, emails send from info@ right from each case, and replies from Martin and Taylor show up on the case.</p>
+  <form class="form" id="mailform" autocomplete="off"><label class="f wide">Web app URL<input class="t" id="murl" value="${esc(MAILURL)}" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false"></label><label class="f wide">Secret<input class="t" id="mkey" type="password" value="${esc(MAILKEY)}" spellcheck="false"></label>
+  <div class="row" style="grid-column:1/-1"><button class="btn" type="submit">Save and test</button>${mailReady()?'<button class="btn sec" type="button" data-act="syncnow">Check for new email now</button>':""}<span id="mailmsg" class="small"></span></div></form></details>`; }
 
 /* ---------- case detail ---------- */
 function show(which){ $("dash").hidden=which!=="dash"; $("detail").hidden=which!=="detail"; $("create").hidden=which!=="create"; window.scrollTo(0,0); }
@@ -237,7 +265,7 @@ function openCase(id,keep){ const c=CASES.find(x=>x.id===id); if(!c) return; CUR
   renderMail(); show("detail"); }
 
 function defaultMail(c){ if(c.status==="pending"||c.status==="waiting") return "request"; if(c.status==="emailed") return "follow"; if(c.status==="approved"||c.status==="complete") return "paperwork"; return "follow"; }
-function mailFor(c,kind){ const u=CUST[c.custId]||{}, B=BR[c.b], me=WHO||"Mill River Music", last=(u.last||custName(c).split(" ").slice(-1)[0]||"").trim();
+function mailFor(c0,kind){ const c={...c0,model:String(c0.model||"").replace(/^(martin|taylor)\s+/i,"")}; const u=CUST[c.custId]||{}, B=BR[c.b], me=WHO||"Mill River Music", last=(u.last||custName(c).split(" ").slice(-1)[0]||"").trim();
   const issue=($("mi")&&$("mi").value.trim())||firstLine(c.notes); const bought=($("mb")&&$("mb").value.trim())||"";
   const sig=`\n\nThank you,\n-${me}\n\n--\n${SHOP.name}\n${SHOP.addr}\n${SHOP.phone}\n${SHOP.email}`;
   const gtr=`${B.label==="Martin"?"":"Taylor "}${c.model||"guitar"}${c.serial?`, serial ${c.serial}`:""}`;
@@ -329,25 +357,46 @@ async function makeWrf(c){ if(!window.PDFLib) throw new Error("The PDF tool didn
     saved=r.ok; }catch(e){}
   return {name,saved}; }
 const firstLine=t=>String(t||"").split(/\n/).map(x=>x.replace(/^\[[^\]]*\]\s*/,"").trim()).filter(Boolean)[0]||"";
+function allFiles(c){ return [["appr",BR[c.b].label+" Approved Form"],["signed","Signed by Customer Form"],["files","Other"],["photos","Photos"]].flatMap(([k,l])=>(c[k]||[]).map(a=>({...a,box:k,boxLabel:l}))); }
+function defaultAtt(c,kind,a){ if(kind==="request") return a.box==="photos"||(a.box==="files"&&/wrf|warranty request|receipt/i.test(a.filename)); if(kind==="paperwork") return a.box==="signed"; return false; }
 function renderMail(){ const c=CUR, B=BR[c.b]; const kinds=[["request","Warranty request"],["follow","Follow-up"],["paperwork","Completion paperwork"]];
-  const prevI=$("mi")?$("mi").value:firstLine(c.notes), prevB=$("mb")?$("mb").value:"";
+  const prevI=$("mi")?$("mi").value:firstLine(c.notes), prevB=$("mb")?$("mb").value:""; MAILEDIT=false;
+  const files=allFiles(c); const ready=mailReady(); const replyT=MAILKIND!=="request"&&c.threads.length?c.threads[c.threads.length-1]:"";
   $("mailcard").innerHTML=`<h2>Email ${esc(B.toName)}</h2>
-    <p class="small muted" style="margin:0 0 10px">Goes to <b>${esc(B.to)}</b> from info@. Check the text, then open it in Gmail, attach the files and press Send yourself.</p>
+    <p class="small muted" style="margin:0 0 10px">Goes to <b>${esc(B.to)}</b> from info@. ${ready?"Check the text and attachments, then press Send.":"Email isn't connected on this device yet (see ✉ Email connection on the main page), so use Open in Gmail for now."}</p>
     <div class="tabs2">${kinds.map(([k,l])=>`<button class="chip ${MAILKIND===k?"brand on":""}" data-act="mk" data-k="${k}">${l}</button>`).join("")}</div>
     ${MAILKIND==="request"?`<div class="form"><label class="f wide">Issue (for the email)<textarea class="t" id="mi" rows="3">${esc(prevI)}</textarea></label><label class="f wide">Purchased (where / when, optional)<input class="t" id="mb" value="${esc(prevB)}" placeholder="e.g. Mill River Music, March 2026"></label></div>`:`<input type="hidden" id="mi" value="${esc(prevI)}"><input type="hidden" id="mb" value="${esc(prevB)}">`}
     ${c.b==="martin"&&MAILKIND==="request"?wrfBlock(c):""}
-    <div class="mail" style="margin-top:10px"><div class="small"><b>To:</b> ${esc(B.to)}</div><div class="small"><b>Subject:</b> <span id="msu"></span></div><pre id="mbody"></pre></div>
-    <div class="note" style="margin-top:10px">📎 Attach: ${MAILKIND==="request"?(c.b==="martin"?"the Martin Warranty Request Form (PDF), photos and the receipt":"photos and the sales receipt"):MAILKIND==="paperwork"?(c.b==="martin"?"the signed completion form":"the completed service paperwork"):"nothing needed"}.</div>
-    <div class="row" style="margin-top:10px"><a class="btn" id="gm" target="_blank" rel="noopener">Open in Gmail</a><button class="btn sec" data-act="copy">Copy text</button>
-      ${MAILKIND==="request"&&(c.status==="pending"||c.status==="waiting")?`<button class="btn sec" data-act="markemailed">I sent it: mark Emailed</button>`:""}
-      ${MAILKIND==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid"?`<button class="btn sec" data-act="markpaper">I sent it: mark Paperwork submitted</button>`:""}</div>
-    <div id="mmsg"></div>
-    <h3>Replies</h3>
-    <div class="row"><a class="btn sec sm" target="_blank" rel="noopener" href="${gmSearch(c)}">See all emails about this guitar in Gmail</a></div>`;
-  updMail(); }
+    <div class="mail" style="margin-top:10px"><div class="small"><b>To:</b> ${esc(B.to)}${replyT?' <span class="pill s-approved">reply in existing thread</span>':""}</div>
+      <label class="f" style="margin-top:6px">Subject<input class="t" id="msu"></label>
+      <label class="f" style="margin-top:6px">Message<textarea class="t" id="mbody" rows="12"></textarea></label>
+      <div class="small muted" style="margin-top:4px">You can edit the text. <a href="#" data-act="mreset">Reset to the template</a></div></div>
+    <h3>Attachments</h3>
+    ${files.length?`<div class="flist">${files.map((a,i)=>`<label class="frow" style="grid-template-columns:auto 1fr;cursor:pointer"><input type="checkbox" class="matt" data-i="${i}" ${defaultAtt(c,MAILKIND,a)?"checked":""}><span class="nm">${esc(a.filename)}<small>${esc(a.boxLabel)}</small></span></label>`).join("")}</div>`:'<div class="small muted">No files on this case yet. Add them in the file boxes above.</div>'}
+    ${MAILKIND==="request"&&c.b==="martin"?'<div class="small muted" style="margin-top:6px">Tip: press Make PDF above first so the warranty request form is on the list.</div>':""}
+    <div class="row" style="margin-top:10px">${ready?`<button class="btn" data-act="msend">Send from info@</button>`:""}<a class="btn ${ready?"sec":""}" id="gm" target="_blank" rel="noopener">Open in Gmail</a><button class="btn sec" data-act="copy">Copy text</button>
+      ${!ready&&MAILKIND==="request"&&(c.status==="pending"||c.status==="waiting")?`<button class="btn sec" data-act="markemailed">I sent it: mark Emailed</button>`:""}
+      ${!ready&&MAILKIND==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid"?`<button class="btn sec" data-act="markpaper">I sent it: mark Paperwork submitted</button>`:""}</div>
+    <div id="mconfirm"></div><div id="mmsg"></div>
+    <h3>Conversation with ${esc(B.label)}</h3>
+    <div id="convo"><div class="small muted">${c.emIds.length?"Loading emails…":(ready?"No emails on this case yet.":"Once email is connected, emails with "+esc(B.label)+" show up here.")}</div></div>
+    <div class="row" style="margin-top:8px"><a class="btn sec sm" target="_blank" rel="noopener" href="${gmSearch(c)}">Search Gmail for this guitar</a></div>`;
+  updMail(); loadConvo(c); }
+async function loadConvo(c){ if(!c.emIds.length) return; const box=$("convo");
+  try{ const ids=c.emIds.slice(0,90); const f="OR("+ids.map(x=>`RECORD_ID()='${x}'`).join(",")+")";
+    const rs=(await allF(EM.table,[EM.subject,EM.dir,EM.from,EM.to,EM.date,EM.body,EM.files,EM.seen,EM.sentBy],f)).sort((a,b)=>String(a.fields[EM.date]).localeCompare(String(b.fields[EM.date])));
+    if(CUR!==c||!$("convo")) return;
+    box.innerHTML=rs.map(r=>{ const F=r.fields||{}; const out=s(F[EM.dir])==="Sent"; const atts=F[EM.files]||[];
+      return `<div class="mail" style="margin-top:8px;${out?"margin-left:24px;background:var(--accent-soft)":"margin-right:24px"}"><div class="small muted">${out?"Sent"+(F[EM.sentBy]?" by "+esc(F[EM.sentBy]):""):"From "+esc(F[EM.from]||"")} · ${esc(new Date(F[EM.date]).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))}${!out&&!F[EM.seen]?' <span class="pill s-approved">new</span>':""}</div>
+        <b>${esc(F[EM.subject]||"")}</b><pre>${esc(F[EM.body]||"")}</pre>${atts.length?`<div class="files" style="margin-top:6px">${atts.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}</div>`; }).join("")||'<div class="small muted">No emails yet.</div>';
+    const unseen=rs.filter(r=>s(r.fields[EM.dir])==="Received"&&!r.fields[EM.seen]);
+    for(let i=0;i<unseen.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:unseen.slice(i,i+10).map(r=>({id:r.id,fields:{[EM.seen]:true}}))})});
+    if(unseen.length){ delete UNSEEN[c.id]; }
+  }catch(e){ box.innerHTML=`<div class="note warn">Couldn't load emails: ${esc(e.message)}</div>`; } }
 function gmSearch(c){ const terms=[c.serial, c.num].filter(Boolean).map(x=>`"${x}"`); const q=(terms.length?terms.join(" OR "):`"${custName(c)}"`); return "https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"#search/"+encodeURIComponent(q); }
-function updMail(){ const m=mailFor(CUR,MAILKIND); $("msu").textContent=m.su; $("mbody").textContent=m.body;
-  $("gm").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"&view=cm&fs=1&to="+encodeURIComponent(BR[CUR.b].to)+"&su="+encodeURIComponent(m.su)+"&body="+encodeURIComponent(m.body); }
+function updMail(force){ const m=mailFor(CUR,MAILKIND); if(!MAILEDIT||force){ $("msu").value=m.su; $("mbody").value=m.body; if(force) MAILEDIT=false; } updGm(); }
+function curMail(){ return { su:$("msu").value.trim(), body:$("mbody").value }; }
+function updGm(){ const m=curMail(); $("gm").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"&view=cm&fs=1&to="+encodeURIComponent(BR[CUR.b].to)+"&su="+encodeURIComponent(m.su)+"&body="+encodeURIComponent(m.body); }
 
 async function patch(c,fields){ const j=await at(BR[c.b].table,"",{method:"PATCH",body:JSON.stringify({records:[{id:c.id,fields}],typecast:true,returnFieldsByFieldId:true})}); const n=norm(c.b,j.records[0]); Object.assign(c,n); return c; }
 function noteLine(txt){ return `[${shortD()} ${WHO||"?"}] ${txt}`; }
@@ -393,6 +442,7 @@ let tq=null;
 document.addEventListener("input",e=>{
   if(e.target.id==="q"){ Q=e.target.value; render(); }
   if(e.target.id==="mi"||e.target.id==="mb") updMail();
+  if(e.target.id==="msu"||e.target.id==="mbody"){ MAILEDIT=true; updGm(); }
   if(e.target.classList&&e.target.classList.contains("wrf")&&CUR) store.set("mrm-wrf-"+CUR.id,JSON.stringify(wrfVals()));
   if(e.target.id==="cq"||e.target.id==="ncq"){ clearTimeout(tq); const el=e.target; tq=setTimeout(()=>{
     if(el.id==="cq") custSearch(el.value,$("csugg"),async u=>{ try{ await patch(CUR,{[BR[CUR.b].F.cust]:[u.id]}); render(); openCase(CUR.id,true); }catch(err){ $("csugg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
@@ -409,7 +459,7 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   else if(a==="stno") $("stconfirm").innerHTML="";
   else if(a==="stok"){ b.disabled=true; try{ await setStatus(b.dataset.k,($("stnote").value.trim()?SLABEL[b.dataset.k]+": "+$("stnote").value.trim():"Status → "+SLABEL[b.dataset.k])); }catch(err){ $("stconfirm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="mk"){ MAILKIND=b.dataset.k; renderMail(); }
-  else if(a==="copy"){ const m=mailFor(CUR,MAILKIND); const t="To: "+BR[CUR.b].to+"\nSubject: "+m.su+"\n\n"+m.body;
+  else if(a==="copy"){ const m=curMail(); const t="To: "+BR[CUR.b].to+"\nSubject: "+m.su+"\n\n"+m.body;
     try{ await navigator.clipboard.writeText(t); $("mmsg").innerHTML=`<div class="note ok">Copied.</div>`; }catch(err){ const r=document.createRange(); r.selectNodeContents($("mbody")); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); $("mmsg").innerHTML=`<div class="note">Text selected. Press Copy.</div>`; } }
   else if(a==="markemailed"){ b.disabled=true; try{ await setStatus("emailed","Emailed "+BR[CUR.b].toName+" the warranty request"); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(a==="markpaper"){ b.disabled=true; try{ await setStatus("paperwork","Sent completion paperwork to "+BR[CUR.b].toName); }catch(err){ $("mmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
@@ -417,10 +467,36 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   else if(a==="frm"){ const k=b.dataset.k; const f=(CUR[k]||[])[+b.dataset.i]; if(!f) return; $("frm").innerHTML=`<div class="confirm"><b>Remove “${esc(f.filename)}” from this case?</b><div class="small" style="margin-top:4px">Download it first if you might need it again.</div><div class="row" style="margin-top:8px"><button class="btn" data-act="frmok" data-k="${k}" data-id="${esc(f.id)}">Yes, remove it</button><button class="btn sec" data-act="frmno">Cancel</button></div></div>`; $("frm").scrollIntoView({block:"nearest"}); }
   else if(a==="frmno") $("frm").innerHTML="";
   else if(a==="frmok"){ b.disabled=true; try{ const k=b.dataset.k; const keep=(CUR[k]||[]).filter(x=>x.id!==b.dataset.id).map(x=>({id:x.id})); await patch(CUR,{[BR[CUR.b].F[k]]:keep}); await refreshCase(CUR); }catch(err){ $("frm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="mreset"){ e.preventDefault(); updMail(true); }
+  else if(a==="newonly"){ NEWONLY=!NEWONLY; SHOWUNM=false; render(); }
+  else if(a==="unm"){ SHOWUNM=!SHOWUNM; render(); }
+  else if(a==="linkem"){ const v=$("lk-"+b.dataset.id).value; if(!v) return; const [br,cid]=v.split("|"); b.disabled=true;
+    try{ await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:[{id:b.dataset.id,fields:{[br==="taylor"?EM.taylor:EM.martin]:[cid],[EM.match]:"linked by "+(WHO||"staff")}}]})}); await load(); }catch(err){ alertBox(err.message); } }
+  else if(a==="hideem"){ b.disabled=true; try{ await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:[{id:b.dataset.id,fields:{[EM.seen]:true,[EM.match]:"hidden by "+(WHO||"staff")}}]})}); UNMATCHED=UNMATCHED.filter(r=>r.id!==b.dataset.id); render(); }catch(err){ alertBox(err.message); } }
+  else if(a==="syncnow"){ b.disabled=true; $("mailmsg").textContent="Checking info@…"; try{ const j=await mailCall({action:"sync"}); $("mailmsg").textContent=`Done. ${j.added} new email${j.added===1?"":"s"}.`; await load(); }catch(err){ $("mailmsg").textContent=err.message; } b.disabled=false; }
+  else if(a==="msend"){ const m=curMail(); const files=allFiles(CUR); const picked=[...document.querySelectorAll(".matt:checked")].map(x=>files[+x.dataset.i]);
+    if(!m.su||!m.body.trim()){ $("mmsg").innerHTML='<div class="note warn">Add a subject and message first.</div>'; return; }
+    if(!WHO){ $("mmsg").innerHTML='<div class="note warn">Pick who\'s working (top right) first.</div>'; return; }
+    $("mconfirm").innerHTML=`<div class="confirm"><b>Send this email now?</b><dl class="kv" style="margin-top:6px"><dt>To</dt><dd>${esc(BR[CUR.b].to)}</dd><dt>Subject</dt><dd>${esc(m.su)}</dd><dt>Attachments</dt><dd>${picked.length?picked.map(x=>esc(x.filename)).join("<br>"):"none"}</dd><dt>From</dt><dd>info@millrivermusic.com (sent by ${esc(WHO)})</dd></dl>
+      <div class="row" style="margin-top:8px"><button class="btn" data-act="msendok">Yes, send it</button><button class="btn sec" data-act="msendno">Cancel</button></div></div>`; }
+  else if(a==="msendno") $("mconfirm").innerHTML="";
+  else if(a==="msendok"){ b.disabled=true; const c=CUR, B=BR[c.b]; const m=curMail(); const files=allFiles(c); const picked=[...document.querySelectorAll(".matt:checked")].map(x=>files[+x.dataset.i]);
+    const replyT=MAILKIND!=="request"&&c.threads.length?c.threads[c.threads.length-1]:"";
+    $("mconfirm").innerHTML='<div class="note">Sending…</div>';
+    try{ await mailCall({action:"send",brand:c.b,caseId:c.id,to:B.to,subject:m.su,body:m.body,attachments:picked.map(x=>({url:x.url,filename:x.filename})),replyThreadId:replyT,sentBy:WHO});
+      $("mconfirm").innerHTML='<div class="note ok">Sent from info@.</div>';
+      const kind=MAILKIND, lbl={request:"warranty request",follow:"follow-up",paperwork:"completion paperwork"}[kind];
+      if(kind==="request"&&(c.status==="pending"||c.status==="waiting")) await setStatus("emailed","Emailed "+B.toName+" the "+lbl);
+      else if(kind==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid") await setStatus("paperwork","Sent "+lbl+" to "+B.toName);
+      else { await patch(c,{[B.F.notes]:(c.notes?c.notes+"\n\n":"")+noteLine("Sent "+lbl+" to "+B.toName)}); }
+      await refreshCase(c);
+    }catch(err){ $("mconfirm").innerHTML=`<div class="note warn">Not sent: ${esc(err.message)}</div>`; } }
   else if(a==="nb"){ NEW.b=b.dataset.k; drawCreate(); }
   else if(a==="nclear"){ NEW.cust=null; drawCreate(); }
 });
 document.addEventListener("submit",async e=>{ e.preventDefault(); const fm=e.target;
+  if(fm.id==="mailform"){ const u=$("murl").value.trim(), k=$("mkey").value.trim(); const pu=MAILURL, pk=MAILKEY; MAILURL=u; MAILKEY=k; $("mailmsg").textContent="Testing…";
+    try{ const j=await mailCall({action:"ping"}); store.set("mrm-war-mailurl",u); store.set("mrm-war-mailkey",k); $("mailmsg").textContent="Connected as "+j.account+"."; setTimeout(render,1200); }catch(err){ MAILURL=pu; MAILKEY=pk; $("mailmsg").textContent=err.message; } return; }
   if(fm.id==="setform"){ const t=$("tok").value.trim(); const prev=TOKEN; TOKEN=t; try{ await at(BR.martin.table,"?maxRecords=1"); store.set("mrm-photos-token",t); start(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
   else if(fm.id==="eform"){ const B=BR[CUR.b], d=Object.fromEntries(new FormData(fm)); const fields={[B.F.model]:d.model.trim(),[B.F.serial]:d.serial.trim(),[B.F.num]:d.num.trim(),[B.F.wo]:d.wo.replace(/[^0-9]/g,""),[B.F.req]:d.req||null,[B.F.tech]:d.tech?[d.tech]:[]};
     if(B.F.amount) fields[B.F.amount]=d.amount===""?null:parseFloat(String(d.amount).replace(/[$,]/g,""));
