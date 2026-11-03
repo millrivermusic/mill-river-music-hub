@@ -13,7 +13,7 @@
   --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
   --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
   --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
-  --s-pending:#E8D6D3; --s-waiting:#F3DFC4; --s-emailed:#F6EAB8; --s-approved:#D3E1F7; --s-rejected:#E3E0DB; --s-complete:#F7D9C2; --s-paperwork:#D2EDD9; --s-paid:#CDEBE8;
+  --s-pending:#E8D6D3; --s-waiting:#F3DFC4; --s-emailed:#F6EAB8; --s-approved:#D3E1F7; --s-rejected:#E3E0DB; --s-complete:#F7D9C2; --s-paperwork:#D2EDD9; --s-paid:#CDEBE8; --s-passed:#E6DCEB;
   --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
   color-scheme:light;
 }
@@ -21,7 +21,7 @@
   --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
   --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
   --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; --sugg:#F0C14D; --sugg-soft:#3A2E10;
-  --s-pending:#4A2C28; --s-waiting:#4A3820; --s-emailed:#4A4218; --s-approved:#22344F; --s-rejected:#33302B; --s-complete:#4E3220; --s-paperwork:#1E4029; --s-paid:#1B3E3B; color-scheme:dark}}
+  --s-pending:#4A2C28; --s-waiting:#4A3820; --s-emailed:#4A4218; --s-approved:#22344F; --s-rejected:#33302B; --s-complete:#4E3220; --s-paperwork:#1E4029; --s-paid:#1B3E3B; --s-passed:#3A2E40; color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
@@ -53,7 +53,7 @@ textarea.t{min-height:70px;resize:vertical}
 .chip.on{outline:2px solid var(--accent);outline-offset:1px}
 .chip.brand.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);outline:none}
 .chip.alert{background:var(--warn-soft);color:var(--warn);border-color:transparent}
-.s-pending{background:var(--s-pending)} .s-waiting{background:var(--s-waiting)} .s-emailed{background:var(--s-emailed)} .s-approved{background:var(--s-approved)} .s-rejected{background:var(--s-rejected)} .s-complete{background:var(--s-complete)} .s-paperwork{background:var(--s-paperwork)} .s-paid{background:var(--s-paid)}
+.s-pending{background:var(--s-pending)} .s-waiting{background:var(--s-waiting)} .s-emailed{background:var(--s-emailed)} .s-approved{background:var(--s-approved)} .s-rejected{background:var(--s-rejected)} .s-complete{background:var(--s-complete)} .s-paperwork{background:var(--s-paperwork)} .s-paid{background:var(--s-paid)} .s-passed{background:var(--s-passed)}
 .pill{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;white-space:nowrap}
 .top{display:flex;flex-direction:column;gap:10px}
 .list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
@@ -137,14 +137,14 @@ const SHOP={ name:"Mill River Music and Guitars", addr:"135 King St., Northampto
 const BR={
   taylor:{ label:"Taylor", table:"tblUR6Y7rfCLBSllO", to:"svnetwork@taylorguitars.com", toName:"SV Network",
     F:{cust:"fld9Iym9sy5E7sQIS",model:"fldCd9DENx3VhCujn",serial:"fld2McIGsJW9un93M",notes:"fld8hpN5wgQ7LFAIM",tech:"fldyjazpXcJlkRKTp",status:"fldAgQWqOARycTlWc",files:"fldAq2IbSlyUKThQA",appr:"fldx9f5sQ0KZcwE0w",signed:"fldCEYjWONGlqH6Dc",photos:"fld5ufcje2a9hwXNs",em:"fldsKx1YlVuzG9hs9",threads:"fldDCyt7LVfPNeVvi",num:"fldYVUlLDkE8qnrop",req:"fldgCYZGyXAf4zAPT",wo:"fldhA7yMnskPN8PzW",wos:"fldtZxqN9jNpopbYz",woc:"fldAn9c5N87mZnFTH"},
-    numLabel:"Taylor Ticket #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Taylor",approved:"Approved by Taylor",rejected:"Rejected by Taylor",complete:"Work Complete",paperwork:"Work Done Paperwork Submitted",paid:"Payout Complete"} },
+    numLabel:"Taylor Ticket #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Taylor",approved:"Approved by Taylor",rejected:"Rejected by Taylor",complete:"Work Complete",paperwork:"Work Done Paperwork Submitted",paid:"Payout Complete",passed:"Customer Passed"} },
   martin:{ label:"Martin", table:"tblqbwCvWxNz1REQt", to:"mlawlor@martinguitar.com", toName:"Meagan",
     F:{cust:"fldF2Y0xXQgsxr9dx",model:"fld8xzh2iPeJHBNO2",serial:"fldy6Cm4X17XUmsyr",notes:"fldEBPrt1y1VbETdr",tech:"fld4DAdNsuU9KQ3o4",status:"fld6AgAOjS2mCSErR",files:"fld6KsmznDJIaSAlf",appr:"fld6kJ1tCgP9Tmbhi",signed:"fldaBUinmAPu41LjZ",photos:"fldvMZEyCy5BS0ozb",em:"fldTBdv0QvK0FHxiK",threads:"fldwOwSVtR7rER66N",num:"fld6WsAofFOzjA1b4",req:"fldrB8TVSm7bu8v7M",wo:"fldf3qeiGhy2fngtZ",wos:"fld0d9wyMcdg3inUJ",woc:"fldqYBhjt5aQGUmat",amount:"fldQ8upoHVmD8Xj9e"},
-    numLabel:"Martin Auth #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Martin",approved:"Approved by Martin",rejected:"Rejected by Martin",complete:"Work Complete",paperwork:"Work Done Paperwork Submitte",paid:"Payout Complete"} }
+    numLabel:"Martin Auth #", S:{pending:"Pending",waiting:"Waiting on Customer",emailed:"Emailed Martin",approved:"Approved by Martin",rejected:"Rejected by Martin",complete:"Work Complete",paperwork:"Work Done Paperwork Submitte",paid:"Payout Complete",passed:"Customer Passed"} }
 };
 const EM={ table:"tblEJMNYQqquKdAH7", subject:"flduAb86xDHLDvkIe", dir:"fld7plUKF9f1xgiYD", from:"fldDaqVri7Z30q1TL", to:"fldAFxzFUgJDiuHqt", date:"fldJ1w3ENP13tJX3o", body:"fld6qJaeu8GQZL6PM", files:"fldrMT3eleu7YNEeP", taylor:"fldPnLunZaz9e7BO1", martin:"fldAXS96YZBtMEI9T", seen:"fldHBUTfVZsjaGoIM", sentBy:"fldmbeyV3R2n3lMcF", match:"fld0SaCvatYliLDdD", thread:"fldUx2qKKilnwo1Ju", sendStatus:"fldiVh08toIicpJ25", sendError:"fldGNwSArBAg46HOG" };
-const ORDER=["pending","waiting","emailed","approved","complete","paperwork","paid","rejected"];
-const SLABEL={pending:"Pending",waiting:"Waiting on customer",emailed:"Emailed",approved:"Approved",complete:"Work complete",paperwork:"Paperwork submitted",paid:"Paid",rejected:"Rejected"};
+const ORDER=["pending","waiting","emailed","approved","complete","paperwork","paid","rejected","passed"];
+const SLABEL={pending:"Pending",waiting:"Waiting on customer",emailed:"Emailed",approved:"Approved",complete:"Work complete",paperwork:"Paperwork submitted",paid:"Paid",rejected:"Rejected",passed:"Customer passed"};
 const U={ name:"fldyOzHd6uRNuaTHa", first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", email:"fldZz0HYc0OItKqrE", mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB", addr:"fld8ihGFPawc5sEFk", city:"fldQi9lXAU9XovuY5", state:"fldhBzyvVqq2kPfUj", zip:"fld3d9arNaGKwQ7Rs" };
 
 const $=id=>document.getElementById(id);
@@ -201,15 +201,15 @@ function cu(r){ const f=r.fields||{}; const nm=(s(f[U.name])||[s(f[U.first]),s(f
 
 /* ---------- dashboard ---------- */
 function visible(){ const q=Q.toLowerCase().trim();
-  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!TECH||(TECH==="none"?!c.techId:c.techId===STAFFREC[TECH]))&&(!OPENONLY||SFILT==="paid"||SFILT==="rejected"||(c.status!=="paid"&&c.status!=="rejected"))&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!NEWONLY||UNSEEN[c.id])&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
+  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!TECH||(TECH==="none"?!c.techId:c.techId===STAFFREC[TECH]))&&(!OPENONLY||SFILT==="paid"||SFILT==="rejected"||SFILT==="passed"||(c.status!=="paid"&&c.status!=="rejected"&&c.status!=="passed"))&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!NEWONLY||UNSEEN[c.id])&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>(flags(b).length>0)-(flags(a).length>0)||ORDER.indexOf(a.status)-ORDER.indexOf(b.status)||String(b.req||b.created).localeCompare(String(a.req||a.created))); }
 function render(){
   const byTech=c=>!TECH||(TECH==="none"?!c.techId:c.techId===STAFFREC[TECH]);
-  const isOpen=c=>c.status!=="paid"&&c.status!=="rejected";
+  const isOpen=c=>c.status!=="paid"&&c.status!=="rejected"&&c.status!=="passed";
   $("techs").innerHTML=[["","Everyone"],...TECHS.map(n=>[n,n]),["none","Unassigned"]].map(([k,l])=>{ const n=CASES.filter(c=>(!k||(k==="none"?!c.techId:c.techId===STAFFREC[k]))&&(!OPENONLY||isOpen(c))).length; return `<button class="chip brand ${TECH===k?"on":""}" data-act="tech" data-k="${k}">${l} <span class="n">${n}</span></button>`; }).join("");
   const inB=CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&byTech(c));
   $("brands").innerHTML=[["all","Martin + Taylor"],["martin","Martin"],["taylor","Taylor"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>(k==="all"||c.b===k)&&byTech(c)&&(!OPENONLY||isOpen(c))).length}</span></button>`).join("")+
-    `<span style="width:8px"></span><button class="chip brand ${OPENONLY?"on":""}" data-act="openonly" data-k="1">Open</button><button class="chip brand ${!OPENONLY?"on":""}" data-act="openonly" data-k="0">All incl. paid</button>`;
+    `<span style="width:8px"></span><button class="chip brand ${OPENONLY?"on":""}" data-act="openonly" data-k="1">Open</button><button class="chip brand ${!OPENONLY?"on":""}" data-act="openonly" data-k="0">All incl. closed</button>`;
   const nA=inB.filter(c=>flags(c).length).length;
   const nNew=inB.filter(c=>UNSEEN[c.id]).length;
   $("statuses").innerHTML=`<button class="chip alert ${ALERT?"on":""}" data-act="alert">⚠ Needs attention <span class="n">${nA}</span></button>`+
