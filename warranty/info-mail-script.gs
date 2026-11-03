@@ -148,7 +148,12 @@ function importThreads(query, start, max, quick) {
   for (const th of threads) {
     if (Date.now() - t0 > 300000) break; // stay under Google's 6-minute limit
     const tid = th.getId();
-    for (const m of th.getMessages()) {
+    const allMsgs = th.getMessages();
+    const threadText = allMsgs.map(m => (m.getSubject() || '') + '\n' + trimQuoted(m.getPlainBody() || '') + '\n' +
+      m.getAttachments({ includeInlineImages: false }).map(a => a.getName()).join(' ')).join('\n');
+    const threadHit = matchCase(cases, tid, threadText);
+    if (threadHit) cases.forEach(c => { if (c.id === threadHit.id && c.threads.indexOf(tid) === -1) c.threads += (c.threads ? ',' : '') + tid; });
+    for (const m of allMsgs) {
       const mid = m.getId();
       if (known[mid]) continue;
       if (!cacheSet[mid]) { cache.push(mid); cacheSet[mid] = true; }
@@ -158,7 +163,7 @@ function importThreads(query, start, max, quick) {
       const sent = from.toLowerCase().indexOf(me) !== -1;
       const subject = m.getSubject() || '(no subject)';
       const body = trimQuoted(m.getPlainBody() || '');
-      const hit = matchCase(cases, tid, subject + '\n' + body + '\n' + m.getAttachments({ includeInlineImages: false }).map(a => a.getName()).join(' '));
+      const hit = threadHit;
       const fields = {
         [EMAILS.subject]: subject, [EMAILS.dir]: sent ? 'Sent' : 'Received', [EMAILS.from]: from, [EMAILS.to]: to,
         [EMAILS.date]: m.getDate().toISOString(), [EMAILS.body]: body.slice(0, 90000), [EMAILS.msgId]: mid, [EMAILS.threadId]: tid,
@@ -189,7 +194,8 @@ function matchCase(cases, tid, text) {
   }
   if (found.length === 1 || (found.length > 1 && found.every(f => f.c.id === found[0].c.id))) return { brand: found[0].c.brand, id: found[0].c.id, how: found[0].how };
   const low = T.toLowerCase();
-  const byName = cases.filter(c => c.last && c.last.length >= 4 && low.indexOf(' ' + c.last.toLowerCase() + ' ') !== -1);
+  const NOT_NAMES = ['taylor', 'martin', 'guitar', 'guitars', 'music', 'river', 'mill', 'white', 'smith'];
+  const byName = cases.filter(c => c.last && c.last.length >= 4 && NOT_NAMES.indexOf(c.last.toLowerCase()) === -1 && low.indexOf(' ' + c.last.toLowerCase() + ' ') !== -1);
   if (byName.length === 1) return { brand: byName[0].brand, id: byName[0].id, how: 'name ' + byName[0].last };
   return null;
 }

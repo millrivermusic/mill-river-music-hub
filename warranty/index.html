@@ -109,6 +109,7 @@ label.f .t{font-weight:400;color:var(--ink);letter-spacing:0;font-size:15px}
   </section>
 
   <section class="card top" id="dash" hidden>
+    <div class="row" style="gap:6px"><span class="small muted" style="font-weight:800;letter-spacing:.04em;text-transform:uppercase">Assigned tech</span><div class="chips" id="techs"></div></div>
     <div class="row" style="justify-content:space-between">
       <div class="chips" id="brands"></div>
       <button class="btn" id="newbtn" type="button">+ New warranty case</button>
@@ -150,6 +151,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let TECH=store.get("mrm-war-tech")||"", OPENONLY=store.get("mrm-war-open")!=="0";
 let MAILURL=store.get("mrm-war-mailurl"), MAILKEY=store.get("mrm-war-mailkey"), UNSEEN={}, UNMATCHED=[], SHOWUNM=false, NEWONLY=false, MAILEDIT=false;
 let CASES=[], CUST={}, BRAND=store.get("mrm-war-brand")||"all", SFILT="", ALERT=false, Q="", CUR=null, MAILKIND="request";
 
@@ -185,8 +187,13 @@ async function load(){ $("dmsg").innerHTML=`<div class="small muted">Loading cas
     $("dmsg").innerHTML=""; render(); if(CUR){ const c=CASES.find(x=>x.id===CUR.id); if(c) openCase(c.id,true); }
   }catch(e){ $("dmsg").innerHTML=`<div class="note warn">Couldn't load warranty cases: ${esc(e.message)}</div>`; } }
 async function loadUnseen(){ UNSEEN={}; UNMATCHED=[];
-  try{ const f=`AND({Direction}='Received',NOT({Seen}))`; const rs=await allF(EM.table,[EM.subject,EM.from,EM.date,EM.taylor,EM.martin,EM.match,EM.body],f);
-    rs.forEach(r=>{ const F=r.fields||{}; const ids=(F[EM.taylor]||[]).concat(F[EM.martin]||[]); if(ids.length) ids.forEach(id=>UNSEEN[id]=(UNSEEN[id]||0)+1); else UNMATCHED.push(r); });
+  try{ const f=`OR(AND({Direction}='Received',NOT({Seen})),{Match}='unmatched')`; const rs=await allF(EM.table,[EM.subject,EM.from,EM.date,EM.taylor,EM.martin,EM.match,EM.body,EM.dir,EM.seen,EM.thread],f);
+    const byT={};
+    rs.forEach(r=>{ const F=r.fields||{}; const ids=(F[EM.taylor]||[]).concat(F[EM.martin]||[]);
+      if(ids.length){ if(s(F[EM.dir])==="Received"&&!F[EM.seen]) ids.forEach(id=>UNSEEN[id]=(UNSEEN[id]||0)+1); }
+      else if(F[EM.match]==="unmatched"){ const t=F[EM.thread]||r.id; (byT[t]=byT[t]||[]).push(r); } });
+    UNMATCHED=Object.values(byT).map(list=>{ list.sort((a,b)=>String(b.fields[EM.date]).localeCompare(String(a.fields[EM.date]))); const top=list[0]; top._ids=list.map(x=>x.id); top._n=list.length; return top; })
+      .sort((a,b)=>String(b.fields[EM.date]).localeCompare(String(a.fields[EM.date])));
   }catch(e){ /* table may not be readable yet */ } }
 async function allF(table,fields,formula){ let out=[],off=""; do{ const qs="?pageSize=100&returnFieldsByFieldId=true"+fields.map(f=>"&fields%5B%5D="+f).join("")+(formula?"&filterByFormula="+encodeURIComponent(formula):"")+(off?"&offset="+encodeURIComponent(off):""); const j=await at(table,qs); out=out.concat(j.records||[]); off=j.offset||""; }while(off); return out; }
 function cu(r){ const f=r.fields||{}; const nm=(s(f[U.name])||[s(f[U.first]),s(f[U.last])].filter(Boolean).join(" ")).trim()||"(no name)";
@@ -194,11 +201,15 @@ function cu(r){ const f=r.fields||{}; const nm=(s(f[U.name])||[s(f[U.first]),s(f
 
 /* ---------- dashboard ---------- */
 function visible(){ const q=Q.toLowerCase().trim();
-  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!NEWONLY||UNSEEN[c.id])&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
+  return CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&(!TECH||(TECH==="none"?!c.techId:c.techId===STAFFREC[TECH]))&&(!OPENONLY||SFILT==="paid"||SFILT==="rejected"||(c.status!=="paid"&&c.status!=="rejected"))&&(!SFILT||c.status===SFILT)&&(!ALERT||flags(c).length)&&(!NEWONLY||UNSEEN[c.id])&&(!q||[custName(c),c.model,c.serial,c.num,c.wo,c.notes].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>(flags(b).length>0)-(flags(a).length>0)||ORDER.indexOf(a.status)-ORDER.indexOf(b.status)||String(b.req||b.created).localeCompare(String(a.req||a.created))); }
 function render(){
-  const inB=CASES.filter(c=>BRAND==="all"||c.b===BRAND);
-  $("brands").innerHTML=[["all","All"],["taylor","Taylor"],["martin","Martin"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>k==="all"||c.b===k).length}</span></button>`).join("");
+  const byTech=c=>!TECH||(TECH==="none"?!c.techId:c.techId===STAFFREC[TECH]);
+  const isOpen=c=>c.status!=="paid"&&c.status!=="rejected";
+  $("techs").innerHTML=[["","Everyone"],...TECHS.map(n=>[n,n]),["none","Unassigned"]].map(([k,l])=>{ const n=CASES.filter(c=>(!k||(k==="none"?!c.techId:c.techId===STAFFREC[k]))&&(!OPENONLY||isOpen(c))).length; return `<button class="chip brand ${TECH===k?"on":""}" data-act="tech" data-k="${k}">${l} <span class="n">${n}</span></button>`; }).join("");
+  const inB=CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&byTech(c));
+  $("brands").innerHTML=[["all","Martin + Taylor"],["martin","Martin"],["taylor","Taylor"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>(k==="all"||c.b===k)&&byTech(c)&&(!OPENONLY||isOpen(c))).length}</span></button>`).join("")+
+    `<span style="width:8px"></span><button class="chip brand ${OPENONLY?"on":""}" data-act="openonly" data-k="1">Open</button><button class="chip brand ${!OPENONLY?"on":""}" data-act="openonly" data-k="0">All incl. paid</button>`;
   const nA=inB.filter(c=>flags(c).length).length;
   const nNew=inB.filter(c=>UNSEEN[c.id]).length;
   $("statuses").innerHTML=`<button class="chip alert ${ALERT?"on":""}" data-act="alert">⚠ Needs attention <span class="n">${nA}</span></button>`+
@@ -217,8 +228,8 @@ function render(){
 function mailReady(){ return true; } /* sending goes through Airtable's outbox; no per-device setup */
 async function mailCall(body){ const r=await fetch(MAILURL,{method:"POST",body:JSON.stringify({...body,secret:MAILKEY})}); const t=await r.text(); let j; try{ j=JSON.parse(t); }catch(e){ throw new Error("The info@ mail script didn't answer properly. Check the Web app URL."); } if(!j.ok) throw new Error(j.error||"Mail script error"); return j; }
 function unmatchedView(){ const opts=CASES.map(c=>`<option value="${c.b}|${c.id}">${esc(BR[c.b].label+" · "+custName(c)+(c.model?" · "+c.model:"")+(c.serial?" · "+c.serial:""))}</option>`).join("");
-  return `<div class="note">These came from Martin or Taylor but couldn't be matched to a case. Link each one, or hide it if it isn't about a warranty case.</div>`+UNMATCHED.map(r=>{ const F=r.fields||{};
-    return `<div class="mail"><div class="small muted">${esc(F[EM.from]||"")} · ${esc(fmtD(F[EM.date]))}</div><b>${esc(F[EM.subject]||"")}</b><pre style="max-height:160px;overflow:auto">${esc((F[EM.body]||"").slice(0,1500))}</pre>
+  return `<div class="note">These came from Martin or Taylor but couldn't be matched to a case. Link each thread to its case (all its emails move together), or hide it if it isn't about a warranty case.</div>`+UNMATCHED.map(r=>{ const F=r.fields||{};
+    return `<div class="mail"><div class="small muted">${esc(F[EM.from]||"")} · ${esc(fmtD(F[EM.date]))}</div><b>${esc(F[EM.subject]||"")}</b>${r._n>1?` <span class="pill s-rejected">${r._n} emails in thread</span>`:""}<pre style="max-height:160px;overflow:auto">${esc((F[EM.body]||"").slice(0,1500))}</pre>
       <div class="row" style="margin-top:6px"><select class="t" id="lk-${r.id}" style="flex:1 1 220px;width:auto"><option value="">Link to case…</option>${opts}</select><button class="btn sm" data-act="linkem" data-id="${r.id}">Link</button><button class="btn sec sm" data-act="hideem" data-id="${r.id}">Not warranty, hide</button></div></div>`; }).join(""); }
 function mailSetupCard(){ return `<details class="card" ${mailReady()?"":"open"}><summary style="cursor:pointer;font-weight:800">✉ Email connection ${mailReady()?'<span class="pill s-paperwork">connected on this device</span>':'<span class="pill s-pending">not set up on this device</span>'}</summary>
   <p class="small muted">Paste the info@ mail script's Web app URL and secret (Jon has them). Once set, emails send from info@ right from each case, and replies from Martin and Taylor show up on the case.</p>
@@ -466,12 +477,17 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   else if(a==="frm"){ const k=b.dataset.k; const f=(CUR[k]||[])[+b.dataset.i]; if(!f) return; $("frm").innerHTML=`<div class="confirm"><b>Remove “${esc(f.filename)}” from this case?</b><div class="small" style="margin-top:4px">Download it first if you might need it again.</div><div class="row" style="margin-top:8px"><button class="btn" data-act="frmok" data-k="${k}" data-id="${esc(f.id)}">Yes, remove it</button><button class="btn sec" data-act="frmno">Cancel</button></div></div>`; $("frm").scrollIntoView({block:"nearest"}); }
   else if(a==="frmno") $("frm").innerHTML="";
   else if(a==="frmok"){ b.disabled=true; try{ const k=b.dataset.k; const keep=(CUR[k]||[]).filter(x=>x.id!==b.dataset.id).map(x=>({id:x.id})); await patch(CUR,{[BR[CUR.b].F[k]]:keep}); await refreshCase(CUR); }catch(err){ $("frm").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } }
+  else if(a==="tech"){ TECH=b.dataset.k; store.set("mrm-war-tech",TECH); render(); }
+  else if(a==="openonly"){ OPENONLY=b.dataset.k==="1"; store.set("mrm-war-open",OPENONLY?"1":"0"); render(); }
   else if(a==="mreset"){ e.preventDefault(); updMail(true); }
   else if(a==="newonly"){ NEWONLY=!NEWONLY; SHOWUNM=false; render(); }
   else if(a==="unm"){ SHOWUNM=!SHOWUNM; render(); }
-  else if(a==="linkem"){ const v=$("lk-"+b.dataset.id).value; if(!v) return; const [br,cid]=v.split("|"); b.disabled=true;
-    try{ await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:[{id:b.dataset.id,fields:{[br==="taylor"?EM.taylor:EM.martin]:[cid],[EM.match]:"linked by "+(WHO||"staff")}}]})}); await load(); }catch(err){ alertBox(err.message); } }
-  else if(a==="hideem"){ b.disabled=true; try{ await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:[{id:b.dataset.id,fields:{[EM.seen]:true,[EM.match]:"hidden by "+(WHO||"staff")}}]})}); UNMATCHED=UNMATCHED.filter(r=>r.id!==b.dataset.id); render(); }catch(err){ alertBox(err.message); } }
+  else if(a==="linkem"){ const v=$("lk-"+b.dataset.id).value; if(!v) return; const [br,cid]=v.split("|"); b.disabled=true; const top=UNMATCHED.find(r=>r.id===b.dataset.id); const ids=top&&top._ids||[b.dataset.id];
+    try{ for(let i=0;i<ids.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:ids.slice(i,i+10).map(id=>({id,fields:{[br==="taylor"?EM.taylor:EM.martin]:[cid],[EM.match]:"linked by "+(WHO||"staff")}}))})});
+      const c=CASES.find(x=>x.id===cid), t=top&&top.fields[EM.thread]; if(c&&t&&!c.threads.includes(t)) await patch(c,{[BR[c.b].F.threads]:c.threads.concat([t]).join(",")});
+      await load(); }catch(err){ alertBox(err.message); } }
+  else if(a==="hideem"){ b.disabled=true; const top=UNMATCHED.find(r=>r.id===b.dataset.id); const ids=top&&top._ids||[b.dataset.id];
+    try{ for(let i=0;i<ids.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:ids.slice(i,i+10).map(id=>({id,fields:{[EM.seen]:true,[EM.match]:"hidden by "+(WHO||"staff")}}))})}); UNMATCHED=UNMATCHED.filter(r=>r.id!==b.dataset.id); render(); }catch(err){ alertBox(err.message); } }
   else if(a==="syncnow"){ b.disabled=true; $("mailmsg").textContent="Checking info@…"; try{ const j=await mailCall({action:"sync"}); $("mailmsg").textContent=`Done. ${j.added} new email${j.added===1?"":"s"}.`; await load(); }catch(err){ $("mailmsg").textContent=err.message; } b.disabled=false; }
   else if(a==="msend"){ const m=curMail(); const files=allFiles(CUR); const picked=[...document.querySelectorAll(".matt:checked")].map(x=>files[+x.dataset.i]);
     if(!m.su||!m.body.trim()){ $("mmsg").innerHTML='<div class="note warn">Add a subject and message first.</div>'; return; }
