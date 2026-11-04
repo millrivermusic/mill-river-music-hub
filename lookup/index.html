@@ -314,6 +314,29 @@ const UT="tblGJnacXCV52gZdS", U={ first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjX
 const FINISH="https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P#finish";
 const UX={ name:"fldyOzHd6uRNuaTHa", log:"fldc4zkMVjHuKdssA", deals:"fldopijbeVa0w014L", notes:"fldTuBvtA7iSZ7jEq", city:"fldQi9lXAU9XovuY5" };
 let CUSTS=[], CUST=null, CITEMS=null, CDEALS=null, back=[];
+/* customer edit: First/Last/contact/address/notes, saved only when Save is pressed */
+const CF=[["first","First name","fldNJHv6xcZ25xjws"],["last","Last name","fldQCocWmypjXyXWp"],["email","E-mail","fldZz0HYc0OItKqrE","email"],["mobile","Mobile","fldKQ2uMAJx1n1CPX","tel"],["phone","Phone","fldvEPdKdGNqRaIJB","tel"],["company","Company","fldVktTDTVUjza6TH"],["addr","Address","fld8ihGFPawc5sEFk","",true],["city","City","fldQi9lXAU9XovuY5"],["state","State","fldhBzyvVqq2kPfUj"],["zip","Zip","fld3d9arNaGKwQ7Rs"],["notes","Notes","fldTuBvtA7iSZ7jEq","",true]];
+let CEDIT=null, CMSG="";
+function cStart(){ CEDIT={v:{},warn:false,busy:false,err:""}; CF.forEach(([k,,fid])=>CEDIT.v[k]=String(uv(CUST,fid)||"")); CMSG=""; renderCust(); setTimeout(()=>{ const x=document.getElementById("ce-email"); if(x&&!x.value) x.focus(); else { const y=document.getElementById("ce-first"); if(y) y.focus(); } },30); }
+function cChanges(){ if(!CEDIT) return []; return CF.filter(([k,,fid])=>String(CEDIT.v[k]).trim()!==String(uv(CUST,fid)||"").trim()).map(([k,l,fid])=>({k,l,fid,from:String(uv(CUST,fid)||""),to:String(CEDIT.v[k]).trim()})); }
+function cFormHTML(){ const ch=cChanges();
+  return `<div class="cedit"><h3 style="margin:14px 0 4px">Edit customer</h3>
+  <div class="form">${CF.map(([k,l,,type,wide])=>`<label class="f ${wide?"wide":""}">${l}<input class="t" id="ce-${k}" data-ce="${k}" ${type?`type="${type}"`:""} value="${esc(CEDIT.v[k])}" autocomplete="off"></label>`).join("")}</div>
+  <div id="cesum" class="small muted" style="margin-top:8px">${ch.length?`Unsaved: ${ch.map(c=>esc(c.l)).join(", ")}`:"No changes yet."}</div>
+  ${CEDIT.err?`<div class="note warn" id="ceerr">${esc(CEDIT.err)}</div>`:""}
+  ${CEDIT.warn&&ch.length?`<div class="note warn">You have unsaved changes. Save them, or discard them to go back.<div class="row" style="margin-top:8px"><button class="btn sec" data-act="cdiscard">Discard changes</button></div></div>`:""}
+  <div class="row" style="margin-top:10px"><button class="btn" id="cesave" data-act="csave" ${ch.length&&!CEDIT.busy?"":"disabled"}>${CEDIT.busy?"Saving…":"Save"}</button><button class="btn sec" data-act="ccancel">Cancel</button></div></div>`; }
+function cUpdSum(){ const ch=cChanges(); const el=$("cesum"); if(el) el.textContent=ch.length?"Unsaved: "+ch.map(c=>c.l).join(", "):"No changes yet."; const b=$("cesave"); if(b) b.disabled=!ch.length||CEDIT.busy; }
+async function cSave(){ const ch=cChanges(); if(!ch.length||CEDIT.busy) return;
+  const v=CEDIT.v; if(String(v.email).trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v.email).trim())){ CEDIT.err="That e-mail doesn't look right."; renderCust(); return; }
+  if(!String(v.first).trim()&&!String(v.last).trim()){ CEDIT.err="A customer needs a first or last name."; renderCust(); return; }
+  const fields={}; ch.forEach(c=>fields[c.fid]=c.to===""?null:c.to);
+  CEDIT.busy=true; CEDIT.err=""; renderCust();
+  try{ const out=await apiT(UT,`/${CUST.id}`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})});
+    CUST.fields={...CUST.fields,...(out.fields||{})}; ch.forEach(c=>{ if(c.to==="") delete CUST.fields[c.fid]; });
+    CMSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; CEDIT=null; }
+  catch(e){ CEDIT.busy=false; CEDIT.err="Didn't save: "+e.message; }
+  renderCust(); }
 const uv=(r,k)=>{ const v=r&&r.fields&&r.fields[k]; return v==null?"":v; };
 const SECS=["browse","item","deals","deal","custs","cust"];
 function show(id){ SECS.forEach(x=>$(x).hidden=x!==id); window.scrollTo(0,0); }
@@ -328,7 +351,7 @@ async function findCusts(){ const q=$("cq").value.trim(); if(!q) return; $("cmsg
     $("clist").innerHTML=CUSTS.map((c,i)=>{ const n=(uv(c,UX.log)||[]).length, d=(uv(c,UX.deals)||[]).length; const nm=uv(c,UX.name)||[uv(c,U.first),uv(c,U.last)].filter(Boolean).join(" ")||"(no name)";
       return `<button class="res" data-act="copen" data-i="${i}"><b>${esc(nm)}</b><span class="price">${n} item${n===1?"":"s"}</span><span class="meta">${esc([uv(c,U.email),uv(c,U.mobile)||uv(c,U.phone)].filter(Boolean).join(" · ")||"no contact info")}${d?` · ${d} deal${d===1?"":"s"}`:""}</span></button>`; }).join(""); }
   catch(e){ $("cmsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
-async function openCust(id){ CUST={id}; CITEMS=null; CDEALS=null; show("cust"); renderCust();
+async function openCust(id){ CEDIT=null; CMSG=""; CUST={id}; CITEMS=null; CDEALS=null; show("cust"); renderCust();
   try{ const c=await apiT(UT,`/${id}?returnFieldsByFieldId=true`); if(CUST.id!==id) return; CUST=c; renderCust();
     const ids=(uv(c,UX.log)||[]).map(x=>x.id||x), dids=(uv(c,UX.deals)||[]).map(x=>x.id||x);
     const parts=[]; for(let k=0;k<ids.length&&k<400;k+=50) parts.push(query(`OR(${ids.slice(k,k+50).map(x=>`RECORD_ID()=${quote(x)}`).join(",")})`,50));
@@ -346,7 +369,8 @@ function renderCust(){ const c=CUST; if(!c) return; if(!c.fields){ $("cust").inn
     sum=`<dl class="kv"><dt>Items</dt><dd>${CITEMS.length}${["Purchase","Trade","Consignment"].map(t=>by(t).length?` · ${by(t).length} ${t==="Purchase"?"bought":t==="Trade"?"traded":"consigned"}`:"").join("")}${passed?` · ${passed} passed on`:""}</dd>
       <dt>We paid</dt><dd>${paid?money(paid):"–"}${(cash||cr)?` <span class="small muted">(deals since Oct 2026: ${[cash?money(cash)+" cash":"",cr?money(cr)+" credit":""].filter(Boolean).join(" + ")})</span>`:""}</dd>
       <dt>Sold so far</dt><dd>${sold} of ${CITEMS.length}</dd>${first?`<dt>Customer since</dt><dd>${esc(fmtDate(f(first,"dateIn")))||"–"}</dd>`:""}</dl>`; }
-  $("cust").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(nm||"(no name)")}</h2>${contact?`<div class="small muted">${contact}</div>`:""}</div><button class="btn sec" data-act="cclose" style="min-height:40px;padding:8px 12px;flex:none">← Back</button></div>
+  $("cust").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(nm||"(no name)")}</h2>${contact?`<div class="small muted">${contact}</div>`:""}</div><div class="row" style="flex:none;gap:6px">${CEDIT?"":`<button class="btn sec" data-act="cedit" style="min-height:40px;padding:8px 12px">Edit</button>`}<button class="btn sec" data-act="cclose" style="min-height:40px;padding:8px 12px">← Back</button></div></div>
+    ${CMSG?`<div class="note ok">${esc(CMSG)}</div>`:""}${CEDIT?cFormHTML():""}
     ${sum}${uv(c,UX.notes)?`<div class="small" style="white-space:pre-wrap;margin-top:12px;padding:10px 12px;background:var(--sunk);border-radius:12px">${esc(uv(c,UX.notes))}</div>`:""}
     ${CDEALS&&CDEALS.length?`<h3 style="margin:16px 0 6px">Deals</h3><div class="list">${CDEALS.map((d,i)=>{ const cash=num(dv(d,"cash")), cr=num(dv(d,"credit")); return `<button class="res" data-act="cdeal" data-i="${i}"><b>${esc(fmtDate(dv(d,"date")))}</b><span class="price">${esc([cash?money(cash)+" cash":"",cr?money(cr)+" credit":""].filter(Boolean).join(" + ")||"–")}</span><span class="meta">${esc(stLabel(dv(d,"status")))} · ${(d.fields[D.products]||[]).length} items</span></button>`; }).join("")}</div>`:""}
     <h3 style="margin:16px 0 6px">Everything from ${esc((nm||"them").split(" ")[0])}</h3>
@@ -355,7 +379,7 @@ function renderCust(){ const c=CUST; if(!c) return; if(!c.fields){ $("cust").inn
 const DST=[["all","All"],["Pending","Pending"],["Accepted","Accepted"],["Declined","Passed"]];
 let MODE="items", DSTAT="all", DEALS=[], DEAL=null, DITEMS=[], fromDeal=false;
 async function apiT(table,path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${table}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
-  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't allow reading Deals ("+m+").":m); } return j; }
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't allow that ("+m+").":m); } return j; }
 const dv=(d,k)=>{ const v=d&&d.fields&&d.fields[D[k]]; return v&&typeof v==="object"&&!Array.isArray(v)?(v.name??""):(v??""); };
 const iso=d=>d.toISOString().slice(0,10);
 const fmtDate=s=>{ if(!s) return ""; const d=new Date(s+"T12:00:00"); return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"}); };
@@ -411,7 +435,11 @@ document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); 
   else if(a==="dopen") openDeal(DEALS[+el.dataset.i]);
   else if(a==="dclose"){ closeDeal(); if(back[back.length-1]==="cust"){ back.pop(); DEAL=null; setMode("cust"); } }
   else if(a==="copen") openCust(CUSTS[+el.dataset.i].id);
-  else if(a==="cclose"){ CUST=null; if(back[back.length-1]==="deals"){ back.pop(); setMode("deals"); } else setMode("cust"); }
+  else if(a==="cedit") cStart();
+  else if(a==="csave") cSave();
+  else if(a==="ccancel"||a==="cdiscard"){ const wasWarn=CEDIT&&CEDIT.warn; CEDIT=null; renderCust(); if(a==="cdiscard"&&wasWarn){ CUST=null; if(back[back.length-1]==="deals"){ back.pop(); setMode("deals"); } else setMode("cust"); } }
+  else if(a==="cclose"&&CEDIT&&cChanges().length){ CEDIT.warn=true; renderCust(); }
+  else if(a==="cclose"){ CEDIT=null; CUST=null; if(back[back.length-1]==="deals"){ back.pop(); setMode("deals"); } else setMode("cust"); }
   else if(a==="citem"){ back.push("cust"); MODE="items"; segOn("items"); const r=CITEMS[+el.dataset.i]; $("cust").hidden=true; openItem(r); }
   else if(a==="cdeal"){ back.push("cust"); MODE="deals"; segOn("deals"); $("cust").hidden=true; openDeal(CDEALS[+el.dataset.i]); }
   else if(a==="dcust"){ back.push("deals"); MODE="cust"; segOn("cust"); $("deal").hidden=true; openCust(DEAL.fields[D.customer][0]); }
@@ -425,7 +453,7 @@ document.addEventListener("click",e=>{ const el=e.target.closest("[data-act]"); 
   else if(a==="reviewedit") review("edit");
   else if(a==="cancelreview"){ pending=null; $("review").innerHTML=""; }
   else if(a==="confirm") commit(); });
-document.addEventListener("input",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
+document.addEventListener("input",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); if(e.target.dataset&&e.target.dataset.ce&&CEDIT){ CEDIT.v[e.target.dataset.ce]=e.target.value; if(CEDIT.err){ CEDIT.err=""; const x=$("ceerr"); if(x) x.remove(); } cUpdSum(); } });
 document.addEventListener("change",e=>{ if(e.target.dataset&&e.target.dataset.e) updSum(); });
 $("cform").addEventListener("submit",e=>{ e.preventDefault(); $("cq").blur(); findCusts(); });
 $("dform").addEventListener("submit",e=>{ e.preventDefault(); $("dq").blur(); loadDeals(); });
