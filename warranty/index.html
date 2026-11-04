@@ -53,6 +53,27 @@ textarea.t{min-height:70px;resize:vertical}
 .chip.on{outline:2px solid var(--accent);outline-offset:1px}
 .chip.brand.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);outline:none}
 .chip.alert{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+/* Dashboard filters: three labeled rows */
+.filters{display:flex;flex-direction:column;background:var(--sunk);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fline{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:center;padding:10px 12px}
+.fline+.fline{border-top:1px solid var(--line)}
+.fline>.lab{font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.fline>.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;min-width:0}
+@media (max-width:560px){.fline{grid-template-columns:1fr;gap:6px;padding:10px}}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.seg .chip{border:0;background:transparent;border-radius:8px;padding:6px 11px;outline:none}
+.seg .chip:hover{background:var(--sunk)}
+.seg .chip.on,.seg .chip.on:hover{background:var(--accent);color:var(--accent-ink);outline:none}
+.seg .chip .n{font-size:12px;font-weight:800;opacity:.65}
+.seg .chip.on .n{opacity:.85}
+.stchips{display:flex;gap:6px;flex-wrap:wrap}
+.stchips .chip{border:1.5px solid transparent;outline:none;background:var(--surface)}
+.stchips .chip.alert{background:var(--warn-soft)}
+.stchips .s-pending{background:var(--s-pending)} .stchips .s-waiting{background:var(--s-waiting)} .stchips .s-emailed{background:var(--s-emailed)} .stchips .s-approved{background:var(--s-approved)} .stchips .s-rejected{background:var(--s-rejected)} .stchips .s-complete{background:var(--s-complete)} .stchips .s-paperwork{background:var(--s-paperwork)} .stchips .s-paid{background:var(--s-paid)} .stchips .s-passed{background:var(--s-passed)}
+.stchips .chip:hover{border-color:var(--line)}
+.stchips .chip.on{border-color:var(--ink)}
+.vsep{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
+.dhead{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .s-pending{background:var(--s-pending)} .s-waiting{background:var(--s-waiting)} .s-emailed{background:var(--s-emailed)} .s-approved{background:var(--s-approved)} .s-rejected{background:var(--s-rejected)} .s-complete{background:var(--s-complete)} .s-paperwork{background:var(--s-paperwork)} .s-paid{background:var(--s-paid)} .s-passed{background:var(--s-passed)}
 .pill{display:inline-block;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 10px;white-space:nowrap}
 .top{display:flex;flex-direction:column;gap:10px}
@@ -109,13 +130,12 @@ label.f .t{font-weight:400;color:var(--ink);letter-spacing:0;font-size:15px}
   </section>
 
   <section class="card top" id="dash" hidden>
-    <div class="row" style="gap:6px"><span class="small muted" style="font-weight:800;letter-spacing:.04em;text-transform:uppercase">Assigned tech</span><div class="chips" id="techs"></div></div>
-    <div class="row" style="justify-content:space-between">
-      <div class="chips" id="brands"></div>
-      <button class="btn" id="newbtn" type="button">+ New warranty case</button>
+    <div class="dhead"><input class="t" id="q" inputmode="search" placeholder="Search customer, model, serial, auth or ticket #, WO #" autocomplete="off" style="flex:1 1 240px;width:auto"><button class="btn" id="newbtn" type="button">+ New warranty case</button></div>
+    <div class="filters">
+      <div class="fline"><span class="lab">Tech</span><div class="ctl"><div class="seg" id="techs"></div></div></div>
+      <div class="fline"><span class="lab">Brand</span><div class="ctl" id="brands"></div></div>
+      <div class="fline"><span class="lab">Status</span><div class="ctl"><div class="stchips" id="statuses"></div></div></div>
     </div>
-    <div class="chips" id="statuses"></div>
-    <div class="row"><input class="t" id="q" inputmode="search" placeholder="Search customer, model, serial, auth or ticket #, WO #" autocomplete="off" style="flex:1 1 220px;width:auto"></div>
     <div id="dmsg"></div>
     <div id="mailsetup"></div>
     <div class="list" id="list"></div>
@@ -208,14 +228,14 @@ function render(){
   const isOpen=c=>c.status!=="paid"&&c.status!=="rejected"&&c.status!=="passed";
   $("techs").innerHTML=[["","Everyone"],...TECHS.map(n=>[n,n]),["none","Unassigned"]].map(([k,l])=>{ const n=CASES.filter(c=>(!k||(k==="none"?!c.techId:c.techId===STAFFREC[k]))&&(!OPENONLY||isOpen(c))).length; return `<button class="chip brand ${TECH===k?"on":""}" data-act="tech" data-k="${k}">${l} <span class="n">${n}</span></button>`; }).join("");
   const inB=CASES.filter(c=>(BRAND==="all"||c.b===BRAND)&&byTech(c));
-  $("brands").innerHTML=[["all","Martin + Taylor"],["martin","Martin"],["taylor","Taylor"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>(k==="all"||c.b===k)&&byTech(c)&&(!OPENONLY||isOpen(c))).length}</span></button>`).join("")+
-    `<span style="width:8px"></span><button class="chip brand ${OPENONLY?"on":""}" data-act="openonly" data-k="1">Open</button><button class="chip brand ${!OPENONLY?"on":""}" data-act="openonly" data-k="0">All incl. closed</button>`;
+  $("brands").innerHTML=`<div class="seg">`+[["all","Martin + Taylor"],["martin","Martin"],["taylor","Taylor"]].map(([k,l])=>`<button class="chip brand ${BRAND===k?"on":""}" data-act="brand" data-k="${k}">${l} <span class="n">${CASES.filter(c=>(k==="all"||c.b===k)&&byTech(c)&&(!OPENONLY||isOpen(c))).length}</span></button>`).join("")+`</div>`+
+    `<div class="seg"><button class="chip brand ${OPENONLY?"on":""}" data-act="openonly" data-k="1">Open</button><button class="chip brand ${!OPENONLY?"on":""}" data-act="openonly" data-k="0">All incl. closed</button></div>`;
   const nA=inB.filter(c=>flags(c).length).length;
   const nNew=inB.filter(c=>UNSEEN[c.id]).length;
   $("statuses").innerHTML=`<button class="chip alert ${ALERT?"on":""}" data-act="alert">⚠ Needs attention <span class="n">${nA}</span></button>`+
     `<button class="chip ${NEWONLY?"on":""}" style="background:var(--info-soft);color:var(--info);border-color:transparent" data-act="newonly">✉ New replies <span class="n">${nNew}</span></button>`+
     (UNMATCHED.length?`<button class="chip ${SHOWUNM?"on":""}" data-act="unm">📥 Unmatched emails <span class="n">${UNMATCHED.length}</span></button>`:"")+
-    ORDER.map(k=>{ const n=inB.filter(c=>c.status===k).length; return `<button class="chip s-${k} ${SFILT===k?"on":""}" data-act="sfilt" data-k="${k}">${SLABEL[k]} <span class="n">${n}</span></button>`; }).join("");
+    `<span class="vsep" aria-hidden="true"></span>`+ORDER.map(k=>{ const n=inB.filter(c=>c.status===k).length; return `<button class="chip s-${k} ${SFILT===k?"on":""}" data-act="sfilt" data-k="${k}">${SLABEL[k]} <span class="n">${n}</span></button>`; }).join("");
   if(SHOWUNM){ $("list").innerHTML=unmatchedView(); return; }
   const v=visible();
   $("list").innerHTML=v.length?v.map(c=>{ const fl=flags(c); return `<button class="res" data-act="open" data-id="${c.id}"><b><span class="brandtag">${BR[c.b].label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</b><span class="pill s-${c.status}">${SLABEL[c.status]}</span>
