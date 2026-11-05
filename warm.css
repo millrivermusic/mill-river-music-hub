@@ -1,0 +1,62 @@
+/* MRM "Warm shop" look, shared by every Hub page (11/5/2026).
+   Loaded after each page's own styles, so it only changes colors, type and shapes — never behavior.
+   Light: cream paper, walnut ink, oxblood accent. Dark (Macs in dark mode): medium walnut, cream text, brick accent. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
+
+:root{
+  --bg:#F5EFE4; --surface:#FFFBF4; --sunk:#FAF4EA; --ink:#2B211A; --muted:#7A6A5C; --line:#E6DCCB; --line2:#CDBFA8;
+  --accent:#7A2E1F; --accent-ink:#FFF7EE; --accent-soft:#F3E2D9;
+  --ok:#2F6B3A; --ok-soft:#E3EDD9; --warn:#9E2A1E; --warn-soft:#F6DED7; --info:#3D4C8A; --info-soft:#E2E5F1; --sugg:#9A5B13; --sugg-soft:#F4E3C8;
+  --font:"Work Sans","Segoe UI",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --display:"Fraunces",Georgia,"Times New Roman",serif; --accent-text:#7A2E1F;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#3A3029; --surface:#463A31; --sunk:#40352D; --ink:#F6EDE0; --muted:#CBB9A5; --line:#5A4B3F; --line2:#766556;
+  --accent:#C0533A; --accent-ink:#FFF7EE; --accent-soft:#5A3A2E; --accent-text:#F4AE96;
+  --ok:#A6DB9E; --ok-soft:#33452F; --warn:#FFA592; --warn-soft:#5A2E25; --info:#C1C9FA; --info-soft:#3B4060; --sugg:#F2C27A; --sugg-soft:#55402A;
+  color-scheme:dark}}
+
+body{font-family:var(--font)}
+h1,h2,.card h2,.tile h3,.bar h1{font-family:var(--display);font-weight:600;letter-spacing:-.005em}
+.bar h1{font-weight:700}
+.card h3{font-family:var(--font);font-weight:700}
+
+/* top bar: oxblood band */
+.bar{background:var(--accent);color:var(--accent-ink)}
+
+/* cards and tiles: square-ish, quiet border */
+.card,.tile{border-radius:8px;border-color:var(--line);box-shadow:none}
+
+/* one main button style, outline secondary */
+.btn{border-radius:6px;font-weight:600}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec,.btn.sec2,.btn.ghost,.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+.btn.sec:hover,.btn.sec2:hover,.btn.ghost:hover,.btn.alt:hover{background:var(--sunk);filter:none}
+.btn:disabled{opacity:1;background:var(--sunk);color:var(--muted);border:1px solid var(--line);filter:none}
+
+/* fields */
+input.t,select.t,textarea.t,.dates input[type=date]{border-radius:6px;background:var(--surface);border-color:var(--line2)}
+input.t:focus,select.t:focus,textarea.t:focus{border-color:var(--accent);outline:none}
+
+/* hang-tag chips, tabs and tags */
+.tab,.chip,.tag,.pill,.badge,.brandtag,.linkrow a,.links a,.seg{border-radius:4px}
+.tab,.chip{font-weight:600}
+.seg button,.seg a{border-radius:3px}
+.res,.count,.prices div,.note,.review,.locked,.confirm,.notebox,.drop{border-radius:6px}
+.notebox{border-radius:0 6px 6px 0}
+.thumbs img{border-radius:6px}
+.tile .ic{border-radius:6px}
+.tile .open{border-radius:6px;font-weight:600}
+.note{font-weight:600}
+
+/* Hub dashboard: section labels stay plain, tile buttons quieter (one strong color per screen is the bar) */
+h2.sec,.sec{font-family:var(--font);font-weight:700;letter-spacing:.08em}
+.tile .open{background:transparent;color:var(--accent-text);border:1px solid var(--line2)}
+.tile .open:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);filter:none}
+.tile:hover{border-color:var(--line2)}
+
+/* accent used as text (links, quiet buttons) gets a lighter shade in dark mode so it stays readable */
+a{color:var(--accent-text)}
+.bar a{color:inherit}
+.foot button{color:var(--accent-text)}

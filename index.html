@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#8A3B12">
+<meta name="theme-color" content="#7A2E1F">
 <title>MRM Hub</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -70,11 +70,34 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
 .note.warn{background:var(--warn-soft);color:var(--warn)}
 .foot{color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .foot button{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:0}
+/* left sidebar (wide screens) */
+.shell{display:block}
+.side{display:none}
+@media (min-width:960px){
+  .shell{display:grid;grid-template-columns:248px minmax(0,1fr);align-items:start;min-height:calc(100vh - 64px)}
+  .side{display:block;align-self:stretch;border-right:1px solid var(--line);background:var(--sunk);min-height:calc(100vh - 64px)}
+  .sidein{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;max-height:100vh;overflow:auto;padding:18px 12px 24px max(14px,env(safe-area-inset-left,0px))}
+  .shell .wrap{max-width:1100px;margin:0;padding-left:28px;padding-right:max(24px,env(safe-area-inset-right,0px))}
+  .bar .in{max-width:none}
+  #qlcard{display:none}
+}
+.side .sh{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 10px 4px}
+.side .sh:first-child{margin-top:2px}
+.side a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:14.5px;font-weight:500;min-width:0}
+.side a:hover{background:var(--surface)}
+.side a.on{background:var(--accent-soft);color:var(--accent-text,var(--accent));font-weight:700}
+.side a .i{width:22px;text-align:center;flex:none}
+.side a .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side a .n{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+.side a .n.hot{color:var(--warn);border-color:var(--warn)}
+.side a.ext .t::after{content:" ↗";color:var(--muted);font-size:12px}
 </style>
+<link rel="stylesheet" href="warm.css?v=1">
 </head>
 <body>
 <header class="bar"><div class="in"><h1>MRM Hub</h1>
   <div class="barr"><a class="lsbtn" href="https://us.merchantos.com/?form_name=ui_tab&amp;tab=register" target="_blank" rel="noopener">🧾 Lightspeed register</a><label class="who">Who's working?<select id="who"><option value="">Pick your name</option></select></label></div></div></header>
+<div class="shell"><nav class="side" id="side" aria-label="Hub tools"></nav>
 <main class="wrap">
   <div class="greet"><h2 id="hello">Mill River Music tools</h2><span class="small" id="fresh"></span></div>
 
@@ -90,7 +113,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
 
   <div id="tiles"></div>
 
-  <section class="card">
+  <section class="card" id="qlcard">
     <h2>Quick links</h2>
     <div class="links">
       <a href="https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR" target="_blank" rel="noopener">Airtable Purchase Log</a>
@@ -103,7 +126,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
   </section>
 
   <div class="foot"><span>Intake Desk and Listing Desk open in a new tab.</span><button id="setbtn">Airtable key</button></div>
-</main>
+</main></div>
 
 <script>
 "use strict";
@@ -157,7 +180,14 @@ async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
     n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<5);
   return offset?n+"+":n; }
 
-function renderTiles(){ const groups=[]; TILES.forEach(t=>{ if(t.sec) groups.push({sec:t.sec,items:[]}); else (groups[groups.length-1]||groups[groups.push({sec:"",items:[]})-1]).items.push(t); });
+function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" href="./"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`;
+  TILES.forEach(t=>{ if(t.sec){ h+=`<div class="sh">${esc(t.sec.replace(/ · .*/,""))}</div>`; return; }
+    const ext=/^https?:/.test(t.href), k=t.counts[0], v=k?VAL[k]:undefined, hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos");
+    h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span>${v!==undefined&&v!=="?"?`<span class="n ${hot?"hot":""}">${esc(v)}</span>`:""}</a>`; });
+  const ql=[...document.querySelectorAll("#qlcard .links a")];
+  if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
+  el.innerHTML=`<div class="sidein">${h}</div>`; }
+function renderTiles(){ renderSide(); const groups=[]; TILES.forEach(t=>{ if(t.sec) groups.push({sec:t.sec,items:[]}); else (groups[groups.length-1]||groups[groups.push({sec:"",items:[]})-1]).items.push(t); });
   $("tiles").innerHTML=groups.map(g=>`${g.sec?`<h2 class="sec">${esc(g.sec)}</h2>`:""}<div class="grid">${g.items.map(tile).join("")}</div>`).join(""); }
 function tile(t){ { const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
   ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}"${/^https?:/.test(c.href)?' target="_blank" rel="noopener"':""}><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
