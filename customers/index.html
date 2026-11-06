@@ -157,6 +157,7 @@ const REL=[
   {k:"changes", label:"Change history", link:"changes", table:"tbleZskcdgwI3wCWu", sort:"fldHUf4nXhAwmwYb7",
     cols:[["When","fldHUf4nXhAwmwYb7","when"],["Direction","fldLGa2Rj1tQnn1tz"],["Field","fldx30jldBhkB9yKC"],["Old","fldlWg3h9PDc9IKtW"],["New","fld7fJ5COk3vcxrYO"],["Change","fldYJFZGwtB6hvFbE"]]},
 ];
+const INTAKE="https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
@@ -265,7 +266,7 @@ function cell(type, v, row){ if(type==="money") return money(val(v)); if(type===
 function renderRel(){ const el=$("rel"); if(!el||!CUR) return; const show=REL.filter(R=>FILTER==="all"?(linkedCount(R)!==0):R.k===FILTER);
   el.innerHTML=show.length?show.map(R=>{ const d=REL_DATA[R.k]; const n=linkedCount(R);
     let body; if(d&&d.err) body=`<div class="note warn">${esc(d.err)}</div>`; else if(!d) body=`<div class="empty">Loading…</div>`; else if(!d.length) body=`<div class="empty">${R.byEmail&&!uv(CUR,"email")?"Add an email to match returns.":"Nothing yet."}</div>`;
-    else body=`<div class="scrollx"><table class="t2"><thead><tr>${R.cols.map(([l,,t])=>`<th class="${t==="money"||t==="count"?"r":""}">${esc(l)}</th>`).join("")}</tr></thead><tbody>${d.map(row=>`<tr>${R.cols.map(([,k,t])=>`<td class="${t==="money"||t==="count"?"r":t==="date"||t==="when"?"nw":""}">${cell(t,row[k],row)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    else body=`<div class="scrollx"><table class="t2"><thead><tr>${R.cols.map(([l,,t])=>`<th class="${t==="money"||t==="count"?"r":""}">${esc(l)}</th>`).join("")}${R.k==="deals"?"<th></th>":""}</tr></thead><tbody>${d.map(row=>`<tr>${R.cols.map(([,k,t])=>`<td class="${t==="money"||t==="count"?"r":t==="date"||t==="when"?"nw":""}">${cell(t,row[k],row)}</td>`).join("")}${R.k==="deals"?`<td class="nw"><a class="btn sm" href="${INTAKE}#deal-${esc(row._id)}" target="_blank" rel="noopener" title="Opens this deal in the Intake Desk, where you can restart it or change its status">Open Intake Desk ↗</a></td>`:""}</tr>`).join("")}</tbody></table></div>`;
     return `<div class="rsec"><h3>${esc(R.label)} <span class="n">${n==null?"":n}</span></h3>${body}</div>`; }).join(""):`<div class="rsec empty">Nothing linked to ${esc(nameOf(CUR).split(" ")[0])} yet.</div>`; }
 
 /* ---------- edit + save + sync ---------- */
