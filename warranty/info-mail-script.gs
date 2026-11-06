@@ -1,6 +1,9 @@
 /**
  * Mill River Music — info@ mail bridge (runs as info@millrivermusic.com)
  * v2 (11/5/2026): adds the Returns desk.
+ * v3 (11/6/2026): when a new reply comes in from Martin, Taylor or a returns customer, puts a task on the
+ *   assigned person's Google Tasks list (Jon's list if nobody is assigned). Needs the Google Tasks service:
+ *   in the editor, Services (+) → Google Tasks API → Add.
  *
  * What it does
  *  1. Sends warranty emails for the Warranty Desk app (only when a person presses Send in the app).
@@ -22,16 +25,38 @@ const EMAILS = { table: 'tblEJMNYQqquKdAH7', subject: 'flduAb86xDHLDvkIe', dir: 
   msgId: 'fldYEO5Tw1ecbfyks', threadId: 'fldUx2qKKilnwo1Ju', seen: 'fldHBUTfVZsjaGoIM', sentBy: 'fldmbeyV3R2n3lMcF', match: 'fld0SaCvatYliLDdD',
   sendStatus: 'fldiVh08toIicpJ25', sendError: 'fldGNwSArBAg46HOG' };
 const CASES = {
-  taylor: { table: 'tblUR6Y7rfCLBSllO', serial: 'fld2McIGsJW9un93M', num: 'fldYVUlLDkE8qnrop', cust: 'fld9Iym9sy5E7sQIS', threads: 'fldDCyt7LVfPNeVvi', appr: 'fldx9f5sQ0KZcwE0w', status: 'fldAgQWqOARycTlWc' },
-  martin: { table: 'tblqbwCvWxNz1REQt', serial: 'fldy6Cm4X17XUmsyr', num: 'fld6WsAofFOzjA1b4', cust: 'fldF2Y0xXQgsxr9dx', threads: 'fldwOwSVtR7rER66N', appr: 'fld6kJ1tCgP9Tmbhi', status: 'fld6AgAOjS2mCSErR' },
+  taylor: { tech: 'fldyjazpXcJlkRKTp', table: 'tblUR6Y7rfCLBSllO', serial: 'fld2McIGsJW9un93M', num: 'fldYVUlLDkE8qnrop', cust: 'fld9Iym9sy5E7sQIS', threads: 'fldDCyt7LVfPNeVvi', appr: 'fldx9f5sQ0KZcwE0w', status: 'fldAgQWqOARycTlWc' },
+  martin: { tech: 'fld4DAdNsuU9KQ3o4', table: 'tblqbwCvWxNz1REQt', serial: 'fldy6Cm4X17XUmsyr', num: 'fld6WsAofFOzjA1b4', cust: 'fldF2Y0xXQgsxr9dx', threads: 'fldwOwSVtR7rER66N', appr: 'fld6kJ1tCgP9Tmbhi', status: 'fld6AgAOjS2mCSErR' },
 };
 const CUSTOMERS = { table: 'tblGJnacXCV52gZdS', last: 'fldQCocWmypjXyXWp', name: 'fldyOzHd6uRNuaTHa' };
 /* Returns desk */
 const CEM = { table: 'tbl35TzF46dljMoYg', subject: 'fldNF4HRskYDlcxVy', dir: 'fldezFcFYYik6PLLx', from: 'fld8ugiNMI7quwMcT', to: 'fldxlxeSnXmvgDu8K',
   date: 'fld0BHXUB0dcqPwTu', body: 'fldHBGw8JbAMgpY4T', files: 'fldlweWx0rUq2DNtA', ret: 'fldPMQfxoSoqIT1wY', msgId: 'fld5bCjoRE9JQu9Z2',
   threadId: 'fldKHvJzRqxql7Z7J', seen: 'fldJiFwLXjV86FgcW', sentBy: 'fldNYqUUr8YYYw4pv', match: 'fldnjkVF4d2xQEwJW', sendStatus: 'fld3Kq4ATTQuhDYoo', sendError: 'fldBOUCcMteGh12pA' };
-const RETURNS = { table: 'tblkWYK4EudB8tW7G', name: 'fldVim5LDQ89b8qAd', email: 'fldswFlQaMB62aWE6', status: 'fldUrDMkm0nO96hXc', threads: 'fldQZtjN6wj23Ofno' };
+const RETURNS = { assignee: 'fldpZxZ3SRaW6ehDr', table: 'tblkWYK4EudB8tW7G', name: 'fldVim5LDQ89b8qAd', email: 'fldswFlQaMB62aWE6', status: 'fldUrDMkm0nO96hXc', threads: 'fldQZtjN6wj23Ofno' };
 const FACTORY = ['martinguitar.com', 'taylorguitars.com'];
+/* Google Tasks lists on info@, by staff record (Employees table). Julia is left out on purpose:
+   nothing goes on her list without an OK from Jon, Sam or Nina. Unassigned goes to Jon. */
+const TASK_LISTS = {
+  rechZIpGZAIOuGaYJ: 'dUJrbGEzNC1YOTZlVE5EZg', // Jon
+  recLmkipyjft62jRL: 'MTczMTQzMTk4MjE4ODIyNTkzMDU6OTYxMjM2MTAwMDExNjc4OTow', // Jeff
+  recEoekxSRq7EsQkO: 'QmEyNjlyLTNCMEt1d0NGTg', // Chris
+  recbvNLEkdm4HNu3J: 'V2FGSVV0WXdLcHhIUWFqMQ', // Sturgis
+  rec0u7Ikoxfo5kJCX: 'QkRwb1FRemZwZGVGV3c5bQ', // Sam
+  recNaeY3xVY0sKxhH: 'V0o1eHZXdVJNYmx4SEJYLQ', // Andy
+  recQpdH2QkplH8Sl0: 'N1hheS16UFJ5eXpPSXhoWg', // Nina
+  recriRN9RxxEa2PyC: 'X3R0b0M5TC1tY1hZZmhHZg', // Ben
+  recroDei0NGN6CA1R: 'd3pJTFJVejNVZVFQNVlPTg', // Allie
+  rect9RExJhI14zXfS: 'Z0NCUHNMWU5aeXlsOUlPRw', // Ethan
+};
+const TASK_LISTS_BY_NAME = { jon: 'dUJrbGEzNC1YOTZlVE5EZg', jeff: TASK_LISTS.recLmkipyjft62jRL, chris: TASK_LISTS.recEoekxSRq7EsQkO, sturgis: TASK_LISTS.recbvNLEkdm4HNu3J,
+  sam: TASK_LISTS.rec0u7Ikoxfo5kJCX, andy: TASK_LISTS.recNaeY3xVY0sKxhH, nina: TASK_LISTS.recQpdH2QkplH8Sl0, ben: TASK_LISTS.recriRN9RxxEa2PyC, allie: TASK_LISTS.recroDei0NGN6CA1R, ethan: TASK_LISTS.rect9RExJhI14zXfS };
+const JON_LIST = 'dUJrbGEzNC1YOTZlVE5EZg';
+const HUB = 'https://millrivermusic.github.io/mill-river-music-hub/';
+function addTask(listId, title, notes) {
+  try { Tasks.Tasks.insert({ title: title.slice(0, 250), notes: notes.slice(0, 8000) }, listId || JON_LIST); return true; }
+  catch (e) { Logger.log('Task not added (is the Google Tasks service turned on?): ' + e); return false; }
+}
 const SHOP_NAME = 'Mill River Music and Guitars';
 const QUERY = '(from:martinguitar.com OR from:taylorguitars.com OR to:martinguitar.com OR to:taylorguitars.com)';
 
@@ -157,6 +182,15 @@ function sendForReturn(r) {
   if (threadId) addThreadToReturn(r.retId, threadId);
   return { ok: true, threadId };
 }
+function returnTask(x) {
+  const r = at('GET', RETURNS.table, '/' + x.id + '?returnFieldsByFieldId=true').fields || {};
+  const who = r[RETURNS.assignee] || null; // Airtable collaborator: match on first name
+  const first = who && who.name ? String(who.name).trim().split(/\s+/)[0].toLowerCase() : '';
+  const list = TASK_LISTS_BY_NAME[first] || JON_LIST;
+  const title = 'New customer email on return: ' + String(r[RETURNS.name] || 'a return') + (x.n > 1 ? ' (' + x.n + ' new)' : '') + (TASK_LISTS_BY_NAME[first] ? '' : ' (no one assigned)');
+  addTask(list, title, 'From: ' + x.from + '\nSubject: ' + x.subject + '\n\nOpen it in Returns: ' + HUB + 'returns/');
+}
+
 function addThreadToReturn(retId, tid) {
   const rec = at('GET', RETURNS.table, '/' + retId + '?returnFieldsByFieldId=true');
   const cur = String((rec.fields || {})[RETURNS.threads] || '');
@@ -196,7 +230,7 @@ function importReturnMail() {
     off = j.offset || '';
   } while (off);
   const me = Session.getEffectiveUser().getEmail().toLowerCase();
-  let added = 0;
+  let added = 0; const notices = {};
   for (const th of list) {
     if (Date.now() - t0 > 240000) break;
     const tid = th.getId();
@@ -214,12 +248,14 @@ function importReturnMail() {
         [CEM.seen]: sent, [CEM.ret]: [ret.id], [CEM.match]: ret.threads.indexOf(tid) !== -1 ? 'thread' : 'customer email' };
       const rec = at('POST', CEM.table, '', { records: [{ fields }], typecast: true }).records[0];
       known[mid] = true; added++;
+      if (!sent) { const n0 = notices[ret.id] || { id: ret.id, n: 0 }; n0.n++; n0.subject = m.getSubject() || '(no subject)'; n0.from = m.getFrom(); notices[ret.id] = n0; }
       m.getAttachments({ includeInlineImages: false }).filter(a => !(/^image\d*\.(png|jpe?g|gif)$/i.test(a.getName()) && a.getSize() < 60000) && a.getSize() < 5 * 1024 * 1024)
         .forEach(a => uploadAttachment(rec.id, CEM.files, a, CEM.table));
       if (ret.threads.indexOf(tid) === -1) { addThreadToReturn(ret.id, tid); ret.threads += (ret.threads ? ',' : '') + tid; }
     }
   }
   PropertiesService.getScriptProperties().setProperty('SEEN_CUST', JSON.stringify(cache.slice(-1500)));
+  Object.keys(notices).forEach(k => { try { returnTask(notices[k]); } catch (e) { Logger.log('Return task: ' + e); } });
   return added;
 }
 
@@ -276,7 +312,7 @@ function importThreads(query, start, max, quick) {
   Object.keys(known).forEach(id => { if (!cacheSet[id]) { cache.push(id); cacheSet[id] = true; } });
   const cases = loadCases();
   const me = Session.getEffectiveUser().getEmail().toLowerCase();
-  let added = 0;
+  let added = 0; const notices = {};
   for (const th of threads) {
     if (Date.now() - t0 > 300000) break; // stay under Google's 6-minute limit
     const tid = th.getId();
@@ -310,10 +346,27 @@ function importThreads(query, start, max, quick) {
         addThreadToCase(hit.brand, hit.id, tid);
         if (!sent) learnFromReply(hit, subject + '\n' + body, atts);
       }
+      if (quick && !sent) { const k = hit ? hit.id : 'unmatched'; const n0 = notices[k] || { hit: hit, n: 0 }; n0.n++; n0.subject = subject; n0.from = from; notices[k] = n0; }
     }
   }
   saveSeen(cache);
+  Object.keys(notices).forEach(k => { try { warrantyTask(notices[k]); } catch (e) { Logger.log('Warranty task: ' + e); } });
   return { threads: threads.length, added };
+}
+
+function warrantyTask(x) {
+  const brand = x.hit ? (x.hit.brand === 'taylor' ? 'Taylor' : 'Martin') : 'Martin/Taylor';
+  let list = JON_LIST, who = '', label = '';
+  if (x.hit) {
+    const c = at('GET', CASES[x.hit.brand].table, '/' + x.hit.id + '?returnFieldsByFieldId=true').fields || {};
+    const name = String(c[x.hit.brand === 'taylor' ? 'fld4VdeNgfAlAYIEa' : 'fldAfDSbLxL90X19P'] || '').trim(); // case name
+    const tech = c[CASES[x.hit.brand].tech] || [];
+    if (tech.length && TASK_LISTS[tech[0]]) list = TASK_LISTS[tech[0]]; else who = ' (no tech assigned)';
+    label = name ? ': ' + name : '';
+  }
+  const title = (x.hit ? 'New ' + brand + ' warranty email' + label : 'Unmatched Martin/Taylor email') + (x.n > 1 ? ' (' + x.n + ' new)' : '') + who;
+  const notes = 'From: ' + x.from + '\nSubject: ' + x.subject + '\n\n' + (x.hit ? 'Open it in the Warranty Desk: ' : 'It isn\'t linked to a case yet. Match it in the Warranty Desk: ') + HUB + 'warranty/';
+  addTask(list, title, notes);
 }
 
 function matchCase(cases, tid, text) {

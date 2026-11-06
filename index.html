@@ -146,6 +146,8 @@ const COUNTS={
   needsAmp:{label:"Electronics + tube amps", f:`AND(OR({Physical Status}='Needs Work: Electronics Repair',{Physical Status}='Needs Work: Tube Amp Repair'),${ACTIVE})`},
   needsOther:{label:"Horns + misc", f:`AND(OR({Physical Status}='Needs Work: Horn Repair',{Physical Status}='Needs Work: Misc'),${ACTIVE})`},
   pendingItems:{label:"Items in pending deals", f:"{Data Status}='Pending'"},
+  warrantyMail:{label:"✉ Unread emails", table:"tblEJMNYQqquKdAH7", field:"Subject", f:"AND({Direction}='Received',NOT({Seen}))", href:"warranty/", alert:true},
+  returnsMail:{label:"✉ Unread emails", table:"tbl35TzF46dljMoYg", field:"Subject", f:"AND({Direction}='Received',NOT({Seen}))", href:"returns/", alert:true},
   returnsOpen:{label:"Open returns", table:"tblkWYK4EudB8tW7G", f:"NOT(OR({Status}='Closed',{Status}='Done'))"},
   needsPhotos:{label:"POS synced, no photos yet", f:"AND({Data Status}='POS Synced',NOT({Cloudinary URLs}),NOT({Image 1}))"},
   upNext:{label:"Up next to list", f:"AND({Data Status}='POS Synced',OR({Physical Status}='Ready to Sell',{Physical Status}='PriorityReady'),NOT({Description Done}))"},
@@ -162,10 +164,10 @@ const TILES=[
   {ic:"🔎", t:"Lookup & Notes", p:"Search an item, a deal or a customer's history; add notes.", where:"Phone or computer", href:"lookup/", counts:["live","going"]},
   {sec:"Tech"},
   {ic:"🔧", t:"Tech Bench", p:"Pick your queue, log work, mark ready.", where:"Phone or computer", href:"tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
-  {ic:"🛠️", t:"Martin & Taylor Warranty Desk", p:"Warranty cases: status, notes, Martin forms and emails to the factory.", where:"Phone or computer", href:"warranty/", counts:[]},
+  {ic:"🛠️", t:"Martin & Taylor Warranty Desk", p:"Warranty cases: status, notes, Martin forms and emails to the factory.", where:"Phone or computer", href:"warranty/", counts:["warrantyMail"]},
   {sec:"Customer Service · Ops Desk"},
   {ic:"👤", t:"Customers", p:"Find a customer: contact info, Lightspeed status, deals, items, consignments, warranty, wants and returns.", where:"Phone or computer", href:"customers/", counts:[]},
-  {ic:"↩️", t:"Returns", p:"Log a return, track it, email the customer.", where:"Phone or computer", href:"returns/", counts:["returnsOpen"]},
+  {ic:"↩️", t:"Returns", p:"Log a return, track it, email the customer.", where:"Phone or computer", href:"returns/", counts:["returnsMail","returnsOpen"]},
   {ic:"🔎", t:"Lookup & Notes", p:"Search an item, a deal or a customer's history; add notes.", where:"Phone or computer", href:"lookup/", counts:["live","going"]},
   {sec:"Utilities"},
   {ic:"🏷️", t:"Label Maker", p:"Print a 2×1 address label on the Zebra.", where:"2nd register Mac", href:"labels/", counts:[]},
@@ -176,7 +178,7 @@ const TILES=[
 const VAL={};
 
 async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
-  do{ const u=`https://api.airtable.com/v0/${BASE}/${c.table||TABLE}?pageSize=100&fields%5B%5D=Name&filterByFormula=${encodeURIComponent(c.f)}${offset?"&offset="+encodeURIComponent(offset):""}`;
+  do{ const u=`https://api.airtable.com/v0/${BASE}/${c.table||TABLE}?pageSize=100&fields%5B%5D=${encodeURIComponent(c.field||"Name")}&filterByFormula=${encodeURIComponent(c.f)}${offset?"&offset="+encodeURIComponent(offset):""}`;
     const r=await fetch(u,{headers:{Authorization:"Bearer "+TOKEN}}); const j=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status));
     n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<5);
@@ -184,7 +186,7 @@ async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
 
 function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" href="./"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`;
   TILES.forEach(t=>{ if(t.sec){ h+=`<div class="sh">${esc(t.sec.replace(/ · .*/,""))}</div>`; return; }
-    const ext=/^https?:/.test(t.href), k=t.counts[0], v=k?VAL[k]:undefined, hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos");
+    const ext=/^https?:/.test(t.href), ka=t.counts.find(x=>COUNTS[x]&&COUNTS[x].alert&&typeof VAL[x]==="number"&&VAL[x]>0), k=ka||t.counts.find(x=>!(COUNTS[x]&&COUNTS[x].alert)), v=k?VAL[k]:undefined, hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert));
     h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span>${v!==undefined&&v!=="?"?`<span class="n ${hot?"hot":""}">${esc(v)}</span>`:""}</a>`; });
   const ql=[...document.querySelectorAll("#qlcard .links a")];
   if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
@@ -192,7 +194,7 @@ function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" 
 function renderTiles(){ renderSide(); const groups=[]; TILES.forEach(t=>{ if(t.sec) groups.push({sec:t.sec,items:[]}); else (groups[groups.length-1]||groups[groups.push({sec:"",items:[]})-1]).items.push(t); });
   $("tiles").innerHTML=groups.map(g=>`${g.sec?`<h2 class="sec">${esc(g.sec)}</h2>`:""}<div class="grid">${g.items.map(tile).join("")}</div>`).join(""); }
 function tile(t){ { const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
-  ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}"${/^https?:/.test(c.href)?' target="_blank" rel="noopener"':""}><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
+  ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert)); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}"${/^https?:/.test(c.href)?' target="_blank" rel="noopener"':""}><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
   if(t.soon) return `<div class="tile soon"><span class="badge">Soon</span>${inner}</div>`;
   const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; } }
 
