@@ -94,6 +94,8 @@ table.t2 td.nw{white-space:nowrap}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;min-width:0}
 label.f.wide{grid-column:1/-1}
+details.more{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
+details.more summary{cursor:pointer;font-weight:600;font-size:13.5px}
 .editbox{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 @media (min-width:861px){#backbtn{display:none}}
 .soon{border:1px dashed var(--line2);border-radius:6px;padding:10px 12px;color:var(--muted);font-size:13.5px;margin-top:8px}
@@ -128,10 +130,14 @@ const U={ first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", name:"fldyOzHd6uR
   zip:"fld3d9arNaGKwQ7Rs", country:"fldx3QaadeJiKJuCJ", notes:"fldTuBvtA7iSZ7jEq", created:"fldIC9w3TQMAgFXLJ", balance:"fld8bxF5IzMoTu2qF", reverb:"fldOI4UyoE2PLQDcn",
   lsId:"fld3r7r2XwkHQzGM6", match:"fldPf3SdHksgcVsHv", matchNotes:"fldCGygn428Ppzuzf", sync:"fldvOfBOrkJ1EPGPS", lastSynced:"fld8YPvoGKMmtT9Om", status:"fldOnU1eqio6k4hBP", result:"fldYUS3shvmQSUWIv", modified:"fld2HozhlFU8DYmqN",
   log:"fldc4zkMVjHuKdssA", deals:"fldopijbeVa0w014L", consign:"fldLAzG0hJ8yQ2Ana", martin:"fldO9LBD3q8MY6NlV", taylor:"fldiPlXfy8XYy7uQg", wanted:"fldCIqJT0u1ShYJhK",
-  appraisals:"fld2VJUEbV7qZywK1", rental:"fldZne67J7NU8HAfy", layaway:"fldlTYJbCCuGg7ERY", changes:"fld5b3YGKAgxFrZdO" };
+  appraisals:"fld2VJUEbV7qZywK1", rental:"fldZne67J7NU8HAfy", layaway:"fldlTYJbCCuGg7ERY", changes:"fld5b3YGKAgxFrZdO",
+  dob:"fldz0MrKdLLz8OfN8", website:"fldMvc6U83eQUC4yw", taxEx:"fld2eI9pHierQtlbK", taxId:"fldyKieZZT7TQuTrO", discount:"fldSa4fBpQsZ4zHFU" };
 /* editable contact fields: key, label, type, wide */
 const CF=[["first","First name"],["last","Last name"],["company","Company"],["email","Email","email"],["email2","Email 2","email"],["mobile","Mobile","tel"],["phone","Phone","tel"],["work","Work phone","tel"],
   ["addr","Address","",true],["addr2","Address 2","",true],["city","City"],["state","State"],["zip","Zip"],["country","Country"],["notes","Notes","",true]];
+/* extra fields, tucked under "More fields" when editing and shown on the file only when filled in. Airtable only for now (not sent to Lightspeed). */
+const CF2=[["dob","Birthday"],["website","Website","url"],["taxEx","Tax exempt","yn"],["taxId","Tax ID"],["discount","Discount %"],["reverb","Reverb username"]];
+const ALLF=CF.concat(CF2), LSKEYS=new Set(["first","last","company","email","email2","mobile","phone","work","addr","addr2","city","state","zip","country"]);
 /* everything linked to a customer: link field on the customer, table, the columns to show */
 const REL=[
   {k:"deals", label:"Deals", link:"deals", table:"tblPJ4W0G96ATXPjD", sort:"fldOdTJkLKJTclB1w",
@@ -237,13 +243,14 @@ function renderMain(){ const c=CUR;
   if(!c){ $("main").innerHTML=`<div class="card"><div class="small muted">Loading customer…</div></div>`; return; }
   const nm=nameOf(c), ini=nm.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join("").toUpperCase();
   const addr=[uv(c,"addr"),uv(c,"addr2"),[uv(c,"city"),uv(c,"state")].filter(Boolean).join(", ")+(uv(c,"zip")?" "+uv(c,"zip"):""),uv(c,"country")].filter(x=>String(x).trim()).join("\n");
-  const kv=[["Email",uv(c,"email")],["Email 2",uv(c,"email2")],["Mobile",uv(c,"mobile")],["Phone",uv(c,"phone")],["Work phone",uv(c,"work")],["Company",uv(c,"company")],["Address",addr],["Reverb buyer",uv(c,"reverb")],["Store balance",uv(c,"balance")],["Customer since",uv(c,"created")]].filter(x=>String(x[1]||"").trim());
+  const kv=[["Email",uv(c,"email")],["Email 2",uv(c,"email2")],["Mobile",uv(c,"mobile")],["Phone",uv(c,"phone")],["Work phone",uv(c,"work")],["Company",uv(c,"company")],["Address",addr],["Reverb buyer",uv(c,"reverb")],["Birthday",uv(c,"dob")],["Website",uv(c,"website")],["Tax exempt",/^y/i.test(uv(c,"taxEx"))?"Yes"+(uv(c,"taxId")?" · ID "+uv(c,"taxId"):""):""],["Discount",uv(c,"discount")?String(uv(c,"discount")).replace(/%?$/,"%"):""],["Store balance",uv(c,"balance")],["Customer since",uv(c,"created")]].filter(x=>String(x[1]||"").trim());
   $("main").innerHTML=`<div class="card">
     <div class="phead"><div class="who"><div class="av" aria-hidden="true">${esc(ini||"?")}</div><div style="min-width:0"><h2>${esc(nm)}</h2><div class="sub">${esc([uv(c,"company"),uv(c,"city")].filter(Boolean).join(" · "))}</div></div></div>
       <div class="row"><button class="btn sec sm" data-act="back" id="backbtn">← List</button>${EDIT?"":`<button class="btn sec sm" data-act="edit">Edit</button>`}<a class="btn sec sm" href="https://airtable.com/${BASE}/${UT}/${c.id}" target="_blank" rel="noopener">Airtable ↗</a></div></div>
     ${lsProblem(c)}${MSG?`<div class="note ok">${esc(MSG)}</div>`:""}
     ${EDIT?editHTML():`<dl class="contact">${kv.length?kv.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd style="white-space:pre-line">${esc(v)}</dd></div>`).join(""):`<div class="muted">No contact info on file. Click Edit to add some.</div>`}</dl>
     ${uv(c,"notes")?`<div class="soon" style="border-style:solid;color:var(--ink);white-space:pre-wrap">${esc(uv(c,"notes"))}</div>`:""}`}
+    ${MKUI.html(c)}
     ${lsBox(c)}
     <dl class="stats" id="stats"></dl>
     <div class="chips" id="chips"></div>
@@ -270,20 +277,23 @@ function renderRel(){ const el=$("rel"); if(!el||!CUR) return; const show=REL.fi
     return `<div class="rsec"><h3>${esc(R.label)} <span class="n">${n==null?"":n}</span></h3>${body}</div>`; }).join(""):`<div class="rsec empty">Nothing linked to ${esc(nameOf(CUR).split(" ")[0])} yet.</div>`; }
 
 /* ---------- edit + save + sync ---------- */
-function editHTML(){ const ch=changes(); return `<div class="editbox"><h3>Edit contact info</h3><div class="form">${CF.map(([k,l,type,wide])=>`<label class="f ${wide?"wide":""}">${esc(l)}<input class="t" id="ce-${k}" data-ce="${k}" ${type?`type="${type}"`:""} value="${esc(EDIT.v[k])}" autocomplete="off"></label>`).join("")}</div>
+function fieldHTML([k,l,type,wide]){ if(type==="yn") return `<label class="f">${esc(l)}<select class="t" id="ce-${k}" data-ce="${k}"><option value="" ${/^y/i.test(EDIT.v[k])||/^n/i.test(EDIT.v[k])?"":"selected"}>Not set</option><option value="Y" ${/^y/i.test(EDIT.v[k])?"selected":""}>Yes</option><option value="N" ${/^n/i.test(EDIT.v[k])?"selected":""}>No</option></select></label>`;
+  return `<label class="f ${wide?"wide":""}">${esc(l)}<input class="t" id="ce-${k}" data-ce="${k}" ${type?`type="${type}"`:""} value="${esc(EDIT.v[k])}" autocomplete="off"></label>`; }
+function editHTML(){ const ch=changes(), anyMore=CF2.some(([k])=>String(EDIT.v[k]).trim()); return `<div class="editbox"><h3>Edit contact info</h3><div class="form">${CF.map(fieldHTML).join("")}</div>
+  <details class="more" ${anyMore||EDIT.more?"open":""}><summary>More fields <span class="small muted">birthday, website, tax exempt, discount, Reverb</span></summary><div class="form">${CF2.map(fieldHTML).join("")}</div><div class="small muted" style="margin-top:6px">These stay in our records; they don't go to Lightspeed yet.</div></details>
   <div id="cesum" class="small muted" style="margin-top:8px">${ch.length?"Unsaved: "+ch.map(c=>c.l).join(", "):"No changes yet."}</div>${EDIT.err?`<div class="note warn">${esc(EDIT.err)}</div>`:""}
   <div class="row" style="margin-top:10px"><button class="btn" id="cesave" data-act="save" ${ch.length&&!EDIT.busy?"":"disabled"}>${EDIT.busy?"Saving…":"Save and send to Lightspeed"}</button><button class="btn sec" data-act="cancel">Cancel</button></div></div>`; }
-function changes(){ if(!EDIT) return []; return CF.filter(([k])=>String(EDIT.v[k]).trim()!==String(uv(CUR,k)).trim()).map(([k,l])=>({k,l,to:String(EDIT.v[k]).trim()})); }
+function changes(){ if(!EDIT) return []; return ALLF.filter(([k])=>String(EDIT.v[k]).trim()!==String(uv(CUR,k)).trim()).map(([k,l])=>({k,l,to:String(EDIT.v[k]).trim()})); }
 function updSum(){ const ch=changes(); const s=$("cesum"); if(s) s.textContent=ch.length?"Unsaved: "+ch.map(c=>c.l).join(", "):"No changes yet."; const b=$("cesave"); if(b) b.disabled=!ch.length||EDIT.busy; }
 const emailOk=s=>!s||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 async function save(){ const ch=changes(); if(!ch.length||EDIT.busy) return; const v=EDIT.v;
   if(!emailOk(String(v.email).trim())||!emailOk(String(v.email2).trim())){ EDIT.err="One of the emails doesn't look right."; renderMain(); return; }
   if(!String(v.first).trim()&&!String(v.last).trim()&&!String(v.company).trim()){ EDIT.err="A customer needs a name or a company."; renderMain(); return; }
-  const fields={}; ch.forEach(c=>fields[U[c.k]]=c.to===""?null:c.to); fields[U.sync]=true;
+  const fields={}; ch.forEach(c=>fields[U[c.k]]=c.to===""?null:c.to); if(ch.some(c=>LSKEYS.has(c.k))) fields[U.sync]=true;
   EDIT.busy=true; EDIT.err=""; renderMain();
   try{ const out=await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})});
     CUR.fields={...CUR.fields,...(out.fields||{})}; ch.forEach(c=>{ if(c.to==="") delete CUR.fields[U[c.k]]; });
-    MSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; EDIT=null; renderMain(); watchSync(); }
+    const toLS=ch.some(c=>LSKEYS.has(c.k)); MSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; EDIT=null; renderMain(); if(toLS) watchSync(); }
   catch(e){ EDIT.busy=false; EDIT.err="Didn't save: "+e.message; renderMain(); } }
 async function syncNow(){ if(!CUR||(SYNC&&SYNC.busy)) return; SYNC={busy:true,msg:"Sending to Lightspeed…"}; renderMain();
   try{ await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:{[U.sync]:false}})}); await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:{[U.sync]:true}})}); CUR.fields[U.sync]=true; watchSync(); }
@@ -291,8 +301,8 @@ async function syncNow(){ if(!CUR||(SYNC&&SYNC.busy)) return; SYNC={busy:true,ms
 /* the Airtable automation unticks Sync to LS when it's done; poll until then */
 async function watchSync(){ const id=CUR.id; SYNC={busy:true,msg:"Sending to Lightspeed…"}; renderMain(); const t0=Date.now();
   while(Date.now()-t0<60000){ await new Promise(r=>setTimeout(r,3000)); if(CURID!==id) return;
-    try{ const c=await api(UT,`/${id}?returnFieldsByFieldId=true&${fq([U.sync,U.lsId,U.status,U.result,U.lastSynced,U.match,U.matchNotes])}`); if(CURID!==id) return;
-      if(!c.fields[U.sync]){ Object.assign(CUR.fields,c.fields); [U.sync,U.lsId,U.status,U.result,U.lastSynced,U.match,U.matchNotes].forEach(k=>{ if(!(k in c.fields)) delete CUR.fields[k]; }); SYNC=null; renderMain(); loadRelated(CUR); return; } }catch(e){} }
+    try{ const WF=[U.sync,U.lsId,U.status,U.result,U.lastSynced,U.match,U.matchNotes,...MKUI.fields]; const c=await api(UT,`/${id}?returnFieldsByFieldId=true&${fq(WF)}`); if(CURID!==id) return;
+      if(!c.fields[U.sync]){ Object.assign(CUR.fields,c.fields); WF.forEach(k=>{ if(!(k in c.fields)) delete CUR.fields[k]; }); SYNC=null; renderMain(); loadRelated(CUR); return; } }catch(e){} }
   SYNC={busy:false,msg:"Still waiting on Lightspeed. If the customer sync automation is off in Airtable, it will go when it's turned on; otherwise check back in a minute."}; renderMain(); }
 
 /* ---------- new customer (checks for an existing one first) ---------- */
@@ -315,10 +325,12 @@ async function createNew(){ const v=NEWC.v; if(!String(v.first||"").trim()&&!Str
   catch(e){ NEWC.busy=false; NEWC.err="Didn't save: "+e.message; renderMain(); } }
 
 /* ---------- events ---------- */
-document.addEventListener("click",e=>{ const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+document.addEventListener("click",e=>{ const m=e.target.closest("[data-mk]"); if(m&&CUR){ MKUI.click(m,CUR,{who:WHO, render:renderMain, after:watchSync,
+    patch:async f=>{ const out=await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true,returnFieldsByFieldId:true})}); return out.fields; }}); return; }
+  const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
   if(a==="open"){ if(EDIT&&changes().length&&!confirmLeave()) return; openCust(b.dataset.id); window.scrollTo(0,0); }
   else if(a==="filter"){ FILTER=b.dataset.k; renderChips(); renderRel(); }
-  else if(a==="edit"){ EDIT={v:{},busy:false,err:""}; CF.forEach(([k])=>EDIT.v[k]=String(uv(CUR,k))); MSG=""; renderMain(); const x=$("ce-first"); if(x) x.focus(); }
+  else if(a==="edit"){ EDIT={v:{},busy:false,err:""}; ALLF.forEach(([k])=>EDIT.v[k]=String(uv(CUR,k))); MSG=""; renderMain(); const x=$("ce-first"); if(x) x.focus(); }
   else if(a==="cancel"){ EDIT=null; renderMain(); }
   else if(a==="save") save();
   else if(a==="sync") syncNow();
@@ -345,5 +357,6 @@ function start(){ $("setup").hidden=!!TOKEN; $("layout").hidden=!TOKEN; if(!TOKE
 start();
 </script>
 <link rel="stylesheet" href="../warm.css?v=1">
+<script src="../mk.js?v=2"></script>
 </body>
 </html>
