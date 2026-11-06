@@ -154,11 +154,12 @@ const COUNTS={
   ecom:{label:"Going to Reverb tonight", f:"AND({Ecommerce Sync},{Data Status}='Ready For Ecommerce',NOT({Reverb URL}))"},
 };
 const TILES=[
-  {sec:"Intake & Listing"},
+  {sec:"Used Intake, Inventory & Listing"},
   {ic:"🤝", t:"Intake Desk", p:"Start a buy, trade or consignment.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P", counts:["posWait"]},
   {ic:"🧾", t:"Finish an Intake", p:"Find a pending deal and close it.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P#finish", counts:["pendingItems"]},
   {ic:"📷", t:"Photo Uploader", p:"Scan the SKU, shoot, upload.", where:"Phone app", href:"photos/", counts:["needsPhotos"]},
   {ic:"✍️", t:"Listing Desk", p:"Pick an item and write it up, manually or with Claude.", where:"Computer", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
+  {ic:"🔎", t:"Lookup & Notes", p:"Search an item, a deal or a customer's history; add notes.", where:"Phone or computer", href:"lookup/", counts:["live","going"]},
   {sec:"Tech"},
   {ic:"🔧", t:"Tech Bench", p:"Pick your queue, log work, mark ready.", where:"Phone or computer", href:"tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
   {ic:"🛠️", t:"Martin & Taylor Warranty Desk", p:"Warranty cases: status, notes, Martin forms and emails to the factory.", where:"Phone or computer", href:"warranty/", counts:[]},
