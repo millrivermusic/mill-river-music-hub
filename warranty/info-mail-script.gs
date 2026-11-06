@@ -1,10 +1,13 @@
 /**
- * Mill River Music — Warranty Desk mail bridge (runs as info@millrivermusic.com)
+ * Mill River Music — info@ mail bridge (runs as info@millrivermusic.com)
+ * v2 (11/5/2026): adds the Returns desk.
  *
  * What it does
  *  1. Sends warranty emails for the Warranty Desk app (only when a person presses Send in the app).
  *  2. Every 10 minutes, copies emails to/from Martin and Taylor (SV Network) into the
  *     Airtable "Warranty Emails" table and links each one to its warranty case.
+ *  3. Sends Returns desk emails to customers (only to the email on that return, only when a person presses Send).
+ *  4. Every 10 minutes, copies customer replies for open returns into the Airtable "Customer Emails" table.
  *
  * Setup (one time) — see the instructions in the chat / README:
  *  - Project Settings → Script Properties: AIRTABLE_TOKEN (Airtable key), APP_SECRET (any long random text).
@@ -23,6 +26,11 @@ const CASES = {
   martin: { table: 'tblqbwCvWxNz1REQt', serial: 'fldy6Cm4X17XUmsyr', num: 'fld6WsAofFOzjA1b4', cust: 'fldF2Y0xXQgsxr9dx', threads: 'fldwOwSVtR7rER66N', appr: 'fld6kJ1tCgP9Tmbhi', status: 'fld6AgAOjS2mCSErR' },
 };
 const CUSTOMERS = { table: 'tblGJnacXCV52gZdS', last: 'fldQCocWmypjXyXWp', name: 'fldyOzHd6uRNuaTHa' };
+/* Returns desk */
+const CEM = { table: 'tbl35TzF46dljMoYg', subject: 'fldNF4HRskYDlcxVy', dir: 'fldezFcFYYik6PLLx', from: 'fld8ugiNMI7quwMcT', to: 'fldxlxeSnXmvgDu8K',
+  date: 'fld0BHXUB0dcqPwTu', body: 'fldHBGw8JbAMgpY4T', files: 'fldlweWx0rUq2DNtA', ret: 'fldPMQfxoSoqIT1wY', msgId: 'fld5bCjoRE9JQu9Z2',
+  threadId: 'fldKHvJzRqxql7Z7J', seen: 'fldJiFwLXjV86FgcW', sentBy: 'fldNYqUUr8YYYw4pv', match: 'fldnjkVF4d2xQEwJW', sendStatus: 'fld3Kq4ATTQuhDYoo', sendError: 'fldBOUCcMteGh12pA' };
+const RETURNS = { table: 'tblkWYK4EudB8tW7G', name: 'fldVim5LDQ89b8qAd', email: 'fldswFlQaMB62aWE6', status: 'fldUrDMkm0nO96hXc', threads: 'fldQZtjN6wj23Ofno' };
 const FACTORY = ['martinguitar.com', 'taylorguitars.com'];
 const SHOP_NAME = 'Mill River Music and Guitars';
 const QUERY = '(from:martinguitar.com OR from:taylorguitars.com OR to:martinguitar.com OR to:taylorguitars.com)';
@@ -33,6 +41,7 @@ function doPost(e) {
   try { req = JSON.parse(e.postData.contents || '{}'); } catch (err) { return out({ ok: false, error: 'Bad request' }); }
   // Airtable calls this when the Warranty Desk queues an email. No secret needed: it only sends emails that are
   // already queued in Airtable, to Martin/Taylor addresses, so a stray call can't send anything new.
+  if (req.action === 'sendQueued' && req.table === 'customer') { try { return out(processCustQueue(req.id)); } catch (err) { return out({ ok: false, error: String(err && err.message || err) }); } }
   if (req.action === 'sendQueued') { try { return out(processQueue(req.id)); } catch (err) { return out({ ok: false, error: String(err && err.message || err) }); } }
   if (!req.secret || req.secret !== prop('APP_SECRET')) return out({ ok: false, error: 'Not allowed (secret does not match).' });
   try {
@@ -89,7 +98,130 @@ function sendForCase(r) {
 }
 
 /* ---------------- inbox sync (every 10 minutes) ---------------- */
-function syncInbox() { try { processQueue(); } catch (e) { Logger.log('Queue: ' + e); } return importThreads(QUERY + ' newer_than:3d', 0, 60, true).added; }
+function syncInbox() {
+  try { processQueue(); } catch (e) { Logger.log('Queue: ' + e); }
+  try { processCustQueue(); } catch (e) { Logger.log('Customer queue: ' + e); }
+  let n = 0; try { n += importThreads(QUERY + ' newer_than:3d', 0, 60, true).added; } catch (e) { Logger.log('Warranty import: ' + e); }
+  try { n += importReturnMail(); } catch (e) { Logger.log('Returns import: ' + e); }
+  return n;
+}
+
+/* ---------------- Returns desk: send to the customer on the return ---------------- */
+function processCustQueue(onlyId) {
+  const f = "AND({Send Status}='Queued',{Direction}='Outbox')";
+  const j = at('GET', CEM.table, '?pageSize=20&returnFieldsByFieldId=true&filterByFormula=' + encodeURIComponent(f));
+  let sent = 0, failed = 0;
+  for (const r of (j.records || [])) {
+    if (onlyId && r.id !== onlyId) continue;
+    const F = r.fields || {};
+    at('PATCH', CEM.table, '', { records: [{ id: r.id, fields: { [CEM.sendStatus]: 'Sending' } }], typecast: true });
+    try {
+      sendForReturn({ id: r.id, retId: (F[CEM.ret] || [])[0], to: F[CEM.to], subject: F[CEM.subject], body: F[CEM.body],
+        attachments: (F[CEM.files] || []).map(a => ({ url: a.url, filename: a.filename })), replyThreadId: F[CEM.threadId] || '' });
+      sent++;
+    } catch (err) {
+      failed++;
+      at('PATCH', CEM.table, '', { records: [{ id: r.id, fields: { [CEM.sendStatus]: 'Failed', [CEM.sendError]: String(err && err.message || err).slice(0, 2000) } }], typecast: true });
+    }
+  }
+  return { ok: true, sent, failed };
+}
+function sendForReturn(r) {
+  if (!r.retId || !r.to || !r.subject || !r.body) throw new Error('Missing return, recipient, subject or text.');
+  const ret = at('GET', RETURNS.table, '/' + r.retId + '?returnFieldsByFieldId=true').fields || {};
+  const allowed = String(ret[RETURNS.email] || '').trim().toLowerCase();
+  const to = String(r.to).trim().toLowerCase();
+  // Safety: only ever sends to the customer email saved on that return.
+  if (!allowed || to !== allowed) throw new Error('Only sends to the email saved on the return (' + (allowed || 'none saved') + ').');
+  const blobs = (r.attachments || []).slice(0, 10).map(a => UrlFetchApp.fetch(a.url).getBlob().setName(a.filename || 'attachment'));
+  const opts = { name: SHOP_NAME, attachments: blobs };
+  const me = Session.getEffectiveUser().getEmail().toLowerCase();
+  let thread = null, replied = false;
+  if (r.replyThreadId) { try { thread = GmailApp.getThreadById(r.replyThreadId); } catch (e) { thread = null; } }
+  if (thread) {
+    const msgs = thread.getMessages();
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const fromMe = msgs[i].getFrom().toLowerCase().indexOf(me) !== -1;
+      if (!fromMe && msgs[i].getFrom().toLowerCase().indexOf(to) !== -1) { msgs[i].reply(r.body, opts); replied = true; break; }
+      if (fromMe && (msgs[i].getTo() + ' ' + msgs[i].getCc()).toLowerCase().indexOf(to) !== -1) { msgs[i].replyAll(r.body, opts); replied = true; break; }
+    }
+  }
+  if (!replied) GmailApp.sendEmail(r.to, r.subject, r.body, opts);
+  Utilities.sleep(2500);
+  const found = GmailApp.search('in:sent to:' + to + ' newer_than:1d', 0, 5);
+  let msg = null;
+  for (const t of found) { const ms = t.getMessages(); const m = ms[ms.length - 1]; if (!msg || m.getDate() > msg.getDate()) msg = m; }
+  const threadId = msg ? msg.getThread().getId() : (thread ? thread.getId() : '');
+  at('PATCH', CEM.table, '', { records: [{ id: r.id, fields: { [CEM.dir]: 'Sent', [CEM.from]: me, [CEM.date]: new Date().toISOString(),
+    [CEM.msgId]: msg ? msg.getId() : '', [CEM.threadId]: threadId, [CEM.seen]: true, [CEM.sendStatus]: 'Sent', [CEM.match]: 'sent from Returns desk' } }], typecast: true });
+  if (threadId) addThreadToReturn(r.retId, threadId);
+  return { ok: true, threadId };
+}
+function addThreadToReturn(retId, tid) {
+  const rec = at('GET', RETURNS.table, '/' + retId + '?returnFieldsByFieldId=true');
+  const cur = String((rec.fields || {})[RETURNS.threads] || '');
+  if (cur.split(',').map(s => s.trim()).indexOf(tid) !== -1) return;
+  at('PATCH', RETURNS.table, '', { records: [{ id: retId, fields: { [RETURNS.threads]: cur ? cur + ',' + tid : tid } }] });
+}
+
+/* ---------------- Returns desk: copy customer replies for open returns ---------------- */
+function importReturnMail() {
+  const t0 = Date.now();
+  const f = "AND(NOT(OR({Status}='Closed',{Status}='Done')),{Customer Email}!='')";
+  let rets = [], off = '';
+  do {
+    const j = at('GET', RETURNS.table, '?pageSize=100&returnFieldsByFieldId=true&fields%5B%5D=' + RETURNS.email + '&fields%5B%5D=' + RETURNS.threads + '&filterByFormula=' + encodeURIComponent(f) + (off ? '&offset=' + encodeURIComponent(off) : ''));
+    rets = rets.concat((j.records || []).map(r => ({ id: r.id, email: String(r.fields[RETURNS.email] || '').trim().toLowerCase(), threads: String(r.fields[RETURNS.threads] || '') })));
+    off = j.offset || '';
+  } while (off);
+  rets = rets.filter(r => /@/.test(r.email));
+  if (!rets.length) return 0;
+  const threads = {}, addrs = [...new Set(rets.map(r => r.email))];
+  for (let i = 0; i < addrs.length; i += 15) {
+    const q = '(' + addrs.slice(i, i + 15).map(a => 'from:' + a + ' OR to:' + a).join(' OR ') + ') newer_than:3d';
+    GmailApp.search(q, 0, 50).forEach(th => threads[th.getId()] = th);
+  }
+  rets.forEach(r => r.threads.split(',').map(s => s.trim()).filter(Boolean).forEach(tid => { if (!threads[tid]) { try { const th = GmailApp.getThreadById(tid); if (th && (Date.now() - th.getLastMessageDate().getTime()) < 3 * 864e5) threads[tid] = th; } catch (e) {} } }));
+  const list = Object.keys(threads).map(k => threads[k]);
+  if (!list.length) return 0;
+  // nothing new since last run: no Airtable calls
+  let cache = []; try { cache = JSON.parse(prop('SEEN_CUST') || '[]'); } catch (e) {}
+  const cacheSet = {}; cache.forEach(id => cacheSet[id] = true);
+  const fresh = []; list.forEach(th => th.getMessages().forEach(m => { if (!cacheSet[m.getId()]) fresh.push(m.getId()); }));
+  if (!fresh.length) return 0;
+  const known = {}; off = '';
+  do {
+    const j = at('GET', CEM.table, '?pageSize=100&returnFieldsByFieldId=true&fields%5B%5D=' + CEM.msgId + (off ? '&offset=' + encodeURIComponent(off) : ''));
+    (j.records || []).forEach(r => { const id = (r.fields || {})[CEM.msgId]; if (id) known[id] = true; });
+    off = j.offset || '';
+  } while (off);
+  const me = Session.getEffectiveUser().getEmail().toLowerCase();
+  let added = 0;
+  for (const th of list) {
+    if (Date.now() - t0 > 240000) break;
+    const tid = th.getId();
+    for (const m of th.getMessages()) {
+      const mid = m.getId();
+      if (!cacheSet[mid]) { cache.push(mid); cacheSet[mid] = true; }
+      if (known[mid]) continue;
+      const people = (m.getFrom() + ' ' + m.getTo() + ' ' + m.getCc()).toLowerCase();
+      // which open return is this about? its thread first, then the customer's email
+      const ret = rets.find(r => r.threads.indexOf(tid) !== -1) || rets.find(r => people.indexOf(r.email) !== -1);
+      if (!ret || people.indexOf(ret.email) === -1) continue;
+      const sent = m.getFrom().toLowerCase().indexOf(me) !== -1;
+      const fields = { [CEM.subject]: m.getSubject() || '(no subject)', [CEM.dir]: sent ? 'Sent' : 'Received', [CEM.from]: m.getFrom(), [CEM.to]: m.getTo(),
+        [CEM.date]: m.getDate().toISOString(), [CEM.body]: trimQuoted(m.getPlainBody() || '').slice(0, 90000), [CEM.msgId]: mid, [CEM.threadId]: tid,
+        [CEM.seen]: sent, [CEM.ret]: [ret.id], [CEM.match]: ret.threads.indexOf(tid) !== -1 ? 'thread' : 'customer email' };
+      const rec = at('POST', CEM.table, '', { records: [{ fields }], typecast: true }).records[0];
+      known[mid] = true; added++;
+      m.getAttachments({ includeInlineImages: false }).filter(a => !(/^image\d*\.(png|jpe?g|gif)$/i.test(a.getName()) && a.getSize() < 60000) && a.getSize() < 5 * 1024 * 1024)
+        .forEach(a => uploadAttachment(rec.id, CEM.files, a, CEM.table));
+      if (ret.threads.indexOf(tid) === -1) { addThreadToReturn(ret.id, tid); ret.threads += (ret.threads ? ',' : '') + tid; }
+    }
+  }
+  PropertiesService.getScriptProperties().setProperty('SEEN_CUST', JSON.stringify(cache.slice(-1500)));
+  return added;
+}
 
 /* ---------------- outbox: emails queued in Airtable by the Warranty Desk ---------------- */
 function processQueue(onlyId) {

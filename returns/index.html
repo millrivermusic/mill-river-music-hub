@@ -68,6 +68,11 @@ textarea.t{min-height:70px;resize:vertical}
 .thumbs a{flex:none}
 .thumbs img{width:104px;height:104px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--sunk);display:block}
 .files{display:flex;flex-direction:column;gap:6px}
+.mails{display:flex;flex-direction:column;gap:8px}
+.mail{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--sunk)}
+.mail.in{border-left:3px solid var(--ok);border-radius:0 6px 6px 0} .mail.out{border-left:3px solid var(--line2,var(--line));border-radius:0 6px 6px 0}
+.mail .mh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.mail .mb{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px;font-size:14.5px;max-height:320px;overflow:auto}
 .files a{border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:8px 12px;color:inherit;text-decoration:none;font-size:14px;overflow-wrap:anywhere}
 .filebtn{position:relative;overflow:hidden;display:inline-flex;align-items:center}
 .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
@@ -105,7 +110,10 @@ textarea.t{min-height:70px;resize:vertical}
 const BASE="appZD2jJGbSlvofcV", TABLE="tblkWYK4EudB8tW7G";
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const R={ name:"fldVim5LDQ89b8qAd", date:"fldhkimEYedfUSOzV", platform:"fld4muJ28GRGMdbk1", notes:"fld700olqZG5C4914", next:"fldJTyaEvFrXTS30T", reason:"fld9wBg8Vg3xc5w7S", status:"fldUrDMkm0nO96hXc",
-  cust:"fldpQcELJgDxlItQ9", email:"fldswFlQaMB62aWE6", phone:"fldgo86VfIEqI5yX4", order:"fldAXNK9nO9zmoQo2", sku:"fld4XYif7YXWOaOfJ", track:"fldp0hQ93vQZabtsO", refund:"fldLZV5kIeEL7uviC", method:"fldd0lmfhENENvkZK", photos:"fldnXGhHUz7Aukmi7", files:"fld6vi1RnSLew0pYN" };
+  cust:"fldpQcELJgDxlItQ9", email:"fldswFlQaMB62aWE6", phone:"fldgo86VfIEqI5yX4", order:"fldAXNK9nO9zmoQo2", sku:"fld4XYif7YXWOaOfJ", track:"fldp0hQ93vQZabtsO", refund:"fldLZV5kIeEL7uviC", method:"fldd0lmfhENENvkZK", photos:"fldnXGhHUz7Aukmi7", files:"fld6vi1RnSLew0pYN", threads:"fldQZtjN6wj23Ofno", emails:"fld2KIBTRXgIMW1Dk" };
+/* Customer Emails: sent from info@ by the info@ Google script, customer replies copied back in every 10 minutes */
+const CE={ table:"tbl35TzF46dljMoYg", subject:"fldNF4HRskYDlcxVy", dir:"fldezFcFYYik6PLLx", from:"fld8ugiNMI7quwMcT", to:"fldxlxeSnXmvgDu8K", date:"fld0BHXUB0dcqPwTu", body:"fldHBGw8JbAMgpY4T",
+  files:"fldlweWx0rUq2DNtA", ret:"fldPMQfxoSoqIT1wY", thread:"fldKHvJzRqxql7Z7J", seen:"fldJiFwLXjV86FgcW", sentBy:"fldNYqUUr8YYYw4pv", status:"fld3Kq4ATTQuhDYoo", error:"fldBOUCcMteGh12pA" };
 const STATUSES=["Customer Contacted Us","Return Approved","Return Received","Customer Refunded","Closed","Done"];
 const CLOSED=["Closed","Done"];
 const PLATFORMS=["Reverb","eBay","Website","In store","Phone order"];
@@ -117,6 +125,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let UNREAD={}, MAILS=null, MAILERR="", SENDING=null, ATTACH={}, CONFIRM=false;
 let ALL=[], FILTER="open", Q="", REC=null, MODE="list", EDIT=null, ASK=null, MSG="", EMAIL=null, NEWQ={photos:[],files:[]}, BUSY=false;
 
 const v=(r,k)=>{ const x=r&&r.fields&&r.fields[R[k]]; if(x==null) return ""; if(Array.isArray(x)) return x; if(typeof x==="object") return x.name??x.text??""; return x; };
@@ -128,6 +137,18 @@ const isOpen=r=>!CLOSED.includes(v(r,"status"));
 /* ---------- Airtable ---------- */
 async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
   const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
+async function apiT(table,path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${table}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(m); } return j; }
+const ce=(r,k)=>{ const x=r&&r.fields&&r.fields[CE[k]]; if(x==null) return ""; if(typeof x==="object"&&!Array.isArray(x)) return x.name??""; return x; };
+async function loadUnread(){ try{ const f=`AND({Direction}='Received',NOT({Seen}))`; let out=[], off="";
+    do{ const j=await apiT(CE.table,`?returnFieldsByFieldId=true&pageSize=100&fields%5B%5D=${CE.ret}&filterByFormula=${encodeURIComponent(f)}${off?"&offset="+encodeURIComponent(off):""}`); out=out.concat(j.records||[]); off=j.offset||""; }while(off);
+    UNREAD={}; out.forEach(r=>(r.fields[CE.ret]||[]).forEach(id=>UNREAD[id]=(UNREAD[id]||0)+1)); }catch(e){ UNREAD={}; } }
+async function loadMails(r){ MAILS=null; MAILERR=""; const ids=(r.fields[R.emails]||[]); if(!ids.length){ MAILS=[]; return; }
+  try{ let out=[]; for(let i=0;i<ids.length;i+=40){ const f=`OR(${ids.slice(i,i+40).map(x=>`RECORD_ID()='${x}'`).join(",")})`; const j=await apiT(CE.table,`?returnFieldsByFieldId=true&pageSize=100&filterByFormula=${encodeURIComponent(f)}`); out=out.concat(j.records||[]); }
+    MAILS=out.sort((a,b)=>String(ce(a,"date")||a.createdTime).localeCompare(String(ce(b,"date")||b.createdTime)));
+    const unseen=MAILS.filter(m=>ce(m,"dir")==="Received"&&!m.fields[CE.seen]).map(m=>m.id);
+    if(unseen.length){ for(let i=0;i<unseen.length;i+=10) apiT(CE.table,"",{method:"PATCH",body:JSON.stringify({records:unseen.slice(i,i+10).map(id=>({id,fields:{[CE.seen]:true}}))})}).catch(()=>{}); MAILS.forEach(m=>{ if(unseen.includes(m.id)) m._new=true; }); delete UNREAD[r.id]; } }
+  catch(e){ MAILS=[]; MAILERR=e.message; } }
 async function loadAll(){ let out=[], offset="";
   do{ const j=await api(`?returnFieldsByFieldId=true&pageSize=100&sort%5B0%5D%5Bfield%5D=${R.date}&sort%5B0%5D%5Bdirection%5D=desc${offset?"&offset="+encodeURIComponent(offset):""}`); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<2000);
   ALL=out; }
@@ -156,11 +177,11 @@ function shown(){ const words=Q.toLowerCase().split(/\s+/).filter(Boolean);
 function tagFor(s){ return `<span class="tag ${s==="Customer Contacted Us"?"warn":s==="Customer Refunded"||CLOSED.includes(s)?"ok":s==="Return Received"?"need":""}">${esc(s||"no status")}</span>`; }
 function renderList(){ renderChips(); const rows=shown();
   $("bmsg").innerHTML=MSG?`<div class="note ${/^Couldn|didn't/.test(MSG)?"warn":"ok"}">${esc(MSG)}</div>`:(!rows.length?`<p class="small muted" style="margin:12px 0 0">${ALL.length?"No returns match.":"No returns yet."}</p>`:"");
-  $("list").innerHTML=rows.map(r=>`<button class="res" data-act="open" data-id="${r.id}"><b>${esc(v(r,"name")||"(no item)")}</b>${tagFor(v(r,"status"))}
+  $("list").innerHTML=rows.map(r=>`<button class="res" data-act="open" data-id="${r.id}"><b>${esc(v(r,"name")||"(no item)")}</b><span>${UNREAD[r.id]?`<span class="tag warn">✉ ${UNREAD[r.id]} new</span> `:""}${tagFor(v(r,"status"))}</span>
     <span class="meta">${esc([v(r,"cust"),v(r,"platform"),v(r,"date"),v(r,"order")&&"#"+v(r,"order")].filter(Boolean).join(" · "))}${v(r,"next")?" · next: "+esc(v(r,"next")):""}</span></button>`).join(""); }
 
 /* ---------- one return ---------- */
-function openRet(id){ REC=ALL.find(x=>x.id===id); if(!REC) return; MODE="view"; EDIT=null; ASK=null; EMAIL=null; MSG=""; show(); window.scrollTo(0,0); }
+function openRet(id){ REC=ALL.find(x=>x.id===id); if(!REC) return; MODE="view"; EDIT=null; ASK=null; EMAIL=null; MSG=""; SENDING=null; ATTACH={}; CONFIRM=false; MAILS=null; show(); window.scrollTo(0,0); const r=REC; loadMails(r).then(()=>{ if(REC===r&&MODE==="view") show(); }); }
 function back(){ REC=null; MODE="list"; EDIT=null; ASK=null; EMAIL=null; show(); }
 function pickRow(name, list, cur){ return `<div class="pick">${list.map(o=>`<button type="button" class="chip ${cur===o?"on":""}" data-pick="${name}" data-v="${esc(o)}">${esc(o)}</button>`).join("")}</div>`; }
 function formHTML(d){ return `<div class="form">
@@ -203,6 +224,8 @@ function viewHTML(){ const r=REC, s=v(r,"status"), ph=v(r,"photos")||[], fl=v(r,
     <h3>Attachments</h3>
     ${fl.length?`<div class="files">${fl.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:`<p class="small muted" style="margin:0">Labels, receipts, screenshots, PDFs.</p>`}
     <div class="row" style="margin-top:8px"><span class="btn sec filebtn">📎 Add files<input type="file" multiple data-up="files"></span></div>
+    <h3>Emails with the customer</h3>
+    ${mailsHTML()}
     <h3>Email the customer</h3>
     ${emailHTML()}
     ${MSG?`<div class="note ${/^Couldn|didn't|over 5/.test(MSG)?"warn":"ok"}">${esc(MSG)}</div>`:""}
@@ -224,8 +247,38 @@ function emailHTML(){ if(!EMAIL){ const k=AUTO[v(REC,"status")]||"Blank"; startE
   <div class="form" style="margin-top:8px"><label class="f wide">To<input class="t" id="em-to" type="email" value="${esc(EMAIL.to)}" placeholder="customer@email.com"></label>
   <label class="f wide">Subject<input class="t" id="em-s" value="${esc(EMAIL.s)}"></label>
   <label class="f wide">Message<textarea class="t" id="em-b" style="min-height:190px">${esc(EMAIL.b)}</textarea></label></div>
-  <div class="row" style="margin-top:8px"><button class="btn" data-act="gmail">Open in Gmail to send</button><button class="btn sec" data-act="copy">Copy text</button></div>
-  <p class="small muted" style="margin:6px 0 0">Nothing is sent from here. Gmail opens with this filled in, signed in as you; read it over and press Send there. Opening it adds a line to the notes.</p>`; }
+  ${attachPick()}
+  ${CONFIRM?`<div class="confirm"><span>Send this from info@ to <b>${esc(EMAIL.to)}</b>?${EMAIL.to.toLowerCase()!==String(v(REC,"email")||"").toLowerCase()?` This also saves it as the customer's email on this return.`:""}</span><button class="btn" data-act="sendyes">Yes, send it</button><button class="btn sec" data-act="sendno">Not yet</button></div>`
+    :`<div class="row" style="margin-top:8px"><button class="btn" data-act="sendask" ${SENDING&&SENDING.busy?"disabled":""}>${SENDING&&SENDING.busy?"Sending…":"Send from info@"}</button><button class="btn sec" data-act="gmail">Open in Gmail instead</button><button class="btn sec" data-act="copy">Copy text</button></div>`}
+  ${SENDING&&SENDING.msg?`<div class="note ${SENDING.bad?"warn":SENDING.busy?"":"ok"}">${esc(SENDING.msg)}</div>`:""}
+  <p class="small muted" style="margin:6px 0 0">Goes out from info@ and lands in info@'s Sent folder. The customer's reply comes back here within about 10 minutes.</p>`; }
+function attachPick(){ const all=[...(v(REC,"photos")||[]),...(v(REC,"files")||[])]; if(!all.length) return "";
+  return `<div class="f wide" style="margin-top:8px;font-size:12px;font-weight:700;color:var(--muted)">Attach from this return<div class="pick">${all.map(a=>`<button type="button" class="chip ${ATTACH[a.id]?"on":""}" data-act="att" data-id="${esc(a.id)}">${esc(a.filename)}</button>`).join("")}</div></div>`; }
+function mailsHTML(){ if(MAILS===null) return `<p class="small muted" style="margin:0">Loading emails…</p>`; if(MAILERR) return `<div class="note warn">Couldn't load emails: ${esc(MAILERR)}</div>`;
+  if(!MAILS.length) return `<p class="small muted" style="margin:0">No emails yet. Emails sent below, and the customer's replies, show up here.</p>`;
+  return `<div class="mails">${MAILS.map(m=>{ const d=ce(m,"dir"), st=ce(m,"status"); const fl=m.fields[CE.files]||[];
+    return `<div class="mail ${d==="Received"?"in":"out"}"><div class="mh"><b>${d==="Received"?"From customer":"From us"}</b>${m._new?` <span class="tag warn">new</span>`:""}${d==="Outbox"||st==="Failed"||st==="Queued"||st==="Sending"?` <span class="tag ${st==="Failed"?"warn":"need"}">${esc(st||"not sent")}</span>`:""}<span class="small muted">${esc(fmtWhen(ce(m,"date")||m.createdTime))}${ce(m,"sentBy")?" · "+esc(ce(m,"sentBy")):""}</span></div>
+      <div class="small muted">${esc(d==="Received"?ce(m,"from"):"To "+ce(m,"to"))} · ${esc(ce(m,"subject"))}</div>
+      <div class="mb">${esc(ce(m,"body"))}</div>${st==="Failed"&&ce(m,"error")?`<div class="small" style="color:var(--warn)">${esc(ce(m,"error"))}</div>`:""}
+      ${fl.length?`<div class="files" style="margin-top:6px">${fl.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}</div>`; }).join("")}</div>`; }
+const fmtWhen=x=>{ if(!x) return ""; const d=new Date(x); return isNaN(d)?String(x):d.toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}); };
+async function sendMail(){ syncEmail(); const r=REC; const to=EMAIL.to.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){ SENDING={msg:"Add a real email address first.",bad:true}; show(); return; }
+  if(!EMAIL.s.trim()||!EMAIL.b.trim()){ SENDING={msg:"Add a subject and a message.",bad:true}; show(); return; }
+  SENDING={busy:true,msg:"Sending from info@…"}; CONFIRM=false; show();
+  try{ if(to.toLowerCase()!==String(v(r,"email")||"").toLowerCase()) await patch(r.id,{[R.email]:to});
+    const threads=String(v(REC,"threads")||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const all=[...(v(REC,"photos")||[]),...(v(REC,"files")||[])].filter(a=>ATTACH[a.id]).map(a=>({url:a.url,filename:a.filename}));
+    const f={[CE.subject]:EMAIL.s.trim(),[CE.dir]:"Outbox",[CE.to]:to,[CE.body]:EMAIL.b,[CE.ret]:[r.id],[CE.sentBy]:WHO,[CE.seen]:true,[CE.status]:"Queued",[CE.date]:new Date().toISOString()};
+    if(threads.length) f[CE.thread]=threads[threads.length-1]; if(all.length) f[CE.files]=all;
+    const j=await apiT(CE.table,"?returnFieldsByFieldId=true",{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); const id=j.records[0].id;
+    await patch(r.id,{[R.notes]:appendNote(REC,`Emailed from info@: "${EMAIL.s.trim()}" to ${to}`)}).catch(()=>{});
+    const t0=Date.now(); let st="Queued", err="";
+    while(Date.now()-t0<45000){ await new Promise(res=>setTimeout(res,3000)); try{ const x=await apiT(CE.table,`/${id}?returnFieldsByFieldId=true`); st=(x.fields[CE.status]&&x.fields[CE.status].name)||st; err=x.fields[CE.error]||""; if(st==="Sent"||st==="Failed") break; }catch(e){} }
+    SENDING= st==="Sent"?{msg:"Sent from info@."}: st==="Failed"?{msg:"Didn't send: "+err,bad:true}:{msg:"Queued. It will go out shortly (the info@ script sends it).",bad:false};
+    if(st==="Sent"){ EMAIL=null; ATTACH={}; } await getOne(r.id).catch(()=>{}); await loadMails(REC); }
+  catch(e){ SENDING={msg:"Couldn't queue the email: "+e.message,bad:true}; }
+  show(); }
 
 /* ---------- new return ---------- */
 function newHTML(){ const d=EDIT;
@@ -274,6 +327,10 @@ document.addEventListener("click", async e=>{
     }catch(err){ BUSY=false; MSG="Couldn't save: "+err.message; show(); }
     return; }
   if(a==="tpl"){ startEmail(b.dataset.k); show(); return; }
+  if(a==="att"){ syncEmail(); ATTACH[b.dataset.id]=!ATTACH[b.dataset.id]; show(); return; }
+  if(a==="sendask"){ if(needWho()) return; syncEmail(); CONFIRM=true; SENDING=null; show(); return; }
+  if(a==="sendno"){ syncEmail(); CONFIRM=false; show(); return; }
+  if(a==="sendyes"){ sendMail(); return; }
   if(a==="copy"){ syncEmail(); const txt=`To: ${EMAIL.to}\nSubject: ${EMAIL.s}\n\n${EMAIL.b}`; try{ await navigator.clipboard.writeText(txt); MSG="Email copied."; }catch(err){ MSG="Couldn't copy. Select the text and copy it."; } show(); return; }
   if(a==="gmail"){ syncEmail(); if(!EMAIL.to){ MSG="Add the customer's email first."; show(); return; }
     const u=`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(EMAIL.to)}&su=${encodeURIComponent(EMAIL.s)}&body=${encodeURIComponent(EMAIL.b)}`;
@@ -299,7 +356,7 @@ $("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photo
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!t) return; TOKEN=t; $("setmsg").innerHTML=`<div class="note">Testing…</div>`;
   try{ await loadAll(); store.set("mrm-photos-token",t); $("setmsg").innerHTML=""; show(); }catch(err){ TOKEN=""; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
 (async()=>{ show(); if(!TOKEN) return; $("bmsg").innerHTML=`<p class="small muted">Loading…</p>`;
-  try{ await loadAll(); const m=/[?&]id=(rec\w+)/.exec(location.search); if(m&&ALL.some(x=>x.id===m[1])) openRet(m[1]); else show(); }
+  try{ await Promise.all([loadAll(),loadUnread()]); const m=/[?&]id=(rec\w+)/.exec(location.search); if(m&&ALL.some(x=>x.id===m[1])) openRet(m[1]); else show(); }
   catch(err){ MSG="Couldn't load returns: "+err.message; show(); } })();
 </script>
 </body>
