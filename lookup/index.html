@@ -331,13 +331,20 @@ function cUpdSum(){ const ch=cChanges(); const el=$("cesum"); if(el) el.textCont
 async function cSave(){ const ch=cChanges(); if(!ch.length||CEDIT.busy) return;
   const v=CEDIT.v; if(String(v.email).trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v.email).trim())){ CEDIT.err="That e-mail doesn't look right."; renderCust(); return; }
   if(!String(v.first).trim()&&!String(v.last).trim()){ CEDIT.err="A customer needs a first or last name."; renderCust(); return; }
-  const fields={}; ch.forEach(c=>fields[c.fid]=c.to===""?null:c.to);
+  const fields={}; ch.forEach(c=>fields[c.fid]=c.to===""?null:c.to); fields["fldvOfBOrkJ1EPGPS"]=true; // Sync to LS: send the change to Lightspeed
   CEDIT.busy=true; CEDIT.err=""; renderCust();
   try{ const out=await apiT(UT,`/${CUST.id}`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})});
     CUST.fields={...CUST.fields,...(out.fields||{})}; ch.forEach(c=>{ if(c.to==="") delete CUST.fields[c.fid]; });
-    CMSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; CEDIT=null; }
+    CMSG="Saved: "+ch.map(c=>c.l).join(", ")+". Sending to Lightspeed."; CEDIT=null; }
   catch(e){ CEDIT.busy=false; CEDIT.err="Didn't save: "+e.message; }
   renderCust(); }
+/* customers the Lightspeed sync couldn't sort out: warn whoever pulls them up */
+function lsWarn(c){ const g=k=>{ const v=c&&c.fields&&c.fields[k]; return v&&typeof v==="object"?(v.name||""):(v||""); };
+  const m=g("fldPf3SdHksgcVsHv"), st=g("fldOnU1eqio6k4hBP"), notes=g("fldCGygn428Ppzuzf"), res=g("fldYUS3shvmQSUWIv");
+  if(!["Lightspeed duplicates","Needs review","Airtable duplicate"].includes(m)&&st!=="Error") return "";
+  const head=m==="Lightspeed duplicates"?"Lightspeed has more than one record for this customer.":m==="Airtable duplicate"?"This customer is in Airtable more than once.":m==="Needs review"?"This customer needs a check before it syncs with Lightspeed.":"The last Lightspeed sync for this customer failed.";
+  const why=[notes, st==="Error"?String(res).replace(/^.*?Failed:\s*/,""):""].filter(Boolean).join(" ");
+  return `<div class="note warn"><b>⚠ ${esc(head)}</b> Fix this customer in Lightspeed before syncing. Talk to a manager.${why?`<div style="font-weight:500;margin-top:4px">${esc(why)}</div>`:""}</div>`; }
 const uv=(r,k)=>{ const v=r&&r.fields&&r.fields[k]; return v==null?"":v; };
 const SECS=["browse","item","deals","deal","custs","cust"];
 function show(id){ SECS.forEach(x=>$(x).hidden=x!==id); window.scrollTo(0,0); }
@@ -370,8 +377,8 @@ function renderCust(){ const c=CUST; if(!c) return; if(!c.fields){ $("cust").inn
     sum=`<dl class="kv"><dt>Items</dt><dd>${CITEMS.length}${["Purchase","Trade","Consignment"].map(t=>by(t).length?` · ${by(t).length} ${t==="Purchase"?"bought":t==="Trade"?"traded":"consigned"}`:"").join("")}${passed?` · ${passed} passed on`:""}</dd>
       <dt>We paid</dt><dd>${paid?money(paid):"–"}${(cash||cr)?` <span class="small muted">(deals since Oct 2026: ${[cash?money(cash)+" cash":"",cr?money(cr)+" credit":""].filter(Boolean).join(" + ")})</span>`:""}</dd>
       <dt>Sold so far</dt><dd>${sold} of ${CITEMS.length}</dd>${first?`<dt>Customer since</dt><dd>${esc(fmtDate(f(first,"dateIn")))||"–"}</dd>`:""}</dl>`; }
-  $("cust").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(nm||"(no name)")}</h2>${contact?`<div class="small muted">${contact}</div>`:""}</div><div class="row" style="flex:none;gap:6px">${CEDIT?"":`<button class="btn sec" data-act="cedit" style="min-height:40px;padding:8px 12px">Edit</button>`}<button class="btn sec" data-act="cclose" style="min-height:40px;padding:8px 12px">← Back</button></div></div>
-    ${CMSG?`<div class="note ok">${esc(CMSG)}</div>`:""}${CEDIT?cFormHTML():""}
+  $("cust").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(nm||"(no name)")}</h2>${contact?`<div class="small muted">${contact}</div>`:""}</div><div class="row" style="flex:none;gap:6px"><a class="btn sec" href="../customers/#${esc(c.id)}" style="min-height:40px;padding:8px 12px;text-decoration:none;display:inline-flex;align-items:center">Customer file</a>${CEDIT?"":`<button class="btn sec" data-act="cedit" style="min-height:40px;padding:8px 12px">Edit</button>`}<button class="btn sec" data-act="cclose" style="min-height:40px;padding:8px 12px">← Back</button></div></div>
+    ${lsWarn(c)}${CMSG?`<div class="note ok">${esc(CMSG)}</div>`:""}${CEDIT?cFormHTML():""}
     ${sum}${uv(c,UX.notes)?`<div class="small" style="white-space:pre-wrap;margin-top:12px;padding:10px 12px;background:var(--sunk);border-radius:12px">${esc(uv(c,UX.notes))}</div>`:""}
     ${CDEALS&&CDEALS.length?`<h3 style="margin:16px 0 6px">Deals</h3><div class="list">${CDEALS.map((d,i)=>{ const cash=num(dv(d,"cash")), cr=num(dv(d,"credit")); return `<button class="res" data-act="cdeal" data-i="${i}"><b>${esc(fmtDate(dv(d,"date")))}</b><span class="price">${esc([cash?money(cash)+" cash":"",cr?money(cr)+" credit":""].filter(Boolean).join(" + ")||"–")}</span><span class="meta">${esc(stLabel(dv(d,"status")))} · ${(d.fields[D.products]||[]).length} items</span></button>`; }).join("")}</div>`:""}
     <h3 style="margin:16px 0 6px">Everything from ${esc((nm||"them").split(" ")[0])}</h3>

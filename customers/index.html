@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7A2E1F">
+<title>Customers</title>
+<link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<style>
+/* MRM Customers: one place to find a customer and see everything linked to them. Edits save only when you press Save, then go to Lightspeed. */
+:root{
+  --bg:#F5EFE4; --surface:#FFFBF4; --sunk:#FAF4EA; --ink:#2B211A; --muted:#7A6A5C; --line:#E6DCCB; --line2:#CDBFA8;
+  --accent:#7A2E1F; --accent-ink:#FFF7EE; --accent-soft:#F3E2D9; --accent-text:#7A2E1F;
+  --ok:#2F6B3A; --ok-soft:#E3EDD9; --warn:#9E2A1E; --warn-soft:#F6DED7; --info:#3D4C8A; --info-soft:#E2E5F1; --sugg:#9A5B13; --sugg-soft:#F4E3C8;
+  --font:"Work Sans","Segoe UI",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace; --display:"Fraunces",Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#3A3029; --surface:#463A31; --sunk:#40352D; --ink:#F6EDE0; --muted:#CBB9A5; --line:#5A4B3F; --line2:#766556;
+  --accent:#C0533A; --accent-ink:#FFF7EE; --accent-soft:#5A3A2E; --accent-text:#F4AE96;
+  --ok:#A6DB9E; --ok-soft:#33452F; --warn:#FFA592; --warn-soft:#5A2E25; --info:#C1C9FA; --info-soft:#3B4060; --sugg:#F2C27A; --sugg-soft:#55402A; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent-text)}
+button,input,select,textarea{font:inherit;color:inherit}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-family:var(--display);font-size:22px;font-weight:700}
+.bar a{color:inherit;font-size:14px;font-weight:600;text-decoration:none}
+.bar select{font-size:14px;border-radius:6px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#2B211A}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wrap{max-width:1280px;margin:0 auto;padding-block:16px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.layout{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)} .layout.open .side{display:none} .layout:not(.open) .main{display:none}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.side{position:sticky;top:64px}
+h2,h3{margin:0;font-family:var(--display);font-weight:600;letter-spacing:-.005em}
+h2{font-size:24px} h3{font-size:17px}
+.muted{color:var(--muted)} .small{font-size:13px}
+input.t,select.t,textarea.t{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:9px 11px;font-size:15px;width:100%;min-width:0}
+input.t:focus,select.t:focus,textarea.t:focus{outline:none;border-color:var(--accent)}
+textarea.t{min-height:60px;resize:vertical}
+.btn{border:1px solid var(--accent);border-radius:6px;padding:9px 14px;font-weight:600;background:var(--accent);color:var(--accent-ink);cursor:pointer;min-height:40px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:transparent;color:var(--ink);border-color:var(--line2)}
+.btn.sec:hover{background:var(--sunk);filter:none}
+.btn.sm{min-height:32px;padding:5px 10px;font-size:13px}
+.btn:disabled{background:var(--sunk);color:var(--muted);border-color:var(--line);cursor:not-allowed;filter:none}
+.list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{display:grid;grid-template-columns:1fr auto;gap:1px 10px;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:6px;padding:9px 11px;cursor:pointer}
+.res:hover{border-color:var(--line2)} .res.on{border-color:var(--accent);background:var(--accent-soft)}
+.res b{line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .r{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.res .meta{grid-column:1/-1;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line);color:var(--muted)}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent} .tag.need{background:var(--sugg-soft);color:var(--sugg);border-color:transparent}
+.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent} .tag.info{background:var(--info-soft);color:var(--info);border-color:transparent}
+.note{border-radius:6px;padding:9px 12px;font-size:14px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:600}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+/* profile */
+.phead{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.av{width:52px;height:52px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-weight:700;font-size:18px;flex:none}
+.who{display:flex;gap:14px;align-items:center;min-width:0}
+.who .sub{color:var(--muted);font-size:13.5px;margin-top:2px}
+.contact{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 18px;margin-top:14px}
+.contact div{min-width:0} .contact dt{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)} .contact dd{margin:1px 0 0;overflow-wrap:anywhere}
+.lsbar{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);font-size:13.5px}
+.lsbar .res2{flex:1 1 260px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:14px}
+.stats div{background:var(--sunk);border-radius:6px;padding:9px 12px;min-width:0}
+.stats dt{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:2px 0 0;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;position:sticky;top:56px;background:var(--surface);padding:8px 0;z-index:2;border-bottom:1px solid var(--line)}
+.chip{border:1px solid var(--line2);background:transparent;border-radius:4px;padding:5px 10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink);display:inline-flex;gap:6px}
+.chip .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)} .chip.on .n{color:inherit;opacity:.85}
+.chip.empty{opacity:.5}
+.rsec{margin-top:18px}
+.rsec h3{display:flex;align-items:baseline;gap:8px}
+.rsec h3 .n{font-family:var(--font);font-size:13px;color:var(--muted);font-weight:600}
+table.t2{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+table.t2 th{text-align:left;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+table.t2 td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t2 tr:nth-child(even) td{background:var(--sunk)}
+table.t2 td.r,table.t2 th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t2 td.nw{white-space:nowrap}
+.scrollx{overflow-x:auto}
+.sku{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.empty{color:var(--muted);font-size:13.5px;margin-top:6px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;min-width:0}
+label.f.wide{grid-column:1/-1}
+.editbox{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+@media (min-width:861px){#backbtn{display:none}}
+.soon{border:1px dashed var(--line2);border-radius:6px;padding:10px 12px;color:var(--muted);font-size:13.5px;margin-top:8px}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+</head>
+<body>
+<header class="bar"><div class="in"><h1>Customers</h1>
+  <div class="row"><select id="whosel" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+<main class="wrap">
+  <section class="card" id="setup" hidden>
+    <h3>Connect this device</h3>
+    <p class="small muted" style="margin:6px 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices with the Hub, Lookup or Tech Bench set up are connected automatically.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" style="flex:1 1 220px;width:auto"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+  <div class="layout" id="layout" hidden>
+    <aside class="side card">
+      <form id="sform" class="row" autocomplete="off"><input class="t" id="q" inputmode="search" placeholder="Name, email or phone" style="flex:1 1 160px;width:auto"><button class="btn" type="submit">Find</button></form>
+      <div class="row" style="margin-top:8px;justify-content:space-between"><span class="small muted" id="smsg">Recently updated customers</span><button class="btn sec sm" data-act="new">+ New customer</button></div>
+      <div class="list" id="results"></div>
+    </aside>
+    <section class="main" id="main"><div class="card"><h3>Find a customer</h3><p class="muted" style="margin:6px 0 0">Search on the left to see their contact info, Lightspeed status, deals, items, consignments, warranty work, wants, returns and every change to their record.</p></div></section>
+  </div>
+</main>
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", UT="tblGJnacXCV52gZdS";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const U={ first:"fldNJHv6xcZ25xjws", last:"fldQCocWmypjXyXWp", name:"fldyOzHd6uRNuaTHa", company:"fldVktTDTVUjza6TH", email:"fldZz0HYc0OItKqrE", email2:"fld2fGkqaSiHOKHJf",
+  mobile:"fldKQ2uMAJx1n1CPX", phone:"fldvEPdKdGNqRaIJB", work:"fldEloDTrWvz6ZXuU", addr:"fld8ihGFPawc5sEFk", addr2:"fldEML3c3ldngWy30", city:"fldQi9lXAU9XovuY5", state:"fldhBzyvVqq2kPfUj",
+  zip:"fld3d9arNaGKwQ7Rs", country:"fldx3QaadeJiKJuCJ", notes:"fldTuBvtA7iSZ7jEq", created:"fldIC9w3TQMAgFXLJ", balance:"fld8bxF5IzMoTu2qF", reverb:"fldOI4UyoE2PLQDcn",
+  lsId:"fld3r7r2XwkHQzGM6", match:"fldPf3SdHksgcVsHv", matchNotes:"fldCGygn428Ppzuzf", sync:"fldvOfBOrkJ1EPGPS", lastSynced:"fld8YPvoGKMmtT9Om", status:"fldOnU1eqio6k4hBP", result:"fldYUS3shvmQSUWIv", modified:"fld2HozhlFU8DYmqN",
+  log:"fldc4zkMVjHuKdssA", deals:"fldopijbeVa0w014L", consign:"fldLAzG0hJ8yQ2Ana", martin:"fldO9LBD3q8MY6NlV", taylor:"fldiPlXfy8XYy7uQg", wanted:"fldCIqJT0u1ShYJhK",
+  appraisals:"fld2VJUEbV7qZywK1", rental:"fldZne67J7NU8HAfy", layaway:"fldlTYJbCCuGg7ERY", changes:"fld5b3YGKAgxFrZdO" };
+/* editable contact fields: key, label, type, wide */
+const CF=[["first","First name"],["last","Last name"],["company","Company"],["email","Email","email"],["email2","Email 2","email"],["mobile","Mobile","tel"],["phone","Phone","tel"],["work","Work phone","tel"],
+  ["addr","Address","",true],["addr2","Address 2","",true],["city","City"],["state","State"],["zip","Zip"],["country","Country"],["notes","Notes","",true]];
+/* everything linked to a customer: link field on the customer, table, the columns to show */
+const REL=[
+  {k:"deals", label:"Deals", link:"deals", table:"tblPJ4W0G96ATXPjD", sort:"fldOdTJkLKJTclB1w",
+    cols:[["Date","fldOdTJkLKJTclB1w","date"],["Status","fldGpKgTDF97hv3rO"],["Cash","fldfubaeAPnUFzzT1","money"],["Credit","fldg6R9Tl4UKcgFgU","money"],["Items","fldJYuUeLsKwkLtql","count"],["Approved","fldIj8XBHDmIrIyMZ"],["Notes","fldZPysDGzKnZiWTO"]]},
+  {k:"items", label:"Items", link:"log", table:"tbleYgUhKCIepPtFR", sort:"fldf0h1eW3dxrlufr",
+    cols:[["Date in","fldf0h1eW3dxrlufr","date"],["Item","flde17o9HEpKPdMlS","item"],["SKU","fldfKGlajXOBkUQ92","sku"],["Type","fldUhYtVjkyGTZgw4"],["Paid","fldg6j6emzCkDiGaI","money"],["POS price","fld0ESkFoFMOhfR0g","money"],["Status","fldQNSoYTvTVEIgwG"],["Where","fldM1ajllQvTvdKwI"]]},
+  {k:"consign", label:"Consignments", link:"consign", table:"tblz1rvxYm3R5Uizr",
+    cols:[["Item","fldMUHlM6iGqwTPJu"],["Status","flddkKTB4jg7ICDFP"],["Sold","fldGY7ASIuLFTX9JF","date"],["Payout","flddZkaVxZPee1NOQ","money"],["Paid","fldcctqRbESQ90go2","date"]]},
+  {k:"warranty", label:"Warranty", parts:[
+    {link:"martin", table:"tblqbwCvWxNz1REQt", brand:"Martin", cols:[["Requested","fldrB8TVSm7bu8v7M","date"],["Case","fldAfDSbLxL90X19P"],["Model","fld8xzh2iPeJHBNO2"],["Status","fld6AgAOjS2mCSErR"]]},
+    {link:"taylor", table:"tblUR6Y7rfCLBSllO", brand:"Taylor", cols:[["Requested","fldgCYZGyXAf4zAPT","date"],["Case","fld4VdeNgfAlAYIEa"],["Model","fldCd9DENx3VhCujn"],["Status","fldAgQWqOARycTlWc"]]}],
+    cols:[["Requested","req","date"],["Brand","brand"],["Case","case"],["Model","model"],["Status","status"]]},
+  {k:"returns", label:"Returns", byEmail:true, table:"tblkWYK4EudB8tW7G", emailField:"Customer Email", sort:"fldhkimEYedfUSOzV",
+    cols:[["Date","fldhkimEYedfUSOzV","date"],["Return","fldVim5LDQ89b8qAd"],["Platform","fld4muJ28GRGMdbk1"],["Reason","fld9wBg8Vg3xc5w7S"],["Status","fldUrDMkm0nO96hXc"],["Refund","fldLZV5kIeEL7uviC","money"]]},
+  {k:"wanted", label:"Wants", link:"wanted", table:"tblwDGp0QMSu5ATcU", sort:"flddPTf5HtlXPoFKi",
+    cols:[["Date","flddPTf5HtlXPoFKi","date"],["Looking for","fldqtbfLXVClVSrod"],["Brand","fld3A8en4TglD5k8M"],["Done?","fldLpZ9em7nNmYYuc"],["Notes","fld3vtLEzOIj6Y3bN"]]},
+  {k:"appraisals", label:"Appraisals", link:"appraisals", table:"tblK5njiG6uAJzxmQ",
+    cols:[["Instrument","fldROgyhkC3ioqv7w"],["Status","fldnn5fwIcEE8uDNp"],["Replacement value","fldF72ZOTwXxQERxh","money"]]},
+  {k:"rentals", label:"Rentals and layaway", parts:[
+    {link:"rental", table:"tblFTGq1DaiF4KHvr", brand:"Rental", cols:[["Start","fldicwjxFVIbeb8uf","date"],["What","fldMmjhNFQKWsYFuG"],["Status","fldoZ7dsW4uiS4umU"]]},
+    {link:"layaway", table:"tbllaWIPFmjQhMw4w", brand:"Layaway", cols:[["Start","fldskB2pZjXQaOwO1","date"],["What","fldURyspIkOovI0SJ"],["Status","fldCt0MHB40xtI4ut"],["Amount due","fldsDWJ3yT5XOriCl","money"]]}],
+    cols:[["Start","req","date"],["Kind","brand"],["What","case"],["Status","status"],["Amount due","amount","money"]]},
+  {k:"changes", label:"Change history", link:"changes", table:"tbleZskcdgwI3wCWu", sort:"fldHUf4nXhAwmwYb7",
+    cols:[["When","fldHUf4nXhAwmwYb7","when"],["Direction","fldLGa2Rj1tQnn1tz"],["Field","fldx30jldBhkB9yKC"],["Old","fldlWg3h9PDc9IKtW"],["New","fld7fJ5COk3vcxrYO"],["Change","fldYJFZGwtB6hvFbE"]]},
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+const quote=s=>"'"+String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+"'";
+const num=v=>{ const x=parseFloat(String(v??"").replace(/[$,]/g,"")); return isFinite(x)?x:null; };
+const money=v=>{ const x=num(v); return x==null?"":"$"+x.toLocaleString("en-US",{maximumFractionDigits:2}); };
+const val=v=>{ if(v==null) return ""; if(Array.isArray(v)) return v.map(x=>x&&typeof x==="object"?(x.name??x.text??x.filename??""):x).filter(x=>x!=="").join(", "); if(typeof v==="object") return v.name??v.text??""; return v; };
+const uv=(r,k)=>val(r&&r.fields&&r.fields[U[k]]);
+const fmtDate=s=>{ if(!s) return ""; const d=new Date(String(s).length<=10?s+"T12:00:00":s); return isNaN(d)?String(s):d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
+const fmtWhen=s=>{ if(!s) return ""; const d=new Date(s); return isNaN(d)?String(s):d.toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}); };
+const nameOf=r=>uv(r,"name")||[uv(r,"first"),uv(r,"last")].filter(Boolean).join(" ")||uv(r,"company")||"(no name)";
+const digits=s=>String(s||"").replace(/\D/g,"");
+
+async function api(table,path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${table}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't allow that ("+m+").":m); } return j; }
+const LISTF=[U.name,U.first,U.last,U.company,U.email,U.mobile,U.phone,U.lsId,U.match,U.log,U.deals];
+const fq=ids=>ids.map(x=>"fields%5B%5D="+x).join("&");
+async function byIds(table, ids, fields, sort){ const out=[]; for(let i=0;i<ids.length&&i<300;i+=40){ const f=`OR(${ids.slice(i,i+40).map(x=>`RECORD_ID()=${quote(x)}`).join(",")})`;
+    const j=await api(table,`?returnFieldsByFieldId=true&pageSize=100&${fq(fields)}&filterByFormula=${encodeURIComponent(f)}`); out.push(...(j.records||[])); }
+  if(sort) out.sort((a,b)=>String(b.fields[sort]||"").localeCompare(String(a.fields[sort]||""))); return out; }
+
+/* ---------- search ---------- */
+let RESULTS=[], CUR=null, CURID="", REL_DATA={}, FILTER="all", EDIT=null, MSG="", SYNC=null, NEWC=null;
+async function search(q){ q=String(q||"").trim(); $("smsg").textContent=q?"Looking…":"Loading…"; let fml;
+  if(!q) fml="TRUE()";
+  else { const words=q.toLowerCase().split(/\s+/).filter(Boolean).slice(0,4); const hay="LOWER({First Name}&' '&{Last Name}&' '&{Company}&' '&{E-mail}&' '&{Email 2})";
+    fml=`AND(${words.map(w=>`FIND(${quote(w)},${hay})`).join(",")})`; const d=digits(q);
+    if(d.length>=4) fml=`OR(${fml},FIND(${quote(d)},REGEX_REPLACE({Mobile}&' '&{Phone}&' '&{Work Phone},'[^0-9]','')))`; }
+  try{ const sort=q?"":`&sort%5B0%5D%5Bfield%5D=${U.modified}&sort%5B0%5D%5Bdirection%5D=desc`;
+    const j=await api(UT,`?returnFieldsByFieldId=true&pageSize=${q?60:25}&${fq(LISTF)}&filterByFormula=${encodeURIComponent(fml)}${sort}`);
+    RESULTS=j.records||[]; if(q) RESULTS.sort((a,b)=>((b.fields[U.log]||[]).length+(b.fields[U.deals]||[]).length)-((a.fields[U.log]||[]).length+(a.fields[U.deals]||[]).length));
+    $("smsg").textContent=q?(RESULTS.length?`${RESULTS.length}${RESULTS.length>=60?"+":""} found, most history first`:`No one found for “${q}”`):"Recently updated customers";
+    renderResults(); }
+  catch(e){ $("smsg").textContent=e.message; } }
+function lsTag(r){ const id=uv(r,"lsId"), m=uv(r,"match"), st=uv(r,"status");
+  if(st==="Error") return `<span class="tag warn">Sync error</span>`;
+  if(id) return `<span class="tag ok">LS #${esc(id)}</span>`;
+  if(m==="Needs review"||m==="Lightspeed duplicates"||m==="Airtable duplicate") return `<span class="tag need">${esc(m)}</span>`;
+  return `<span class="tag">Not in Lightspeed</span>`; }
+function renderResults(){ $("results").innerHTML=RESULTS.map(r=>{ const n=(r.fields[U.log]||[]).length, d=(r.fields[U.deals]||[]).length;
+  return `<button class="res ${r.id===CURID?"on":""}" data-act="open" data-id="${r.id}"><b>${esc(nameOf(r))}</b><span class="r">${n?n+" item"+(n===1?"":"s"):""}${d?` · ${d} deal${d===1?"":"s"}`:""}</span><span class="meta">${esc([uv(r,"email"),uv(r,"mobile")||uv(r,"phone")].filter(Boolean).join(" · ")||"no contact info")}</span></button>`; }).join("")||""; }
+
+/* ---------- profile ---------- */
+async function openCust(id, keepMsg){ CURID=id; if(!keepMsg) MSG=""; EDIT=null; NEWC=null; FILTER="all"; REL_DATA={}; CUR=null; renderResults(); $("layout").classList.add("open");
+  if(location.hash!=="#"+id) history.replaceState(null,"","#"+id); renderMain();
+  try{ const c=await api(UT,`/${id}?returnFieldsByFieldId=true`); if(CURID!==id) return; CUR=c; renderMain(); loadRelated(c); }
+  catch(e){ $("main").innerHTML=`<div class="card"><div class="note warn">${esc(e.message)}</div></div>`; } }
+async function loadRelated(c){ const id=c.id;
+  await Promise.all(REL.map(async R=>{ try{
+    let rows=[];
+    if(R.parts){ for(const P of R.parts){ const ids=(c.fields[U[P.link]]||[]); if(!ids.length) continue; const recs=await byIds(P.table, ids, P.cols.map(x=>x[1]));
+        rows.push(...recs.map(r=>{ const g=i=>r.fields[P.cols[i]&&P.cols[i][1]]; const o={_id:r.id,_table:P.table,req:g(0),brand:P.brand,case:val(g(1)),status:val(g(R.k==="warranty"?3:2))};
+          if(R.k==="warranty") o.model=val(g(2)); else o.amount=g(3); return o; })); }
+      rows.sort((a,b)=>String(b.req||"").localeCompare(String(a.req||""))); }
+    else if(R.byEmail){ const em=uv(c,"email").toLowerCase(); if(em){ const j=await api(R.table,`?returnFieldsByFieldId=true&pageSize=50&${fq(R.cols.map(x=>x[1]))}&filterByFormula=${encodeURIComponent(`LOWER({${R.emailField}}&'')=${quote(em)}`)}`); rows=(j.records||[]).map(r=>({_id:r.id,...r.fields})); } }
+    else { const ids=c.fields[U[R.link]]||[]; if(ids.length){ const recs=await byIds(R.table, ids, R.cols.map(x=>x[1]), R.sort); rows=recs.map(r=>({_id:r.id,...r.fields})); } }
+    if(CURID!==id) return; REL_DATA[R.k]=rows; }
+    catch(e){ if(CURID!==id) return; REL_DATA[R.k]={err:e.message}; } renderRel(); renderStats(); renderChips(); })); }
+function linkedCount(R){ const c=CUR; if(!c) return 0; if(REL_DATA[R.k]&&Array.isArray(REL_DATA[R.k])) return REL_DATA[R.k].length;
+  if(R.parts) return R.parts.reduce((a,P)=>a+(c.fields[U[P.link]]||[]).length,0); if(R.byEmail) return null; return (c.fields[U[R.link]]||[]).length; }
+
+/* a customer the sync couldn't sort out on its own: say so loudly, everywhere they're pulled up */
+const LS_FIX="Fix this customer in Lightspeed before syncing. Talk to a manager.";
+function lsProblem(c){ const m=uv(c,"match"), st=uv(c,"status"), notes=uv(c,"matchNotes"), res=uv(c,"result");
+  const bad=["Lightspeed duplicates","Needs review","Airtable duplicate"].includes(m)||st==="Error"; if(!bad) return "";
+  const head=m==="Lightspeed duplicates"?"Lightspeed has more than one record for this customer.":m==="Airtable duplicate"?"This customer is in Airtable more than once.":m==="Needs review"?"This customer needs a check before it syncs with Lightspeed.":"The last Lightspeed sync failed.";
+  const why=[notes, st==="Error"?res.replace(/^.*?Failed:\s*/,""):""].filter(Boolean).join(" ");
+  return `<div class="note warn" style="margin-top:14px"><b>⚠ ${esc(head)}</b> ${esc(LS_FIX)}${why?`<div style="font-weight:500;margin-top:4px">${esc(why)}</div>`:""}</div>`; }
+function lsBox(c){ const id=uv(c,"lsId"), st=uv(c,"status"), res=uv(c,"result"), last=c.fields[U.lastSynced], m=uv(c,"match"), ticked=!!c.fields[U.sync];
+  const state = SYNC&&SYNC.busy ? `<span class="tag info">Sending to Lightspeed…</span>` : ticked ? `<span class="tag info">Waiting to sync</span>` : st==="Error" ? `<span class="tag warn">Last sync failed</span>` : id ? `<span class="tag ok">In Lightspeed · #${esc(id)}</span>` : `<span class="tag">Not linked to Lightspeed</span>`;
+  return `<div class="lsbar"><b>Lightspeed</b>${state}${m&&!id?`<span class="tag need">${esc(m)}</span>`:""}
+    <span class="res2">${SYNC&&SYNC.msg?esc(SYNC.msg):res?esc(res):last?"Last synced "+esc(fmtWhen(last)):"Never synced from Airtable yet."}${uv(c,"matchNotes")&&!id?`<br>${esc(uv(c,"matchNotes"))}`:""}</span>
+    <button class="btn sec sm" data-act="sync" ${SYNC&&SYNC.busy?"disabled":""}>${id?"Sync now":"Send to Lightspeed"}</button></div>`; }
+function renderMain(){ const c=CUR;
+  if(NEWC){ $("main").innerHTML=newHTML(); return; }
+  if(!c){ $("main").innerHTML=`<div class="card"><div class="small muted">Loading customer…</div></div>`; return; }
+  const nm=nameOf(c), ini=nm.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join("").toUpperCase();
+  const addr=[uv(c,"addr"),uv(c,"addr2"),[uv(c,"city"),uv(c,"state")].filter(Boolean).join(", ")+(uv(c,"zip")?" "+uv(c,"zip"):""),uv(c,"country")].filter(x=>String(x).trim()).join("\n");
+  const kv=[["Email",uv(c,"email")],["Email 2",uv(c,"email2")],["Mobile",uv(c,"mobile")],["Phone",uv(c,"phone")],["Work phone",uv(c,"work")],["Company",uv(c,"company")],["Address",addr],["Reverb buyer",uv(c,"reverb")],["Store balance",uv(c,"balance")],["Customer since",uv(c,"created")]].filter(x=>String(x[1]||"").trim());
+  $("main").innerHTML=`<div class="card">
+    <div class="phead"><div class="who"><div class="av" aria-hidden="true">${esc(ini||"?")}</div><div style="min-width:0"><h2>${esc(nm)}</h2><div class="sub">${esc([uv(c,"company"),uv(c,"city")].filter(Boolean).join(" · "))}</div></div></div>
+      <div class="row"><button class="btn sec sm" data-act="back" id="backbtn">← List</button>${EDIT?"":`<button class="btn sec sm" data-act="edit">Edit</button>`}<a class="btn sec sm" href="https://airtable.com/${BASE}/${UT}/${c.id}" target="_blank" rel="noopener">Airtable ↗</a></div></div>
+    ${lsProblem(c)}${MSG?`<div class="note ok">${esc(MSG)}</div>`:""}
+    ${EDIT?editHTML():`<dl class="contact">${kv.length?kv.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd style="white-space:pre-line">${esc(v)}</dd></div>`).join(""):`<div class="muted">No contact info on file. Click Edit to add some.</div>`}</dl>
+    ${uv(c,"notes")?`<div class="soon" style="border-style:solid;color:var(--ink);white-space:pre-wrap">${esc(uv(c,"notes"))}</div>`:""}`}
+    ${lsBox(c)}
+    <dl class="stats" id="stats"></dl>
+    <div class="chips" id="chips"></div>
+    <div id="rel"></div>
+    <div class="rsec"><h3>Lightspeed sales <span class="n">coming</span></h3><div class="soon">Their purchases from Lightspeed will show here once the Lightspeed connection allows reading sales.</div></div>
+  </div>`;
+  renderStats(); renderChips(); renderRel(); }
+function renderStats(){ const el=$("stats"); if(!el||!CUR) return; const D=REL_DATA, it=Array.isArray(D.items)?D.items:null, dl=Array.isArray(D.deals)?D.deals:null;
+  const paid=it?it.reduce((a,r)=>a+(num(r.fldg6j6emzCkDiGaI)||0),0):null;
+  const cash=dl?dl.reduce((a,r)=>a+(num(r.fldfubaeAPnUFzzT1)||0),0):0, cr=dl?dl.reduce((a,r)=>a+(num(r.fldg6R9Tl4UKcgFgU)||0),0):0;
+  const first=it&&it.length?it[it.length-1].fldf0h1eW3dxrlufr:"";
+  const S=[["Items",it?it.length:(CUR.fields[U.log]||[]).length],["Deals",dl?dl.length:(CUR.fields[U.deals]||[]).length],["We paid",paid==null?"…":paid?money(paid):"–"],["Credit given",dl?(cr?money(cr):"–"):"…"],["First seen",first?fmtDate(first):(it?"–":"…")]];
+  el.innerHTML=S.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join(""); }
+function renderChips(){ const el=$("chips"); if(!el) return; const tot=REL.reduce((a,R)=>a+(linkedCount(R)||0),0);
+  el.innerHTML=`<button class="chip ${FILTER==="all"?"on":""}" data-act="filter" data-k="all">Everything <span class="n">${tot}</span></button>`+REL.map(R=>{ const n=linkedCount(R); return `<button class="chip ${FILTER===R.k?"on":""} ${n===0?"empty":""}" data-act="filter" data-k="${R.k}">${esc(R.label)} <span class="n">${n==null?"…":n}</span></button>`; }).join(""); }
+function cell(type, v, row){ if(type==="money") return money(val(v)); if(type==="date") return esc(fmtDate(val(v))); if(type==="when") return esc(fmtWhen(val(v))); if(type==="count") return Array.isArray(v)?v.length:"";
+  if(type==="sku"){ const s=val(v); return s?`<a class="sku" href="../lookup/?sku=${encodeURIComponent(s)}" target="_blank" rel="noopener">${esc(s)}</a>`:""; }
+  if(type==="item"){ const s=val(v); return `<a href="../lookup/?q=${encodeURIComponent(s)}" target="_blank" rel="noopener">${esc(s||"(no name)")}</a>`; }
+  return esc(val(v)); }
+function renderRel(){ const el=$("rel"); if(!el||!CUR) return; const show=REL.filter(R=>FILTER==="all"?(linkedCount(R)!==0):R.k===FILTER);
+  el.innerHTML=show.length?show.map(R=>{ const d=REL_DATA[R.k]; const n=linkedCount(R);
+    let body; if(d&&d.err) body=`<div class="note warn">${esc(d.err)}</div>`; else if(!d) body=`<div class="empty">Loading…</div>`; else if(!d.length) body=`<div class="empty">${R.byEmail&&!uv(CUR,"email")?"Add an email to match returns.":"Nothing yet."}</div>`;
+    else body=`<div class="scrollx"><table class="t2"><thead><tr>${R.cols.map(([l,,t])=>`<th class="${t==="money"||t==="count"?"r":""}">${esc(l)}</th>`).join("")}</tr></thead><tbody>${d.map(row=>`<tr>${R.cols.map(([,k,t])=>`<td class="${t==="money"||t==="count"?"r":t==="date"||t==="when"?"nw":""}">${cell(t,row[k],row)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="rsec"><h3>${esc(R.label)} <span class="n">${n==null?"":n}</span></h3>${body}</div>`; }).join(""):`<div class="rsec empty">Nothing linked to ${esc(nameOf(CUR).split(" ")[0])} yet.</div>`; }
+
+/* ---------- edit + save + sync ---------- */
+function editHTML(){ const ch=changes(); return `<div class="editbox"><h3>Edit contact info</h3><div class="form">${CF.map(([k,l,type,wide])=>`<label class="f ${wide?"wide":""}">${esc(l)}<input class="t" id="ce-${k}" data-ce="${k}" ${type?`type="${type}"`:""} value="${esc(EDIT.v[k])}" autocomplete="off"></label>`).join("")}</div>
+  <div id="cesum" class="small muted" style="margin-top:8px">${ch.length?"Unsaved: "+ch.map(c=>c.l).join(", "):"No changes yet."}</div>${EDIT.err?`<div class="note warn">${esc(EDIT.err)}</div>`:""}
+  <div class="row" style="margin-top:10px"><button class="btn" id="cesave" data-act="save" ${ch.length&&!EDIT.busy?"":"disabled"}>${EDIT.busy?"Saving…":"Save and send to Lightspeed"}</button><button class="btn sec" data-act="cancel">Cancel</button></div></div>`; }
+function changes(){ if(!EDIT) return []; return CF.filter(([k])=>String(EDIT.v[k]).trim()!==String(uv(CUR,k)).trim()).map(([k,l])=>({k,l,to:String(EDIT.v[k]).trim()})); }
+function updSum(){ const ch=changes(); const s=$("cesum"); if(s) s.textContent=ch.length?"Unsaved: "+ch.map(c=>c.l).join(", "):"No changes yet."; const b=$("cesave"); if(b) b.disabled=!ch.length||EDIT.busy; }
+const emailOk=s=>!s||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+async function save(){ const ch=changes(); if(!ch.length||EDIT.busy) return; const v=EDIT.v;
+  if(!emailOk(String(v.email).trim())||!emailOk(String(v.email2).trim())){ EDIT.err="One of the emails doesn't look right."; renderMain(); return; }
+  if(!String(v.first).trim()&&!String(v.last).trim()&&!String(v.company).trim()){ EDIT.err="A customer needs a name or a company."; renderMain(); return; }
+  const fields={}; ch.forEach(c=>fields[U[c.k]]=c.to===""?null:c.to); fields[U.sync]=true;
+  EDIT.busy=true; EDIT.err=""; renderMain();
+  try{ const out=await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})});
+    CUR.fields={...CUR.fields,...(out.fields||{})}; ch.forEach(c=>{ if(c.to==="") delete CUR.fields[U[c.k]]; });
+    MSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; EDIT=null; renderMain(); watchSync(); }
+  catch(e){ EDIT.busy=false; EDIT.err="Didn't save: "+e.message; renderMain(); } }
+async function syncNow(){ if(!CUR||(SYNC&&SYNC.busy)) return; SYNC={busy:true,msg:"Sending to Lightspeed…"}; renderMain();
+  try{ await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:{[U.sync]:false}})}); await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:{[U.sync]:true}})}); CUR.fields[U.sync]=true; watchSync(); }
+  catch(e){ SYNC={busy:false,msg:"Couldn't start the sync: "+e.message}; renderMain(); } }
+/* the Airtable automation unticks Sync to LS when it's done; poll until then */
+async function watchSync(){ const id=CUR.id; SYNC={busy:true,msg:"Sending to Lightspeed…"}; renderMain(); const t0=Date.now();
+  while(Date.now()-t0<60000){ await new Promise(r=>setTimeout(r,3000)); if(CURID!==id) return;
+    try{ const c=await api(UT,`/${id}?returnFieldsByFieldId=true&${fq([U.sync,U.lsId,U.status,U.result,U.lastSynced,U.match,U.matchNotes])}`); if(CURID!==id) return;
+      if(!c.fields[U.sync]){ Object.assign(CUR.fields,c.fields); [U.sync,U.lsId,U.status,U.result,U.lastSynced,U.match,U.matchNotes].forEach(k=>{ if(!(k in c.fields)) delete CUR.fields[k]; }); SYNC=null; renderMain(); loadRelated(CUR); return; } }catch(e){} }
+  SYNC={busy:false,msg:"Still waiting on Lightspeed. If the customer sync automation is off in Airtable, it will go when it's turned on; otherwise check back in a minute."}; renderMain(); }
+
+/* ---------- new customer (checks for an existing one first) ---------- */
+function newHTML(){ const N=NEWC; return `<div class="card"><div class="phead"><h2>New customer</h2><button class="btn sec sm" data-act="cancelnew">Cancel</button></div>
+  <div class="form">${CF.filter(([k])=>k!=="notes").map(([k,l,type,wide])=>`<label class="f ${wide?"wide":""}">${esc(l)}<input class="t" id="nc-${k}" data-nc="${k}" ${type?`type="${type}"`:""} value="${esc(N.v[k]||"")}" autocomplete="off"></label>`).join("")}</div>
+  <div id="ncdupes">${dupesHTML()}</div>${N.err?`<div class="note warn">${esc(N.err)}</div>`:""}
+  <div class="row" style="margin-top:12px"><button class="btn" data-act="createnew" ${N.busy?"disabled":""}>${N.busy?"Saving…":"Add customer and send to Lightspeed"}</button></div></div>`; }
+function dupesHTML(){ const d=NEWC&&NEWC.dupes; if(!d||!d.length) return ""; return `<div class="note warn">Already on file? ${d.length} possible match${d.length===1?"":"es"}:</div><div class="list">${d.map(r=>`<button class="res" data-act="open" data-id="${r.id}"><b>${esc(nameOf(r))}</b><span class="r">${lsTag(r)}</span><span class="meta">${esc([uv(r,"email"),uv(r,"mobile")||uv(r,"phone")].filter(Boolean).join(" · "))}</span></button>`).join("")}</div>`; }
+let dupT=null;
+function checkDupes(){ clearTimeout(dupT); dupT=setTimeout(async()=>{ const v=NEWC&&NEWC.v; if(!v) return; const c=[]; const em=String(v.email||"").trim().toLowerCase(), ph=digits(v.mobile||v.phone);
+    if(em.includes("@")) c.push(`LOWER({E-mail}&'')=${quote(em)}`); if(ph.length>=7) c.push(`FIND(${quote(ph.slice(-7))},REGEX_REPLACE({Mobile}&' '&{Phone},'[^0-9]',''))`);
+    if(String(v.first||"").trim()&&String(v.last||"").trim()) c.push(`AND(LOWER(TRIM({First Name}&''))=${quote(v.first.trim().toLowerCase())},LOWER(TRIM({Last Name}&''))=${quote(v.last.trim().toLowerCase())})`);
+    if(!c.length){ NEWC.dupes=[]; $("ncdupes").innerHTML=""; return; }
+    try{ const j=await api(UT,`?returnFieldsByFieldId=true&pageSize=8&${fq(LISTF)}&filterByFormula=${encodeURIComponent(`OR(${c.join(",")})`)}`); if(!NEWC) return; NEWC.dupes=j.records||[]; $("ncdupes").innerHTML=dupesHTML(); }catch(e){} },450); }
+async function createNew(){ const v=NEWC.v; if(!String(v.first||"").trim()&&!String(v.last||"").trim()&&!String(v.company||"").trim()){ NEWC.err="Add a name or a company."; renderMain(); return; }
+  if(!emailOk(String(v.email||"").trim())){ NEWC.err="That email doesn't look right."; renderMain(); return; }
+  const fields={[U.sync]:true}; CF.forEach(([k])=>{ const x=String(v[k]||"").trim(); if(x) fields[U[k]]=x; });
+  NEWC.busy=true; NEWC.err=""; renderMain();
+  try{ const out=await api(UT,"",{method:"POST",body:JSON.stringify({records:[{fields}],typecast:true})}); const id=out.records[0].id; NEWC=null; MSG="Customer added."; await openCust(id,true); watchSync(); search($("q").value); }
+  catch(e){ NEWC.busy=false; NEWC.err="Didn't save: "+e.message; renderMain(); } }
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-act]"); if(!b) return; const a=b.dataset.act;
+  if(a==="open"){ if(EDIT&&changes().length&&!confirmLeave()) return; openCust(b.dataset.id); window.scrollTo(0,0); }
+  else if(a==="filter"){ FILTER=b.dataset.k; renderChips(); renderRel(); }
+  else if(a==="edit"){ EDIT={v:{},busy:false,err:""}; CF.forEach(([k])=>EDIT.v[k]=String(uv(CUR,k))); MSG=""; renderMain(); const x=$("ce-first"); if(x) x.focus(); }
+  else if(a==="cancel"){ EDIT=null; renderMain(); }
+  else if(a==="save") save();
+  else if(a==="sync") syncNow();
+  else if(a==="back"){ $("layout").classList.remove("open"); history.replaceState(null,"",location.pathname); }
+  else if(a==="new"){ NEWC={v:{},dupes:[],busy:false,err:""}; const q=$("q").value.trim(); if(q&&!/\d|@/.test(q)){ const w=q.split(/\s+/); NEWC.v.first=w[0]; NEWC.v.last=w.slice(1).join(" "); } else if(q.includes("@")) NEWC.v.email=q; else if(digits(q).length>=7) NEWC.v.mobile=q;
+    CUR=null; CURID=""; renderResults(); $("layout").classList.add("open"); renderMain(); checkDupes(); }
+  else if(a==="cancelnew"){ NEWC=null; $("layout").classList.remove("open"); $("main").innerHTML=""; }
+  else if(a==="createnew") createNew(); });
+/* unsaved edits: ask in the page, not with a browser dialog */
+let leaveOK=false; function confirmLeave(){ if(leaveOK){ leaveOK=false; return true; } EDIT.err="You have unsaved changes. Save them, or click the customer again to discard them."; leaveOK=true; renderMain(); return false; }
+document.addEventListener("input",e=>{ const t=e.target;
+  if(t.dataset.ce&&EDIT){ EDIT.v[t.dataset.ce]=t.value; leaveOK=false; updSum(); }
+  if(t.dataset.nc&&NEWC){ NEWC.v[t.dataset.nc]=t.value; checkDupes(); } });
+$("sform").addEventListener("submit",e=>{ e.preventDefault(); $("q").blur(); search($("q").value); });
+$("whosel").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("whosel").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  const prev=TOKEN; TOKEN=t; try{ await api(UT,"?maxRecords=1&fields%5B%5D="+U.first); store.set("mrm-photos-token",t); $("tok").value=""; start(); }catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+window.addEventListener("hashchange",()=>{ const id=location.hash.slice(1); if(/^rec\w{14}$/.test(id)&&id!==CURID) openCust(id); });
+function start(){ $("setup").hidden=!!TOKEN; $("layout").hidden=!TOKEN; if(!TOKEN) return;
+  const id=location.hash.slice(1); const q=(/[?&]q=([^&#]+)/.exec(location.search)||[])[1];
+  if(q){ $("q").value=decodeURIComponent(q); search($("q").value); } else search("");
+  if(/^rec\w{14}$/.test(id)) openCust(id); }
+start();
+</script>
+<link rel="stylesheet" href="../warm.css?v=1">
+</body>
+</html>
