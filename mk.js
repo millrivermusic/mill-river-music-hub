@@ -11,19 +11,18 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const sel=v=>v&&typeof v==="object"?(v.name||""):(v||"");
 const day=s=>{ if(!s) return ""; const d=new Date(s); return isNaN(d)?"":d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 const ST={}; // per customer: {busy:"email"|"sms", err, msg}
-const css=`.mkp{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);font-size:13.5px}
-.mkp h4{margin:0 0 2px;font-size:13.5px}
-.mkp .mkr{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line)}
+const css=`.mkp{margin-top:12px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);font-size:13px}
+.mkp .mkr{display:flex;gap:4px 10px;align-items:center;flex-wrap:wrap;padding:4px 0;border-top:1px solid var(--line)}
 .mkp .mkr:first-of-type{border-top:0}
-.mkp .mkl{flex:1 1 220px;min-width:0}
-.mkp .mkl b{display:block}
+.mkp .mkl{flex:1 1 200px;min-width:0;line-height:1.3}
+.mkp .mkl .mkt{font-weight:700;margin-right:6px}
 .mkp .mks{color:var(--muted);font-size:12.5px}
-.mkp .mkb{display:flex;gap:6px;flex:none}
-.mkp .mkb button{font:inherit;font-weight:700;font-size:13px;padding:7px 12px;border-radius:6px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer;min-height:36px}
+.mkp .mkb{display:flex;gap:4px;flex:none}
+.mkp .mkb button{font:inherit;font-weight:700;font-size:12.5px;padding:3px 9px;border-radius:5px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer;min-height:28px;line-height:1.2}
 .mkp .mkb button.on{background:var(--ok-soft);color:var(--ok);border-color:transparent}
 .mkp .mkb button.off{background:var(--warn-soft);color:var(--warn);border-color:transparent}
 .mkp .mkb button:disabled{opacity:.6;cursor:default}
-.mkp .mkn{margin-top:6px;font-size:12.5px}
+.mkp .mkn{margin:2px 0 2px;font-size:12px}
 .mkp .mkn.err{color:var(--warn)} .mkp .mkn.ok{color:var(--ok)}`;
 const st=document.createElement("style"); st.textContent=css; document.head.appendChild(st);
 
@@ -33,14 +32,14 @@ function state(c,k){ const f=c.fields||{}; const ans=sel(f[k==="email"?F.email:F
 function row(c,k,label){ const s=state(c,k), S=ST[c.id]||{}, busy=S.busy===k;
   let now; if(s.waiting) now=`Sending “${esc(s.ans)}” to Lightspeed…`;
   else if(!s.linked) now="Not in Lightspeed yet";
-  else now=`Lightspeed: <b>${s.ls?"on":"off"}</b>${s.synced?"":" (not synced yet)"}`;
+  else now=`Lightspeed ${s.ls?"on":"off"}${s.synced?"":" (not synced yet)"}`;
   const last=s.ans?` · last answer <b>${esc(s.ans)}</b>${s.at?" "+esc(day(s.at)):""}${s.by?" by "+esc(s.by):""}`:" · never asked";
   const isOn=s.waiting?s.ans==="Yes":s.ls;
-  return `<div class="mkr"><div class="mkl"><b>${label}</b><span class="mks">${now}${last}</span></div>
-    <div class="mkb" role="group" aria-label="${label}"><button data-mk="${k}" data-mkv="Yes" class="${isOn?"on":""}" ${busy?"disabled":""} aria-pressed="${isOn}">${busy&&S.v==="Yes"?"Saving…":"Yes, on"}</button><button data-mk="${k}" data-mkv="No" class="${!isOn&&(s.ans==="No"||s.linked)?"off":""}" ${busy?"disabled":""} aria-pressed="${!isOn}">${busy&&S.v==="No"?"Saving…":"No, off"}</button></div></div>`; }
+  return `<div class="mkr"><div class="mkl"><span class="mkt">${label}</span><span class="mks">${now}${last}</span></div>
+    <div class="mkb" role="group" aria-label="${label}"><button title="Only when the customer tells you. Saved with today's date and your name." data-mk="${k}" data-mkv="Yes" class="${isOn?"on":""}" ${busy?"disabled":""} aria-pressed="${isOn}">${busy&&S.v==="Yes"?"Saving…":"On"}</button><button title="Only when the customer tells you. Saved with today's date and your name." data-mk="${k}" data-mkv="No" class="${!isOn&&(s.ans==="No"||s.linked)?"off":""}" ${busy?"disabled":""} aria-pressed="${!isOn}">${busy&&S.v==="No"?"Saving…":"Off"}</button></div></div>`; }
 function html(c){ if(!c||!c.fields) return ""; const S=ST[c.id]||{};
-  return `<div class="mkp" data-mkp="${esc(c.id)}"><h4>Marketing</h4>${row(c,"email","Marketing emails")}${row(c,"sms","Marketing texts")}
-    ${S.err?`<div class="mkn err">${esc(S.err)}</div>`:S.msg?`<div class="mkn ok">${esc(S.msg)}</div>`:`<div class="mkn mks">Only change this when the customer tells you. It's saved with today's date and your name.</div>`}</div>`; }
+  return `<div class="mkp" data-mkp="${esc(c.id)}">${row(c,"email","Marketing emails")}${row(c,"sms","Marketing texts")}
+    ${S.err?`<div class="mkn err">${esc(S.err)}</div>`:S.msg?`<div class="mkn ok">${esc(S.msg)}</div>`:""}</div>`; }
 /* opts: {who, patch(fields)->Promise<fields>, render(), after()} */
 async function click(btn,c,opts){ const k=btn.dataset.mk, v=btn.dataset.mkv; if(!k||!c||!c.id) return false;
   const S=ST[c.id]=ST[c.id]||{};
