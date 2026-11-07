@@ -302,7 +302,7 @@ function renderTForm(){ const el=$("tform"); if(!TFORM){ el.innerHTML=""; return
    <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="tfSave" type="button">Add task</button><button class="btn sec" id="tfCancel" type="button">Cancel</button><span class="tm" id="tfMsg"></span></div></div>`;
   setTimeout(()=>{ try{ $("tfTask").focus(); }catch(e){} },30); }
 async function saveTForm(){ const task=$("tfTask").value.trim(), m=$("tfMsg"); if(!task){ m.textContent="Write what needs doing."; return; } if(!WHO){ m.textContent="Pick your name at the top first."; return; }
-  const to=$("tfTo").value, ok=to==="Julia"&&!TMGR.includes(WHO); const f={Task:task,Department:$("tfDept").value,Status:ok?"Needs OK":"To do",Details:$("tfDet").value.trim(),Source:"Added on the hub","Made By":WHO}; if(to) f["Assigned To"]=to; if($("tfDue").value) f.Due=$("tfDue").value;
+  const to=$("tfTo").value, ok=false; const f={Task:task,Department:$("tfDept").value,Status:ok?"Needs OK":"To do",Details:$("tfDet").value.trim(),Source:"Added on the hub","Made By":WHO}; if(to) f["Assigned To"]=to; if($("tfDue").value) f.Due=$("tfDue").value;
   $("tfSave").disabled=true; try{ await atT(TT,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); TFORM=false; renderTForm(); await loadTeamTasks(); }catch(e){ m.textContent=e.message; $("tfSave").disabled=false; } }
 document.addEventListener("click",async e=>{ const t=e.target.closest("button"); if(!t) return;
   if(t.dataset.tview){ TVIEW=t.dataset.tview; try{ localStorage.setItem("hub-tview",TVIEW); }catch(_){} renderTasks(); return; }
