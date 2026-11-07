@@ -383,7 +383,7 @@ $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<opt
   try{ await syncOffers(); renderList(); }catch(e){ console.warn("offer log",e); } })();
 // ---- Team Tasks (Airtable "Team Tasks"; Google Tasks copy comes later) ----
 const TT="tblOwTXbybJC6K9Xn", TF={task:"fldUmwZCpYmY4ydf4",to:"fldULoJtT1tjDewdy",dept:"fldI5KOzdrPwbar0s",status:"fldX2trA6QSciYsT4",due:"fldnzJlk5rWhduMoI",details:"fld4laJasSMdypGRQ",source:"fldZQT4sY9W9ZOusm",link:"fld6iLbLRVCke9OA0",madeBy:"fldlJbD6svflYUgEg",doneBy:"fldB5i9XgOsK4i2Zs"};
-const DEPTS=["Reverb","Repair","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
+const DEPTS=["Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
 function dayStr(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("en-CA"); }
 function closeModal(){ const m=$("mback"); if(m) m.remove(); }
 function taskPrompt(ctx){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
