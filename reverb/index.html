@@ -177,7 +177,7 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
     <label class="f">Note to the buyer (optional)<textarea class="t" id="oMsg"></textarea></label>
     <div class="row" style="margin-top:8px">${["accept","counter","decline"].map(a=>`<button class="btn ${a==="accept"?"":"sec"}" data-oact="${a}" ${!n.actionable||locked(row)?"disabled":""}>${a[0].toUpperCase()+a.slice(1)}</button>`).join("")}<span class="small muted" id="oRes">${locked(row)?"Needs a manager's OK first.":!n.actionable?"Waiting on the buyer.":""}</span></div></div>
     ${deskPanel(row)}`;
-    plInfo(L.title,L.sku); }
+    offerBrief(row); }
   if(kind==="refund"){ const r=row.r, A=x=>x&&x.display||"";
     box.innerHTML=`<h2>${esc(row.title)}</h2><div class="kv"><b>Status</b><span>${esc((r.state||"").replace(/_/g," "))}</span><b>Asked for</b><span>${esc(A(r.requested_amount))} (${esc((r.refund_type||"").replace(/_/g," "))})</span>
     <b>Reason</b><span>${esc((r.reason||"").replace(/_/g," "))}</span><b>Started by</b><span>${esc(r.initiated_by||"")}</span><b>Requested</b><span>${esc(when(r.created_at))}</span>
@@ -185,6 +185,48 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
     <div class="note">Refunds are handled on Reverb for now${r.order&&r.order.order_number?` — <a href="https://reverb.com/my/selling/orders/${esc(r.order.order_number)}" target="_blank" rel="noopener">open the order on Reverb</a>`:""}. Assign it here so someone owns it.</div>
     ${deskPanel(row)}`; }
 }
+const PLF={sku:"fldfKGlajXOBkUQ92",name:"flde17o9HEpKPdMlS",exp:"fldkODnsYDRYqeOOm",cost:"fldg6j6emzCkDiGaI",repair:"fldQdlwr3NdLnkNxW",pos:"fld0ESkFoFMOhfR0g",online:"fldd9UhO7Ld2Io9f0",newp:"fld6COeapNgbSjGQX",dateIn:"fldf0h1eW3dxrlufr",data:"fldQNSoYTvTVEIgwG",phys:"fldM1ajllQvTvdKwI",loc:"fldZICzZjZ7MEwPs3",notes:"fldW0Sgi7TVduheu1",cons:"fldkPqD1C5CLxqeAT",consPay:"fld4VnuOzwtOvkuff",cond:"fldYuGbUJO4a0bNvu"};
+const OPS="tblVb2IExVzomB6w6", OLF={entry:"fldf7qQXfPT0ouQbR",date:"fldGRwiXEj6hKDQdG",type:"fldgCh5XKvhAqO5ib",status:"fldgMFKU1xdPxcwAB",by:"fldlvcnYrs9MTl2vj",sku:"fldxv1kU8VGiiIijs",details:"fldgHoKCMyfEouhfv",ifthen:"fldInMUSUAkk2FkHe",until:"fldJM1CB8QtKg3nli"};
+const $$=n=>n==null||n===""?"–":"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
+const pct=(a,b)=>a&&b?Math.round(a/b*100)+"%":"–";
+const nm=v=>v&&typeof v==="object"&&!Array.isArray(v)?v.name:Array.isArray(v)?v.map(x=>x&&x.name||x).join(", "):v;
+async function offerBrief(row){ const el=$("plinfo"); if(!el) return; const L=row.L, n=row.n; el.innerHTML=`<div class="note">Pulling up the history on this item…</div>`;
+  const amt=x=>x&&x.original&&+x.original.amount||x&&x.display&&+String(x.display.display||"").replace(/[^0-9.]/g,"")||0;
+  let hist=[], pl=null, ops=[];
+  await Promise.all([
+    rv(`my/negotiations/${n.id}`).then(d=>{ hist=d.offers||[]; }).catch(()=>{}),
+    (async()=>{ const f=L.sku?`{SKU}='${String(L.sku).replace(/'/g,"\\'")}'`:`FIND(LOWER('${String(L.title).slice(0,35).replace(/'/g,"\\'")}'),LOWER({Name}))`;
+      const j=await at(`${PL}?maxRecords=1&returnFieldsByFieldId=true&filterByFormula=${encodeURIComponent(f)}&${Object.values(PLF).map(x=>"fields%5B%5D="+x).join("&")}`); pl=(j.records||[])[0]||null; })().catch(()=>{}),
+    (async()=>{ if(!L.sku) return; const j=await at(`${OPS}?maxRecords=20&returnFieldsByFieldId=true&filterByFormula=${encodeURIComponent(`{SKU}='${String(L.sku).replace(/'/g,"\\'")}'`)}&sort%5B0%5D%5Bfield%5D=Date&sort%5B0%5D%5Bdirection%5D=desc`); ops=j.records||[]; })().catch(()=>{})
+  ]);
+  const F=pl?pl.fields:{}, offer=amt(n.last_offered_price), ship=amt(n.last_offered_shipping), list=L.price?+L.price.amount||+String(L.price.display||"").replace(/[^0-9.]/g,""):0;
+  const exp=F[PLF.exp], cost=F[PLF.cost], rep=F[PLF.repair]||0, isCons=!!(F[PLF.cons]&&F[PLF.cons].length), consPay=F[PLF.consPay];
+  const days=F[PLF.dateIn]?Math.round((Date.now()-new Date(F[PLF.dateIn]))/864e5):null;
+  const fees=offer?Math.round((offer+ship)*0.0819+0.49):0; // Reverb ~5% selling + 3.19% + $0.49 processing (approx.)
+  const net=offer?offer+ship-fees-ship:0; // shipping charged roughly covers label
+  const margin=cost!=null&&offer?net-cost-rep:null;
+  const flags=[];
+  if(margin!=null&&margin<0) flags.push(`<span class="tag hot">Below what we have in it</span>`);
+  else if(margin!=null&&cost) flags.push(`<span class="tag ok">About ${$$(Math.round(margin))} over cost after fees</span>`);
+  if(exp&&offer&&offer<exp*0.85) flags.push(`<span class="tag sugg">More than 15% under expected</span>`);
+  if(days!=null&&days>90) flags.push(`<span class="tag info">In stock ${days} days</span>`);
+  if(n.buyer_shipping_region_code&&!/^US/.test(n.buyer_shipping_region_code)) flags.push(`<span class="tag sugg">International (${esc(n.buyer_shipping_region_code)}): check a ShipStation quote</span>`);
+  if(isCons) flags.push(`<span class="tag info">Consignment</span>`);
+  const today=new Date().toISOString().slice(0,10), rules=ops.filter(o=>o.fields[OLF.until]&&o.fields[OLF.until]>=today);
+  el.innerHTML=`<div class="sect"><h3 style="margin:0 0 6px;font-size:15px">About this item</h3>
+    ${flags.length?`<div class="tags" style="margin-bottom:8px">${flags.join("")}</div>`:""}
+    ${rules.length?rules.map(o=>`<div class="note ok"><b>Standing rule until ${esc(o.fields[OLF.until])}:</b> ${esc(o.fields[OLF.ifthen]||o.fields[OLF.entry]||"")}</div>`).join(""):""}
+    ${pl?`<div class="kv"><b>SKU</b><span>${esc(F[PLF.sku]||L.sku||"–")} · ${esc(nm(F[PLF.data])||"")}${F[PLF.phys]?" · "+esc(nm(F[PLF.phys])):""}${F[PLF.loc]?" · "+esc(nm(F[PLF.loc])):""}</span>
+      <b>In stock</b><span>${F[PLF.dateIn]?esc(F[PLF.dateIn])+" ("+days+" days)":"–"}</span>
+      <b>${isCons?"Consigner payout (online)":"We paid"}</b><span>${isCons?$$(consPay):$$(cost)}${rep?" + "+$$(rep)+" repair":""}</span>
+      <b>Expected sale</b><span>${$$(exp)}${F[PLF.newp]?" · new "+$$(F[PLF.newp]):""}</span>
+      <b>Listed</b><span>${$$(list)} on Reverb${F[PLF.pos]?" · "+$$(F[PLF.pos])+" in store":""}</span>
+      <b>This offer</b><span><strong>${$$(offer)}</strong> = ${pct(offer,list)} of list, ${pct(offer,exp)} of expected</span>
+      <b>After Reverb fees</b><span>about ${$$(net)} to us (fees ≈ ${$$(fees)})${margin!=null?` · ${margin>=0?"":"−"}${$$(Math.abs(Math.round(margin)))} vs. what we have in it`:""}</span>
+      ${F[PLF.notes]?`<b>Notes</b><span style="white-space:pre-wrap">${esc(F[PLF.notes])}</span>`:""}</div>`:`<div class="note">Couldn't find this item in the Purchase Log${L.sku?" (SKU "+esc(L.sku)+")":""}, so there's no cost or history to show.</div>`}
+    ${hist.length?`<h3 style="margin:12px 0 6px;font-size:15px">Offer history</h3><div class="msgs" style="max-height:none;margin:0">${hist.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(o=>`<div class="msg ${o.initiated_by_me?"me":""}"><div class="w">${esc(o.initiated_by_me?"Mill River Music":(o.initiated_by_name||"Buyer"))} · ${esc(when(o.created_at))}</div><strong>${esc(o.price&&o.price.display&&o.price.display.display||"")}</strong> + ${esc(o.shipping_price&&o.shipping_price.display&&o.shipping_price.display.display||"$0")} shipping${o.message?"\n"+esc(o.message):""}</div>`).join("")}</div>`:""}
+    ${ops.length?`<h3 style="margin:12px 0 6px;font-size:15px">Ops Log</h3>${ops.map(o=>{ const g=o.fields; return `<div class="note" style="background:var(--sunk);color:var(--ink)"><div class="small muted">${esc(g[OLF.date]||"")} · ${esc(nm(g[OLF.type])||"")}${g[OLF.by]?" · decided by "+esc(nm(g[OLF.by])):""}${g[OLF.status]?" · "+esc(nm(g[OLF.status])):""}</div><b>${esc(g[OLF.entry]||"")}</b>${g[OLF.details]?`<div style="white-space:pre-wrap">${esc(g[OLF.details])}</div>`:""}${g[OLF.ifthen]?`<div class="small"><b>If/then:</b> ${esc(g[OLF.ifthen])}</div>`:""}</div>`; }).join("")}`:""}
+    <div class="small muted" style="margin-top:6px">Fees are an estimate (about 5% selling + 3.19% + $0.49 processing).</div></div>`; }
 async function plInfo(title,sku){ const el=$("plinfo"); if(!el) return; try{
   const f=sku?`{SKU}='${String(sku).replace(/'/g,"\\'")}'`:`FIND('${String(title).slice(0,40).replace(/'/g,"\\'")}',{Name})`;
   const j=await at(`${PL}?maxRecords=1&filterByFormula=${encodeURIComponent(f)}&fields%5B%5D=Name&fields%5B%5D=SKU&fields%5B%5D=Expected%20Sale%20Price&fields%5B%5D=Date%20In&fields%5B%5D=Data%20Status`);
