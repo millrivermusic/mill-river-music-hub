@@ -203,12 +203,14 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
   if(kind==="msg"){ box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${esc(row.sub)}</div><div class="msgs"><div class="muted">Loading conversation…</div></div>`;
     try{ const c=await rv(`my/conversations/${id}`); row.detail=c; const L=c.listing||row.raw.listing; const sku=L&&L.sku;
       box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${L?`About: <a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">${esc(L.title)}</a>`:"General question"}</div>
-      <div id="plinfo"></div>
       <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}</div>`).join("")}</div>
       <div class="sect"><label class="f">Reply to ${esc(row.title)}<textarea class="t" id="rBody" placeholder="Type a reply…"></textarea></label>
       <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${statusOf(row)!=="Done"?`<button class="btn sec" id="mNoReply">Mark read: no reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
+      <div id="plinfo"></div>
       ${deskPanel(row)}`;
-      const ms=$("msgs"); ms.scrollTop=ms.scrollHeight; if(L) plInfo(L.title);
+      const ms=$("msgs"); ms.scrollTop=ms.scrollHeight;
+      if(L&&L.id){ $("plinfo").innerHTML=`<div class="note">Pulling up the history on this item…</div>`;
+        rv(`listings/${L.id}`).then(full=>{ if(SEL&&SEL.id===id) offerBrief({kind:"msg",id:null,L:Object.assign({},L,full),n:null}); }).catch(()=>{ if(SEL&&SEL.id===id) offerBrief({kind:"msg",id:null,L,n:null}); }); }
     }catch(e){ box.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
   if(kind==="offer"){ const n=row.n, L=row.L, P=x=>x&&x.display&&x.display.display||"";
     box.innerHTML=`<h2>${esc(L.title)}</h2><div class="muted small"><a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">See on Reverb</a>${L.sku?" · SKU "+esc(L.sku):""}</div>
@@ -248,11 +250,11 @@ const OPS="tblVb2IExVzomB6w6", OLF={entry:"fldf7qQXfPT0ouQbR",date:"fldGRwiXEj6h
 const $$=n=>n==null||n===""?"–":"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
 const pct=(a,b)=>a&&b?Math.round(a/b*100)+"%":"–";
 const nm=v=>v&&typeof v==="object"&&!Array.isArray(v)?v.name:Array.isArray(v)?v.map(x=>x&&x.name||x).join(", "):v;
-async function offerBrief(row){ const el=$("plinfo"); if(!el) return; const L=row.L, n=row.n; el.innerHTML=`<div class="note">Pulling up the history on this item…</div>`;
+async function offerBrief(row){ const el=$("plinfo"); if(!el) return; const L=row.L, n=row.n||{}; el.innerHTML=`<div class="note">Pulling up the history on this item…</div>`;
   const amt=x=>x&&x.original&&+x.original.amount||x&&x.display&&+String(x.display.display||"").replace(/[^0-9.]/g,"")||0;
   let hist=[], pl=null, ops=[];
   await Promise.all([
-    rv(`my/negotiations/${n.id}`).then(d=>{ hist=d.offers||[]; }).catch(()=>{}),
+    n.id?rv(`my/negotiations/${n.id}`).then(d=>{ hist=d.offers||[]; }).catch(()=>{}):Promise.resolve(),
     (async()=>{ const f=L.sku?`{SKU}='${String(L.sku).replace(/'/g,"\\'")}'`:`FIND(LOWER('${String(L.title).slice(0,35).replace(/'/g,"\\'")}'),LOWER({Name}))`;
       const j=await at(`${PL}?maxRecords=1&returnFieldsByFieldId=true&filterByFormula=${encodeURIComponent(f)}&${Object.values(PLF).map(x=>"fields%5B%5D="+x).join("&")}`); pl=(j.records||[])[0]||null; })().catch(()=>{}),
     (async()=>{ if(!L.sku) return; const j=await at(`${OPS}?maxRecords=20&returnFieldsByFieldId=true&filterByFormula=${encodeURIComponent(`{SKU}='${String(L.sku).replace(/'/g,"\\'")}'`)}&sort%5B0%5D%5Bfield%5D=Date&sort%5B0%5D%5Bdirection%5D=desc`); ops=j.records||[]; })().catch(()=>{})
@@ -279,12 +281,13 @@ async function offerBrief(row){ const el=$("plinfo"); if(!el) return; const L=ro
       <b>${isCons?"Consigner payout (online)":"We paid"}</b><span>${isCons?$$(consPay):$$(cost)}${rep?" + "+$$(rep)+" repair":""}</span>
       <b>Expected sale</b><span>${$$(exp)}${F[PLF.newp]?" · new "+$$(F[PLF.newp]):""}</span>
       <b>Listed</b><span>${$$(list)} on Reverb${F[PLF.pos]?" · "+$$(F[PLF.pos])+" in store":""}</span>
-      <b>This offer</b><span><strong>${$$(offer)}</strong> = ${pct(offer,list)} of list, ${pct(offer,exp)} of expected</span>
-      <b>After Reverb fees</b><span>about ${$$(net)} to us (fees ≈ ${$$(fees)})${margin!=null?` · ${margin>=0?"":"−"}${$$(Math.abs(Math.round(margin)))} vs. what we have in it`:""}</span>
+      ${offer?`<b>This offer</b><span><strong>${$$(offer)}</strong> = ${pct(offer,list)} of list, ${pct(offer,exp)} of expected</span>
+      <b>After Reverb fees</b><span>about ${$$(net)} to us (fees ≈ ${$$(fees)})${margin!=null?` · ${margin>=0?"":"−"}${$$(Math.abs(Math.round(margin)))} vs. what we have in it`:""}</span>`:list&&cost!=null?`<b>At list price</b><span>about ${$$(Math.round(list-list*0.0819-0.49-cost-rep))} over what we have in it, after fees</span>`:""}
       ${F[PLF.notes]?`<b>Notes</b><span style="white-space:pre-wrap">${esc(F[PLF.notes])}</span>`:""}</div>`:`<div class="note">Couldn't find this item in the Purchase Log${L.sku?" (SKU "+esc(L.sku)+")":""}, so there's no cost or history to show.</div>`}
     ${historyTable(row)}
     ${hist.length?`<h3 style="margin:12px 0 6px;font-size:15px">Back-and-forth with ${esc(n.buyer_name||"this buyer")}</h3><div class="msgs" style="max-height:none;margin:0">${hist.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(o=>`<div class="msg ${o.initiated_by_me?"me":""}"><div class="w">${esc(o.initiated_by_me?"Mill River Music":(o.initiated_by_name||"Buyer"))} · ${esc(when(o.created_at))}</div><strong>${esc(o.price&&o.price.display&&o.price.display.display||"")}</strong> + ${esc(o.shipping_price&&o.shipping_price.display&&o.shipping_price.display.display||"$0")} shipping${o.message?"\n"+esc(o.message):""}</div>`).join("")}</div>`:""}
     ${ops.length?`<h3 style="margin:12px 0 6px;font-size:15px">Ops Log</h3>${ops.map(o=>{ const g=o.fields; return `<div class="note" style="background:var(--sunk);color:var(--ink)"><div class="small muted">${esc(g[OLF.date]||"")} · ${esc(nm(g[OLF.type])||"")}${g[OLF.by]?" · decided by "+esc(nm(g[OLF.by])):""}${g[OLF.status]?" · "+esc(nm(g[OLF.status])):""}</div><b>${esc(g[OLF.entry]||"")}</b>${g[OLF.details]?`<div style="white-space:pre-wrap">${esc(g[OLF.details])}</div>`:""}${g[OLF.ifthen]?`<div class="small"><b>If/then:</b> ${esc(g[OLF.ifthen])}</div>`:""}</div>`; }).join("")}`:""}
+    ${offer?"":`<div class="small muted" style="margin-top:6px"><a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">See the listing on Reverb</a></div>`}
     <div class="small muted" style="margin-top:6px">Fees are an estimate (about 5% selling + 3.19% + $0.49 processing).</div></div>`; }
 async function plInfo(title,sku){ const el=$("plinfo"); if(!el) return; try{
   const f=sku?`{SKU}='${String(sku).replace(/'/g,"\\'")}'`:`FIND('${String(title).slice(0,40).replace(/'/g,"\\'")}',{Name})`;
