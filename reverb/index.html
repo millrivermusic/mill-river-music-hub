@@ -95,13 +95,14 @@ table.ht tr.cur td{background:var(--accent-soft)}
 .tgrp{margin:14px 0 6px;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}
 .titem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--sunk)}
 .mgr{max-width:900px}.gap{border-left:4px solid var(--warn);padding:6px 10px;margin:6px 0;background:var(--sunk);border-radius:6px}.gap.ok{border-left-color:var(--ok)}.gap .small{margin-top:2px}.askout{white-space:pre-wrap;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;max-height:45vh;overflow:auto}
+@media (max-width:900px){ body.tasksTab:not(.mdet) #detail{display:block} body.tasksTab:not(.mdet) .cols>div:first-child{display:block} }
 .titem.done{opacity:.55}.titem .tt{font-weight:600}.titem input{margin-top:3px;width:18px;height:18px;flex:none}
 </style>
 <link rel="stylesheet" href="../warm.css?v=1">
 </head>
 <body>
 <header class="bar"><div class="in"><h1>Reverb Desk<small>Preview</small></h1>
-  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><button class="btn sm" id="mgrBtn" type="button">Manager view</button><button class="btn sec sm" id="tasksBtn" type="button">Tasks</button><a href="../">Hub</a></div></div></header>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
 <main class="wrap">
   <div class="note" id="banner">Live: replies and offer answers go straight to the buyer on Reverb. Every send asks you to confirm first.</div>
   <div class="tabs" id="tabs"></div>
@@ -123,7 +124,7 @@ const KINDS={msg:"Message",offer:"Offer",refund:"Refund request",order:"Order"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-let WHO=store.get("mrm-photos-who"), TAB=store.get("rv-tab")||"msg", FILTER=(store.get("rv-tab")==="order")?"oship":"open", SEL=null;
+let WHO=store.get("mrm-photos-who"), TAB="tasks", FILTER="tmine", SEL=null;
 const S={msg:{rows:[],page:0,pages:1},offer:{rows:[]},refund:{rows:[]},order:{rows:[],page:0,pages:1}};
 let DESKROWS={}; // key kind:id -> airtable record
 const ago=d=>{ if(!d) return ""; const s=(Date.now()-new Date(d))/1000; if(s<3600) return Math.max(1,Math.round(s/60))+"m ago"; if(s<86400) return Math.round(s/3600)+"h ago"; return Math.round(s/86400)+"d ago"; };
@@ -194,11 +195,12 @@ function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), t=[
 /* ---------- render ---------- */
 function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); return st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer"; }).length;
   const nOrd=S.order.rows.filter(r=>/needs shipping/.test(r.stage)).length;
-  $("tabs").innerHTML=[["msg","Messages"],["offer","Offers"],["refund","Refund requests"],["order","Orders"]].map(([k,l])=>`<button class="tab ${TAB===k?"on":""}" data-tab="${k}">${l}<span class="n">${k==="order"?(nOrd?nOrd+" to ship":""):S[k].rows.length?n(k):""}</span></button>`).join("");
-  $("filters").innerHTML=(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
+  const nTasks=taskItems("tmine").filter(x=>x.open).length;
+  $("tabs").innerHTML=`<button class="tab ${TAB==="tasks"?"on":""}" data-tab="tasks">Tasks<span class="n">${nTasks||""}</span></button>`+[["msg","Messages"],["offer","Offers"],["refund","Refund requests"],["order","Orders"]].map(([k,l])=>`<button class="tab ${TAB===k?"on":""}" data-tab="${k}">${l}<span class="n">${k==="order"?(nOrd?nOrd+" to ship":""):S[k].rows.length?n(k):""}</span></button>`).join("");
+  $("filters").innerHTML=TAB==="tasks"?[["tmine","Mine"],["tall","Everyone"],["tdone","Done this week"]].map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join("")+`<button class="chip" id="tNew" type="button">+ New task</button>`:(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
 let LASTVIS=[];
 function flash(m){ const box=$("detail"); if(box) box.insertAdjacentHTML("afterbegin",`<div class="note ok" id="flash">${esc(m)}</div>`); setTimeout(()=>{ const f=$("flash"); if(f) f.remove(); },4000); }
-function renderList(){ renderTabs(); const rows=S[TAB].rows.filter(pass); LASTVIS=rows.slice();
+function renderList(){ document.body.classList.toggle("tasksTab",TAB==="tasks"); if(TAB==="tasks"){ renderTaskTab(); return; } renderTabs(); const rows=S[TAB].rows.filter(pass); LASTVIS=rows.slice();
   $("list").innerHTML=rows.length?rows.map(r=>`<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(r.title)}</div><div class="s">${esc(r.sub)}${r.kind==="msg"&&r.last?" — "+esc((r.last.authored?"You: ":"")+r.last.body):""}</div><div class="tags">${tagsFor(r)}</div></div>`).join(""):`<div class="empty">Nothing here.</div>`;
   $("more").innerHTML=(TAB==="msg"||TAB==="order")&&S[TAB].page<S[TAB].pages?`<button class="btn sec" id="loadmore">Load older ${TAB==="msg"?"messages":"orders"}</button> <span class="muted small">${S[TAB].rows.length} of ${S[TAB].total||"?"} loaded</span>`:""; }
 
@@ -334,7 +336,7 @@ function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.te
 
 /* ---------- actions ---------- */
 document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
-  if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
+  if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":TAB==="tasks"?"tmine":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
   if(t.id==="mback"){ document.body.classList.remove("mdet"); const on=document.querySelector("#list .on"); if(on) on.scrollIntoView({block:"center"}); return; }
@@ -403,7 +405,7 @@ async function addTask(){ const ctx=$("mback").__ctx, b=$("tAdd"); const task=$(
   const to=$("tTo").value, needsOk = to==="Julia" && !MANAGERS.includes(WHO);
   const f={[TF.task]:task,[TF.dept]:$("tDept").value,[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:$("tDet").value.trim(),[TF.source]:ctx.source||"",[TF.madeBy]:WHO};
   if(to) f[TF.to]=to; if($("tDue").value) f[TF.due]=$("tDue").value; if(ctx.link) f[TF.link]=ctx.link;
-  b.disabled=true; try{ await at(`${TT}`,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); closeModal(); TASKS=null; updTaskBtn(); flashTop(`Added to ${to?to+"'s":"the Reverb"} list${needsOk?" (waiting for a manager's OK)":""}.`); }
+  b.disabled=true; try{ await at(`${TT}`,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); closeModal(); TASKS=null; updTaskBtn(); if(TAB==="tasks"){ loadTasks().then(()=>renderList()); } flashTop(`Added to ${to?to+"'s":"the Reverb"} list${needsOk?" (waiting for a manager's OK)":""}.`); }
   catch(err){ $("tNote").textContent=err.message; b.disabled=false; } }
 function flashTop(m){ let el=$("topflash"); if(!el){ el=document.createElement("div"); el.id="topflash"; el.className="note ok"; el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;max-width:90vw"; document.body.appendChild(el); } el.textContent=m; el.hidden=false; clearTimeout(el.__t); el.__t=setTimeout(()=>{ el.hidden=true; },4000); }
 let TASKS=null, TVIEW="mine";
@@ -430,7 +432,7 @@ async function renderTasks(){ const box=$("tList"); if(!box) return; let t; try{
      ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
      ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
      ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }).join("")).join(""); }
-async function setTask(id,fields){ await at(`${TT}`,{method:"PATCH",body:JSON.stringify({records:[{id,fields}],typecast:true})}); TASKS=null; await renderTasks(); updTaskBtn(); }
+async function setTask(id,fields){ await at(`${TT}`,{method:"PATCH",body:JSON.stringify({records:[{id,fields}],typecast:true})}); TASKS=null; if($("tList")) await renderTasks(); else await loadTasks(); updTaskBtn(); if(TAB==="tasks") renderList(); }
 document.addEventListener("click",async e=>{ const t=e.target;
   if(t.id==="tasksBtn"){ openTasks(); return; }
   if(t.id==="tClose"||t.id==="tSkip"||(t.id==="mback")){ closeModal(); return; }
@@ -448,6 +450,39 @@ function taskCtx(row,what){ const who=row.kind==="offer"?(row.n.buyer_name||"the
   const src=row.kind==="order"?`Reverb order #${row.o.order_number} · ${who}`:row.kind==="offer"?`Reverb offer · ${who}`:row.kind==="refund"?`Reverb refund request · ${who}`:`Reverb message · ${who}`;
   const task = what==="offer" ? `Follow up on the offer from ${who}` : what==="order" ? `Follow up with ${who} about their order` : what==="reply" ? `Follow up with ${who}` : "";
   return {source:src, link:web, task, details:item?("Item: "+item):"", dept:"Reverb"}; }
+// ---- Tasks tab: Reverb tasks + assigned desk items, with what's slipping and Ask on the right ----
+function taskItems(view){ const out=[]; const tasks=(TASKS||[]).filter(r=>tv(r,"dept")==="Reverb"||/^Reverb/.test(tv(r,"source")||""));
+  tasks.forEach(r=>{ const st=tv(r,"status"); out.push({type:"task",r,who:tv(r,"to")||"",open:st!=="Done",due:tv(r,"due")||""}); });
+  ["msg","offer","refund","order"].forEach(k=>S[k].rows.forEach(row=>{ const d=deskOf(row), to=dv(d,"to"); if(!to) return; const st=row.kind==="order"?row.stage:statusOf(row);
+    const open=row.kind==="order"?!/Delivered|Received|Picked|Refunded|Cancelled/.test(st):!(st==="Done"||st==="Answered"); out.push({type:"item",row,who:to,open,st}); }));
+  if(view==="tmine") return out.filter(x=>x.open&&(x.who===WHO||(x.type==="task"&&!x.who)));
+  if(view==="tdone") return out.filter(x=>x.type==="task"&&!x.open);
+  return out.filter(x=>x.open); }
+let TLOADING=false;
+function renderTaskTab(){ renderTabs();
+  if(!TASKS){ $("list").innerHTML=`<div class="empty">Loading tasks…</div>`; if(!TLOADING){ TLOADING=true; loadTasks().then(()=>{ TLOADING=false; if(TAB==="tasks") renderList(); }).catch(e=>{ TLOADING=false; $("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; }); } }
+  else if(FILTER==="tmine"&&!WHO){ $("list").innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; }
+  else { const xs=taskItems(FILTER); const groups={}; xs.forEach(x=>{ const k=x.who||"Anyone on Reverb"; (groups[k]=groups[k]||[]).push(x); });
+    const keys=Object.keys(groups).sort((a,b)=>a==="Anyone on Reverb"?-1:b==="Anyone on Reverb"?1:a===WHO?-1:b===WHO?1:a.localeCompare(b)); const today=dayStr(0);
+    $("list").innerHTML=keys.length?keys.map(k=>`<div class="tgrp">${esc(k)} <span class="small muted">${groups[k].length}</span></div>`+groups[k].sort((a,b)=>String(a.due||"9").localeCompare(String(b.due||"9"))).map(x=>{
+      if(x.type==="task"){ const r=x.r, st=tv(r,"status"), due=x.due, late=due&&due<today&&st!=="Done";
+        return `<div class="titem ${st==="Done"?"done":""}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0;flex:1"><div class="tt">${esc(tv(r,"task")||"")}</div>
+          <div class="small muted">${due?`<span style="${late?"color:var(--warn);font-weight:700":""}">Due ${esc(due)}</span> · `:""}Task${tv(r,"source")?" · "+esc(tv(r,"source")):""}${tv(r,"madeBy")?" · from "+esc(tv(r,"madeBy")):""}${st==="Done"&&tv(r,"doneBy")?" · done by "+esc(tv(r,"doneBy")):""}</div>
+          ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
+          ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
+          ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }
+      const r=x.row; return `<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(KINDS[r.kind])}: ${esc(r.kind==="offer"?r.L.title:r.title)}</div><div class="s">${esc(r.kind==="offer"?(r.n.buyer_name||""):r.sub||"")}</div><div class="tags">${tagsFor(r)}</div></div>`; }).join("")).join(""):`<div class="empty">${FILTER==="tmine"?"Nothing on your list. Nice.":"Nothing here."}</div>`; }
+  $("more").innerHTML="";
+  if(!SEL) $("detail").innerHTML=mgrPane(); }
+function mgrPane(){ const g=gaps();
+  return `<h2>What's slipping</h2><div class="small muted" style="margin-bottom:6px">Everything open on Reverb right now.</div>
+   ${g.length?g.map(x=>`<div class="gap ${x.sev>1?"ok":""}"><b>${esc(x.title)}</b> <span class="small muted">${x.items.length}</span>${x.hint?` <span class="small muted">· ${esc(x.hint)}</span>`:""}
+      <div class="small">${x.items.slice(0,6).map(it=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>6?`<div class="muted">…and ${x.items.length-6} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing is slipping right now.</div>`}
+   <h3 style="margin:14px 0 6px;font-size:16px">Ask</h3>
+   <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${md(ASK[ASK.length-1].content.replace(/TASKS_JSON:[\s\S]*$/,""))}</div>`:""}</div>
+   <div class="row"><input class="t" id="askIn" placeholder="e.g. What's slipping? Who has the most open? Give the Martin offers to Sam." style="flex:1;min-width:0"><button class="btn" id="askGo" type="button">Ask</button></div>
+   <div id="askAct"></div>`; }
+
 setTimeout(updTaskBtn,1500);
 // ---- Manager view: everything open on Reverb, what's missing, and an Ask box (Claude via the hub's /ai) ----
 const HRS=ms=>Math.round((Date.now()-ms)/36e5);
@@ -515,7 +550,7 @@ document.addEventListener("click",async e=>{ const t=e.target;
   if(t.id==="askGo"){ askGo(); return; }
   if(t.id==="askMake"){ t.disabled=true; try{ await makeAskTasks(); }catch(err){ flashTop(err.message); t.disabled=false; } return; }
   if(t.id==="askNo"){ $("askAct").innerHTML=""; return; }
-  if(t.dataset&&t.dataset.gopen){ e.preventDefault(); const [k,id]=t.dataset.gopen.split("|"); closeModal(); if(k!==TAB){ TAB=k; FILTER="all"; } renderList(); await openRow(k,id); return; }
+  if(t.dataset&&t.dataset.gopen){ e.preventDefault(); const [k,id]=t.dataset.gopen.split("|"); closeModal(); await openRow(k,id); return; }
   if(t.dataset&&t.dataset.gtask){ const [k,id]=t.dataset.gtask.split("|"); const row=S[k].rows.find(r=>r.id===id); if(row) taskPrompt(Object.assign(taskCtx(row,k==="offer"?"offer":k==="order"?"order":"reply"),{ask:false})); return; }
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="askIn"){ e.preventDefault(); askGo(); } });
