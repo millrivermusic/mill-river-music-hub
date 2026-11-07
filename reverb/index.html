@@ -94,13 +94,14 @@ table.ht tr.cur td{background:var(--accent-soft)}
 .tpanel{max-width:760px}
 .tgrp{margin:14px 0 6px;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}
 .titem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--sunk)}
+.mgr{max-width:900px}.gap{border-left:4px solid var(--warn);padding:6px 10px;margin:6px 0;background:var(--sunk);border-radius:6px}.gap.ok{border-left-color:var(--ok)}.gap .small{margin-top:2px}.askout{white-space:pre-wrap;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;max-height:45vh;overflow:auto}
 .titem.done{opacity:.55}.titem .tt{font-weight:600}.titem input{margin-top:3px;width:18px;height:18px;flex:none}
 </style>
 <link rel="stylesheet" href="../warm.css?v=1">
 </head>
 <body>
 <header class="bar"><div class="in"><h1>Reverb Desk<small>Preview</small></h1>
-  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><button class="btn sec sm" id="tasksBtn" type="button">Tasks</button><a href="../">Hub</a></div></div></header>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><button class="btn sm" id="mgrBtn" type="button">Manager view</button><button class="btn sec sm" id="tasksBtn" type="button">Tasks</button><a href="../">Hub</a></div></div></header>
 <main class="wrap">
   <div class="note" id="banner">Live: replies and offer answers go straight to the buyer on Reverb. Every send asks you to confirm first.</div>
   <div class="tabs" id="tabs"></div>
@@ -448,6 +449,76 @@ function taskCtx(row,what){ const who=row.kind==="offer"?(row.n.buyer_name||"the
   const task = what==="offer" ? `Follow up on the offer from ${who}` : what==="order" ? `Follow up with ${who} about their order` : what==="reply" ? `Follow up with ${who}` : "";
   return {source:src, link:web, task, details:item?("Item: "+item):"", dept:"Reverb"}; }
 setTimeout(updTaskBtn,1500);
+// ---- Manager view: everything open on Reverb, what's missing, and an Ask box (Claude via the hub's /ai) ----
+const HRS=ms=>Math.round((Date.now()-ms)/36e5);
+function gaps(){ const out=[]; const add=(sev,title,items,hint)=>{ if(items.length) out.push({sev,title,items,hint}); };
+  const nm=r=>r.kind==="offer"?`${r.L.title} · ${r.n.buyer_name||""}`:r.kind==="order"?`${r.title} · ${r.o.buyer_name||""}`:`${r.title}${r.sub?" · "+r.sub:""}`;
+  const msgs=S.msg.rows.filter(r=>statusOf(r)==="New");
+  add(1,"Messages nobody has answered",msgs.map(r=>({r,t:nm(r),x:r.at?ago(r.at):""})),"Reply, mark read, or assign.");
+  const offers=S.offer.rows.filter(r=>r.n.actionable);
+  add(1,"Offers waiting on us",offers.map(r=>({r,t:nm(r)+" · offered "+(r.n.last_offered_price&&r.n.last_offered_price.display&&r.n.last_offered_price.display.display||""),x:r.n.expires_at?"expires "+when(r.n.expires_at):""})),"Answer before they expire.");
+  const soon=offers.filter(r=>r.n.expires_at&&Date.parse(r.n.expires_at)-Date.now()<12*36e5);
+  add(0,"Offers expiring within 12 hours",soon.map(r=>({r,t:nm(r),x:"expires "+when(r.n.expires_at)})),"These go away on their own soon.");
+  const ship=S.order.rows.filter(r=>/needs shipping/.test(r.stage));
+  add(1,"Paid orders not shipped yet",ship.map(r=>({r,t:nm(r),x:r.o.paid_at?"paid "+ago(r.o.paid_at):""})),"Ship within 3 business days of payment.");
+  const unpaid=S.order.rows.filter(r=>/Unpaid|Waiting/i.test(r.stage));
+  add(2,"Orders not paid yet",unpaid.map(r=>({r,t:nm(r),x:r.at?ago(r.at):""})),"Nudge the buyer if it's been a while.");
+  const refunds=S.refund.rows.filter(r=>statusOf(r)!=="Done");
+  add(1,"Refund requests open",refunds.map(r=>({r,t:nm(r),x:""})),"Decide and respond.");
+  const mgrOk=[...S.msg.rows,...S.offer.rows,...S.refund.rows].filter(r=>{ const d=deskOf(r); return d&&dv(d,"needs")&&!dv(d,"okBy"); });
+  add(0,"Waiting for a manager's OK",mgrOk.map(r=>({r,t:nm(r),x:""})),"Jon, Sam or Nina.");
+  const unassigned=[...msgs,...offers,...refunds].filter(r=>!dv(deskOf(r),"to"));
+  add(2,"Open items not assigned to anyone",unassigned.map(r=>({r,t:nm(r),x:KINDS[r.kind]})),"Assign or make a task.");
+  const tk=(TASKS||[]).filter(r=>tv(r,"status")!=="Done"); const today=dayStr(0);
+  add(1,"Overdue tasks",tk.filter(r=>tv(r,"due")&&tv(r,"due")<today).map(r=>({t:(tv(r,"task")||"")+" · "+(tv(r,"to")||"Reverb dept"),x:"due "+tv(r,"due")})),"");
+  add(2,"Department tasks nobody has picked up",tk.filter(r=>!tv(r,"to")).map(r=>({t:tv(r,"task")||"",x:tv(r,"due")?"due "+tv(r,"due"):""})),"");
+  return out.sort((a,b)=>a.sev-b.sev); }
+function snapshot(){ const L=r=>{ const d=deskOf(r); return {kind:KINDS[r.kind],id:r.id,title:r.kind==="offer"?r.L.title:r.title,who:r.kind==="offer"?r.n.buyer_name:r.kind==="order"?r.o.buyer_name:r.title,status:r.kind==="order"?r.stage:statusOf(r),assigned:dv(d,"to")||"",needsOk:!!(d&&dv(d,"needs")&&!dv(d,"okBy")),notes:(dv(d,"notes")||"").slice(0,200),when:r.at||"",
+   offer:r.kind==="offer"?{offered:r.n.last_offered_price&&r.n.last_offered_price.display&&r.n.last_offered_price.display.display,listed:r.L.price&&r.L.price.display,ship:r.n.last_offered_shipping&&r.n.last_offered_shipping.display&&r.n.last_offered_shipping.display.display,expires:r.n.expires_at,waitingOnUs:!!r.n.actionable,count:r.n.offers_count}:undefined,
+   order:r.kind==="order"?{number:r.o.order_number,total:r.o.total&&r.o.total.display,paid:r.o.paid_at||"",sku:r.o.sku}:undefined,
+   last:r.kind==="msg"&&r.last?{fromUs:!!r.last.authored,text:String(r.last.body||"").slice(0,200)}:undefined}; };
+  const open=[...S.msg.rows.filter(r=>statusOf(r)!=="Done"),...S.offer.rows,...S.refund.rows,...S.order.rows.filter(r=>!/Delivered|Received|Picked|Refunded|Cancelled/.test(r.stage))];
+  return {now:new Date().toString(),you:WHO,staff:STAFF,managers:MANAGERS,items:open.slice(0,200).map(L),tasks:(TASKS||[]).filter(r=>tv(r,"status")!=="Done").map(r=>({task:tv(r,"task"),to:tv(r,"to")||"",dept:tv(r,"dept"),due:tv(r,"due")||"",status:tv(r,"status"),source:tv(r,"source")||""}))}; }
+let ASK=[]; let ASKBUSY=false;
+async function openMgr(){ closeModal(); try{ if(!TASKS) await loadTasks(); }catch(e){}
+  const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  const g=gaps();
+  el.innerHTML=`<div class="mbox mgr"><div class="row" style="justify-content:space-between"><h3>Manager view</h3><button class="btn sec sm" id="tClose" type="button">Close</button></div>
+   <div class="small muted" style="margin-bottom:8px">Everything open on Reverb right now, what's slipping, and a box to ask about it.</div>
+   ${g.length?g.map((x,gi)=>`<div class="gap ${x.sev>1?"ok":""}"><b>${esc(x.title)}</b> <span class="small muted">${x.items.length}</span>${x.hint?` <span class="small muted">· ${esc(x.hint)}</span>`:""}
+      <div class="small">${x.items.slice(0,8).map((it,ii)=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>8?`<div class="muted">…and ${x.items.length-8} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing is slipping right now.</div>`}
+   <h3 style="margin-top:14px;font-size:16px">Ask</h3>
+   <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${esc(ASK[ASK.length-1].content)}</div>`:""}</div>
+   <div class="row"><input class="t" id="askIn" placeholder="e.g. What's slipping? Who has the most open? Give the Martin offers to Sam." style="flex:1;min-width:0"><button class="btn" id="askGo" type="button">Ask</button></div>
+   <div id="askAct"></div></div>`;
+  document.body.appendChild(el); setTimeout(()=>{ try{ $("askIn").focus(); }catch(e){} },50); }
+async function askGo(){ if(ASKBUSY) return; const q=$("askIn").value.trim(); if(!q) return; ASKBUSY=true; $("askGo").disabled=true; $("askOut").innerHTML=`<div class="askout muted">Thinking…</div>`; $("askAct").innerHTML="";
+  const sys=`You are the Reverb manager's assistant at Mill River Music, a used and new music gear shop in Northampton, MA that sells on Reverb. You see a live snapshot of everything open in the shop's Reverb Desk (messages, offers, refund requests, orders) plus the team's task list. Answer the manager briefly and plainly, like a sharp coworker: short sentences, lists only when listing items. Point out anything slipping (unanswered messages, offers waiting on us or about to expire, unshipped paid orders, items needing a manager's OK, overdue or unclaimed tasks). Never invent items that aren't in the snapshot. You cannot send anything to buyers. If the manager asks you to assign or create tasks, include at the very end a line "TASKS_JSON:" followed by a JSON array of {"task","to","due","details","source"} where "to" is a staff first name from the list or "" for the Reverb department, and "due" is YYYY-MM-DD. Only include TASKS_JSON when tasks were asked for. Julia's tasks need a manager's OK, so mention that if you assign her anything.
+SNAPSHOT:
+${JSON.stringify(snapshot())}`;
+  ASK.push({role:"user",content:q}); $("askIn").value="";
+  try{ const r=await fetch("/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,max_tokens:1500,messages:ASK.slice(-10)})}); const j=await r.json();
+    if(!r.ok) throw new Error((j.error&&j.error.message)||j.message||("Error "+r.status));
+    let text=(j.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n").trim(); ASK.push({role:"assistant",content:text});
+    let tasks=[]; const m=text.match(/TASKS_JSON:\s*(\[[\s\S]*\])\s*$/); if(m){ try{ tasks=JSON.parse(m[1]); }catch(e){} text=text.slice(0,m.index).trim(); }
+    $("askOut").innerHTML=`<div class="askout">${esc(text)}</div>`;
+    if(tasks.length){ window.__pendingTasks=tasks; $("askAct").innerHTML=`<div class="note"><b>Make these tasks?</b>${tasks.map(t=>`<div class="small">• ${esc(t.task)} → ${esc(t.to||"Reverb dept")}${t.due?" · due "+esc(t.due):""}</div>`).join("")}<div class="row" style="margin-top:6px"><button class="btn sm" id="askMake" type="button">Add them</button><button class="btn sec sm" id="askNo" type="button">Not now</button></div></div>`; }
+  }catch(err){ ASK.pop(); $("askOut").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; }
+  ASKBUSY=false; const b=$("askGo"); if(b) b.disabled=false; }
+async function makeAskTasks(){ const ts=window.__pendingTasks||[]; if(!WHO){ flashTop("Pick your name at the top first."); return; }
+  const recs=ts.map(t=>{ const needsOk=t.to==="Julia"&&!MANAGERS.includes(WHO); const f={[TF.task]:t.task,[TF.dept]:"Reverb",[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:t.details||"",[TF.source]:t.source||"Manager view",[TF.madeBy]:WHO}; if(t.to&&STAFF.includes(t.to)) f[TF.to]=t.to; if(/^\d{4}-\d\d-\d\d$/.test(t.due||"")) f[TF.due]=t.due; return {fields:f}; });
+  for(let i=0;i<recs.length;i+=10) await at(`${TT}`,{method:"POST",body:JSON.stringify({records:recs.slice(i,i+10),typecast:true})});
+  TASKS=null; updTaskBtn(); $("askAct").innerHTML=`<div class="note ok">Added ${recs.length} task${recs.length===1?"":"s"}.</div>`; }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.id==="mgrBtn"){ openMgr(); return; }
+  if(t.id==="askGo"){ askGo(); return; }
+  if(t.id==="askMake"){ t.disabled=true; try{ await makeAskTasks(); }catch(err){ flashTop(err.message); t.disabled=false; } return; }
+  if(t.id==="askNo"){ $("askAct").innerHTML=""; return; }
+  if(t.dataset&&t.dataset.gopen){ e.preventDefault(); const [k,id]=t.dataset.gopen.split("|"); closeModal(); if(k!==TAB){ TAB=k; FILTER="all"; } renderList(); await openRow(k,id); return; }
+  if(t.dataset&&t.dataset.gtask){ const [k,id]=t.dataset.gtask.split("|"); const row=S[k].rows.find(r=>r.id===id); if(row) taskPrompt(Object.assign(taskCtx(row,k==="offer"?"offer":k==="order"?"order":"reply"),{ask:false})); return; }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="askIn"){ e.preventDefault(); askGo(); } });
+
 
 </script>
 </body>
