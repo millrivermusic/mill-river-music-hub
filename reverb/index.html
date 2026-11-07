@@ -480,6 +480,7 @@ function snapshot(){ const L=r=>{ const d=deskOf(r); return {kind:KINDS[r.kind],
   const open=[...S.msg.rows.filter(r=>statusOf(r)!=="Done"),...S.offer.rows,...S.refund.rows,...S.order.rows.filter(r=>!/Delivered|Received|Picked|Refunded|Cancelled/.test(r.stage))];
   return {now:new Date().toString(),you:WHO,staff:STAFF,managers:MANAGERS,items:open.slice(0,200).map(L),tasks:(TASKS||[]).filter(r=>tv(r,"status")!=="Done").map(r=>({task:tv(r,"task"),to:tv(r,"to")||"",dept:tv(r,"dept"),due:tv(r,"due")||"",status:tv(r,"status"),source:tv(r,"source")||""}))}; }
 let ASK=[]; let ASKBUSY=false;
+function md(t){ return esc(t).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/^#+\s*(.+)$/gm,"<b>$1</b>"); }
 async function openMgr(){ closeModal(); try{ if(!TASKS) await loadTasks(); }catch(e){}
   const el=document.createElement("div"); el.className="mback"; el.id="mback";
   const g=gaps();
@@ -488,7 +489,7 @@ async function openMgr(){ closeModal(); try{ if(!TASKS) await loadTasks(); }catc
    ${g.length?g.map((x,gi)=>`<div class="gap ${x.sev>1?"ok":""}"><b>${esc(x.title)}</b> <span class="small muted">${x.items.length}</span>${x.hint?` <span class="small muted">· ${esc(x.hint)}</span>`:""}
       <div class="small">${x.items.slice(0,8).map((it,ii)=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>8?`<div class="muted">…and ${x.items.length-8} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing is slipping right now.</div>`}
    <h3 style="margin-top:14px;font-size:16px">Ask</h3>
-   <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${esc(ASK[ASK.length-1].content)}</div>`:""}</div>
+   <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${md(ASK[ASK.length-1].content.replace(/TASKS_JSON:[\s\S]*$/,""))}</div>`:""}</div>
    <div class="row"><input class="t" id="askIn" placeholder="e.g. What's slipping? Who has the most open? Give the Martin offers to Sam." style="flex:1;min-width:0"><button class="btn" id="askGo" type="button">Ask</button></div>
    <div id="askAct"></div></div>`;
   document.body.appendChild(el); setTimeout(()=>{ try{ $("askIn").focus(); }catch(e){} },50); }
@@ -497,11 +498,11 @@ async function askGo(){ if(ASKBUSY) return; const q=$("askIn").value.trim(); if(
 SNAPSHOT:
 ${JSON.stringify(snapshot())}`;
   ASK.push({role:"user",content:q}); $("askIn").value="";
-  try{ const r=await fetch("/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,max_tokens:1500,messages:ASK.slice(-10)})}); const j=await r.json();
+  try{ const r=await fetch("/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,max_tokens:4000,messages:ASK.slice(-10)})}); const j=await r.json();
     if(!r.ok) throw new Error((j.error&&j.error.message)||j.message||("Error "+r.status));
     let text=(j.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n").trim(); ASK.push({role:"assistant",content:text});
     let tasks=[]; const m=text.match(/TASKS_JSON:\s*(\[[\s\S]*\])\s*$/); if(m){ try{ tasks=JSON.parse(m[1]); }catch(e){} text=text.slice(0,m.index).trim(); }
-    $("askOut").innerHTML=`<div class="askout">${esc(text)}</div>`;
+    $("askOut").innerHTML=`<div class="askout">${md(text)}</div>`+(j.stop_reason==="max_tokens"?`<div class="small muted">That answer got cut off. Ask it to keep it shorter.</div>`:"");
     if(tasks.length){ window.__pendingTasks=tasks; $("askAct").innerHTML=`<div class="note"><b>Make these tasks?</b>${tasks.map(t=>`<div class="small">• ${esc(t.task)} → ${esc(t.to||"Reverb dept")}${t.due?" · due "+esc(t.due):""}</div>`).join("")}<div class="row" style="margin-top:6px"><button class="btn sm" id="askMake" type="button">Add them</button><button class="btn sec sm" id="askNo" type="button">Not now</button></div></div>`; }
   }catch(err){ ASK.pop(); $("askOut").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; }
   ASKBUSY=false; const b=$("askGo"); if(b) b.disabled=false; }
