@@ -409,13 +409,13 @@ function renderMail(){ const c=CUR, B=BR[c.b]; const kinds=[["request","Warranty
       ${!ready&&MAILKIND==="request"&&(c.status==="pending"||c.status==="waiting")?`<button class="btn sec" data-act="markemailed">I sent it: mark Emailed</button>`:""}
       ${!ready&&MAILKIND==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid"?`<button class="btn sec" data-act="markpaper">I sent it: mark Paperwork submitted</button>`:""}</div>
     <div id="mconfirm"></div><div id="mmsg"></div>
-    <h3>Conversation with ${esc(B.label)}</h3>
+    <h3>Conversation with ${esc(B.label)} <span class="small muted" style="font-weight:500;text-transform:none;letter-spacing:0">· newest first</span></h3>
     <div id="convo"><div class="small muted">${c.emIds.length?"Loading emails…":(ready?"No emails on this case yet.":"Once email is connected, emails with "+esc(B.label)+" show up here.")}</div></div>
     <div class="row" style="margin-top:8px"><a class="btn sec sm" target="_blank" rel="noopener" href="${gmSearch(c)}">Search Gmail for this guitar</a></div>`;
   updMail(); loadConvo(c); }
 async function loadConvo(c){ if(!c.emIds.length) return; const box=$("convo");
   try{ const ids=c.emIds.slice(0,90); const f="OR("+ids.map(x=>`RECORD_ID()='${x}'`).join(",")+")";
-    const rs=(await allF(EM.table,[EM.subject,EM.dir,EM.from,EM.to,EM.date,EM.body,EM.files,EM.seen,EM.sentBy,EM.sendStatus,EM.sendError],f)).sort((a,b)=>String(a.fields[EM.date]).localeCompare(String(b.fields[EM.date])));
+    const rs=(await allF(EM.table,[EM.subject,EM.dir,EM.from,EM.to,EM.date,EM.body,EM.files,EM.seen,EM.sentBy,EM.sendStatus,EM.sendError],f)).sort((a,b)=>String(b.fields[EM.date]).localeCompare(String(a.fields[EM.date])));  // newest first, right under the reply box
     if(CUR!==c||!$("convo")) return;
     box.innerHTML=rs.map(r=>{ const F=r.fields||{}; const out=s(F[EM.dir])!=="Received"; const ss=s(F[EM.sendStatus]); const atts=F[EM.files]||[];
       return `<div class="mail" style="margin-top:8px;${out?"margin-left:24px;background:var(--accent-soft)":"margin-right:24px"}"><div class="small muted">${out?"Sent"+(F[EM.sentBy]?" by "+esc(F[EM.sentBy]):""):"From "+esc(F[EM.from]||"")} · ${esc(new Date(F[EM.date]).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))}${!out&&!F[EM.seen]?' <span class="pill s-approved">new</span>':""}${ss&&ss!=="Sent"?` <span class="pill ${ss==="Failed"?"s-pending":"s-emailed"}">${esc(ss)}</span>`:""}</div>${ss==="Failed"?`<div class="note warn" style="margin-top:6px">Not sent: ${esc(F[EM.sendError]||"")}</div>`:""}
