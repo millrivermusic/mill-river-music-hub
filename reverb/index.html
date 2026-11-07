@@ -240,6 +240,8 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
     <b>Total</b><span><strong>${esc(A(o.total))}</strong></span><b>Reverb fees</b><span>${esc(A(o.selling_fee))}${o.direct_checkout_fee?" + "+esc(A(o.direct_checkout_fee))+" processing":""}</span>
     <b>Payout</b><span>${esc(A(o.direct_checkout_payout))}</span>${o.order_notes&&o.order_notes.length?`<b>Order notes</b><span>${esc([].concat(o.order_notes).map(x=>x&&x.body||x).join("\n"))}</span>`:""}</div>
     <div id="plinfo"></div>
+    <div class="sect"><label class="f">Message ${esc(o.buyer_name||"the buyer")}<textarea class="t" id="oMsgBuyer" placeholder="Write to the buyer about this order"></textarea></label>
+    <div class="row" style="margin-top:8px"><button class="btn" id="oSendMsg" type="button">Send to buyer</button><span class="small muted" id="oMsgRes">Goes into your Reverb conversation with this buyer.</span></div></div>
     <div class="note">Shipping labels and tracking are still done the usual way. This shows where each order stands.</div>
     ${deskPanel(row)}`;
     plInfo(row.title,o.sku); }
@@ -319,11 +321,24 @@ async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the to
 function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
 
 /* ---------- actions ---------- */
-document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
   if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
   if(t.id==="mback"){ document.body.classList.remove("mdet"); const on=document.querySelector("#list .on"); if(on) on.scrollIntoView({block:"center"}); return; }
+  if(t.id==="oSendMsg"){ const row=S.order.rows.find(r=>SEL&&r.id===SEL.id); if(!row) return; const o=row.o, body=$("oMsgBuyer").value.trim(), res=$("oMsgRes");
+    if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Write the message first."); return; }
+    if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+(o.buyer_name||"buyer")+"?"; res.textContent="Click again to send. This goes straight to the buyer on Reverb."; res.style.color=""; return; }
+    t.disabled=true; res.textContent="Finding your conversation with this buyer…";
+    try{ const lid=String(o.product_id||""), bn=String(o.buyer_name||"").trim().toLowerCase();
+      const match=c=>c&&c.listing&&String(c.listing.id)===lid&&(!bn||String(c.other_party&&c.other_party.name||"").trim().toLowerCase()===bn);
+      let conv=(S.msg.rows.find(r=>match(r.raw))||{}).raw;
+      for(let p=1;!conv&&p<=4;p++){ const j=await rv(`my/conversations?per_page=50&page=${p}`); conv=(j.conversations||[]).find(match); if(p>=(j.total_pages||1)) break; }
+      if(!conv){ const web=o._links&&o._links.web&&o._links.web.href; res.innerHTML=`No Reverb conversation with this buyer yet, so nothing was sent. Start it with Message Buyer on <a href="${esc(web||"https://reverb.com/my/selling/orders")}" target="_blank" rel="noopener">the order on Reverb</a>; after that you can write from here.`; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; return; }
+      const cid=(conv._links.self.href.match(/conversations\/(\d+)/)||[])[1];
+      await rv(`my/conversations/${cid}/messages`,{method:"POST",body:JSON.stringify({body})});
+      await saveDesk(row,{[DF.lastBy]:WHO}).catch(()=>{}); $("oMsgBuyer").value=""; res.textContent="Sent to "+(o.buyer_name||"the buyer")+"."; res.style.color="var(--ok)"; t.textContent="Send to buyer"; delete t.dataset.sure; t.disabled=false; }
+    catch(err){ res.textContent=err.message; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; } return; }
   if(t.id==="loadmore"){ t.disabled=true; try{ await (TAB==="order"?loadOrders(true):loadMsgs(true)); }catch(err){} renderList(); return; }
   const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
   if(t.id==="dSave"){ t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
@@ -340,7 +355,6 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
       await rv(href,{method:"POST",body:JSON.stringify({body})}); await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO}); await loadMsgs(); renderList(); await openRow(row.kind,row.id); }
     catch(err){ $("rMsg").textContent=err.message; $("rMsg").style.color="var(--warn)"; t.disabled=false; t.textContent="Send reply"; delete t.dataset.sure; } return; }
   if(t.dataset.oact){ const a=t.dataset.oact, msg=$("oMsg").value.trim(), price=$("oPrice").value.replace(/[$,]/g,"").trim(), shipv=($("oShip")?$("oShip").value:"").replace(/[$,]/g,"").trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; }
-    if(a==="counter"){ alertBox("Counter is switched off in the desk for now (shipping was being sent as $0). Please counter on Reverb directly."); return; }
     if(a==="counter"&&!(+price>0)){ alertBox("Enter a counter price."); return; }
     if(a==="counter"&&!(shipv!==""&&+shipv>=0&&!isNaN(+shipv))){ alertBox("Enter the shipping for this counter (use 0 only if you mean free shipping)."); return; }
     if(!t.dataset.sure){ document.querySelectorAll("[data-oact]").forEach(b=>{ delete b.dataset.sure; b.textContent=b.dataset.oact[0].toUpperCase()+b.dataset.oact.slice(1); }); t.dataset.sure="1"; t.textContent=a==="counter"?`Counter at $${price}${shipv!==""?" + $"+shipv+" shipping":""}?`:a[0].toUpperCase()+a.slice(1)+"?"; $("oRes").textContent="Click again to confirm. This goes straight to the buyer on Reverb."; $("oRes").style.color=""; return; }
