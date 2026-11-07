@@ -78,6 +78,10 @@ textarea.t{min-height:80px;resize:vertical}
 .sect{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
 .more{margin-top:8px}
 .empty{color:var(--muted);padding:20px;text-align:center}
+table.ht{width:100%;border-collapse:collapse;font-size:13.5px}
+table.ht th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line2);padding:5px 8px;white-space:nowrap}
+table.ht td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+table.ht tr.cur td{background:var(--accent-soft)}
 </style>
 <link rel="stylesheet" href="../warm.css?v=1">
 </head>
@@ -96,7 +100,7 @@ textarea.t{min-height:80px;resize:vertical}
 <script>
 "use strict";
 const BASE="appZD2jJGbSlvofcV", DESK="tblNByB9aK4puxKFb", PL="tbleYgUhKCIepPtFR";
-const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v"};
+const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v",lid:"fldj5Dl4XWNvv2vwr",sku:"fld4nknkxxMe4bTBZ",offer:"fldhzYYWNYXEp1QNy",resp:"fldWvPbCMSEnXm79Y",counter:"fldlu7xPqr9y4KSM7",result:"fld5Podo2PfhkNBz6"};
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const MANAGERS=["Jon","Sam","Nina"];
 const STATUSES=["New","Assigned","Waiting on manager","Answered","Done"];
@@ -118,6 +122,24 @@ const dv=(r,k)=>{ const v=r&&r.fields&&r.fields[DF[k]]; return v&&typeof v==="ob
 async function loadMsgs(more){ const st=S.msg; if(!more){ st.rows=[]; st.page=0; } if(st.page>=st.pages&&more) return; const j=await rv(`my/conversations?per_page=50&page=${st.page+1}`); st.page=j.current_page||st.page+1; st.pages=j.total_pages||1; st.total=j.total;
   (j.conversations||[]).forEach(c=>{ const id=(c._links.self.href.match(/conversations\/(\d+)/)||[])[1]; st.rows.push({kind:"msg",id,title:c.other_party&&c.other_party.name||"Buyer",sub:(c.listing&&c.listing.title)||"",last:c.last_message,read:c.read,replied:c.replied,at:c.last_message&&c.last_message.created_at,raw:c}); }); }
 async function loadOffers(){ const st=S.offer; st.rows=[]; let p=1,pages=1; do{ const j=await rv(`my/listings/negotiations?per_page=50&page=${p}`); pages=j.total_pages||1; (j.listings||[]).forEach(L=>(L.negotiations||[]).forEach(n=>st.rows.push({kind:"offer",id:String(n.id),title:L.title,sub:(n.buyer_name||n.other_party_name||"Buyer")+" · "+(n.last_offered_price&&n.last_offered_price.display&&n.last_offered_price.display.display||""),at:n.updated_at||n.created_at,n,L}))); p++; }while(p<=pages&&p<6); }
+function offerAmt(n){ const x=n&&n.last_offered_price; return x&&x.original&&+x.original.amount||x&&x.display&&+String(x.display.display||"").replace(/[^0-9.]/g,"")||0; }
+async function syncOffers(){ // keep our own offer history: Reverb only reports open offers
+  const now=new Set(S.offer.rows.map(r=>r.id)), creates=[], patches=[];
+  S.offer.rows.forEach(r=>{ const d=deskOf(r), amt=offerAmt(r.n);
+    if(!d) creates.push({fields:{[DF.title]:r.L.title+" — "+(r.n.buyer_name||""),[DF.kind]:"Offer",[DF.rid]:r.id,[DF.buyer]:r.n.buyer_name||"",[DF.listing]:r.L.title,[DF.lid]:String(r.L.id),[DF.sku]:r.L.sku||"",[DF.offer]:amt||null,[DF.status]:"New",[DF.result]:"Open",[DF.last]:r.at||null}});
+    else if(amt&&+dv(d,"offer")!==amt) patches.push({id:d.id,fields:{[DF.offer]:amt,[DF.last]:r.at||null}}); });
+  Object.entries(DESKROWS).forEach(([k,d])=>{ if(!k.startsWith("offer:")) return; const id=k.slice(6); if(now.has(id)) return; const res=dv(d,"result");
+    if(!res||res==="Open") patches.push({id:d.id,fields:{[DF.result]:dv(d,"resp")==="Accepted"?"Sold":"Expired / closed",...(dv(d,"resp")?{}:{[DF.resp]:"No response"}),...(dv(d,"status")==="Done"?{}:{[DF.status]:"Done"})}}); });
+  for(let i=0;i<creates.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({records:creates.slice(i,i+10),typecast:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); }
+  for(let i=0;i<patches.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({records:patches.slice(i,i+10),typecast:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); } }
+function historyTable(row){ const L=row.L, rows=Object.entries(DESKROWS).filter(([k,d])=>k.startsWith("offer:")&&(String(dv(d,"lid")||"")===String(L.id)||(!dv(d,"lid")&&dv(d,"listing")===L.title))).map(([k,d])=>d)
+    .sort((a,b)=>String(dv(b,"last")||b.createdTime||"").localeCompare(String(dv(a,"last")||a.createdTime||"")));
+  if(!rows.length) return "";
+  const m=v=>v||v===0?"$"+Number(v).toLocaleString("en-US"):"–";
+  return `<h3 style="margin:12px 0 6px;font-size:15px">All offers on this listing <span class="small muted" style="font-weight:500">(${rows.length})</span></h3>
+  <div style="overflow-x:auto"><table class="ht"><thead><tr><th>Date</th><th>Buyer</th><th>Offer</th><th>Our response</th><th>Result</th><th>Handled by</th><th>Assigned</th></tr></thead><tbody>
+  ${rows.map(d=>{ const cur=String(dv(d,"rid"))===String(row.id); const resp=dv(d,"resp")||(cur?"Waiting on us":"–"); return `<tr class="${cur?"cur":""}"><td>${esc(dv(d,"last")?new Date(dv(d,"last")).toLocaleDateString([], {month:"short",day:"numeric",year:"2-digit"}):"–")}</td><td>${esc(dv(d,"buyer")||"")}${cur?' <span class="tag info">this one</span>':""}</td><td>${m(dv(d,"offer"))}</td><td>${esc(resp)}${dv(d,"counter")?" at "+m(dv(d,"counter")):""}</td><td>${esc(dv(d,"result")||"Open")}</td><td>${esc((dv(d,"lastBy")||"–").replace(" (no reply needed)",""))}</td><td>${esc(dv(d,"to")||"–")}</td></tr>`; }).join("")}
+  </tbody></table></div><div class="small muted">History starts 11/7/2026. Reverb only reports open offers, so the hub keeps its own record from here on.</div>`; }
 async function loadRefunds(){ const st=S.refund; st.rows=[]; const j=await rv(`my/refund_requests/selling?per_page=50`); (j.refund_requests||[]).forEach(r=>st.rows.push({kind:"refund",id:String(r.id),title:(r.order&&(r.order.title||r.order.order_number&&("Order "+r.order.order_number)))||("Refund request "+r.id),sub:(r.requested_amount&&r.requested_amount.display||"")+" · "+(r.reason||"").replace(/_/g," "),at:r.updated_at||r.created_at,r})); }
 
 /* ---------- status / filters ---------- */
@@ -224,7 +246,8 @@ async function offerBrief(row){ const el=$("plinfo"); if(!el) return; const L=ro
       <b>This offer</b><span><strong>${$$(offer)}</strong> = ${pct(offer,list)} of list, ${pct(offer,exp)} of expected</span>
       <b>After Reverb fees</b><span>about ${$$(net)} to us (fees ≈ ${$$(fees)})${margin!=null?` · ${margin>=0?"":"−"}${$$(Math.abs(Math.round(margin)))} vs. what we have in it`:""}</span>
       ${F[PLF.notes]?`<b>Notes</b><span style="white-space:pre-wrap">${esc(F[PLF.notes])}</span>`:""}</div>`:`<div class="note">Couldn't find this item in the Purchase Log${L.sku?" (SKU "+esc(L.sku)+")":""}, so there's no cost or history to show.</div>`}
-    ${hist.length?`<h3 style="margin:12px 0 6px;font-size:15px">Offer history</h3><div class="msgs" style="max-height:none;margin:0">${hist.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(o=>`<div class="msg ${o.initiated_by_me?"me":""}"><div class="w">${esc(o.initiated_by_me?"Mill River Music":(o.initiated_by_name||"Buyer"))} · ${esc(when(o.created_at))}</div><strong>${esc(o.price&&o.price.display&&o.price.display.display||"")}</strong> + ${esc(o.shipping_price&&o.shipping_price.display&&o.shipping_price.display.display||"$0")} shipping${o.message?"\n"+esc(o.message):""}</div>`).join("")}</div>`:""}
+    ${historyTable(row)}
+    ${hist.length?`<h3 style="margin:12px 0 6px;font-size:15px">Back-and-forth with ${esc(n.buyer_name||"this buyer")}</h3><div class="msgs" style="max-height:none;margin:0">${hist.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(o=>`<div class="msg ${o.initiated_by_me?"me":""}"><div class="w">${esc(o.initiated_by_me?"Mill River Music":(o.initiated_by_name||"Buyer"))} · ${esc(when(o.created_at))}</div><strong>${esc(o.price&&o.price.display&&o.price.display.display||"")}</strong> + ${esc(o.shipping_price&&o.shipping_price.display&&o.shipping_price.display.display||"$0")} shipping${o.message?"\n"+esc(o.message):""}</div>`).join("")}</div>`:""}
     ${ops.length?`<h3 style="margin:12px 0 6px;font-size:15px">Ops Log</h3>${ops.map(o=>{ const g=o.fields; return `<div class="note" style="background:var(--sunk);color:var(--ink)"><div class="small muted">${esc(g[OLF.date]||"")} · ${esc(nm(g[OLF.type])||"")}${g[OLF.by]?" · decided by "+esc(nm(g[OLF.by])):""}${g[OLF.status]?" · "+esc(nm(g[OLF.status])):""}</div><b>${esc(g[OLF.entry]||"")}</b>${g[OLF.details]?`<div style="white-space:pre-wrap">${esc(g[OLF.details])}</div>`:""}${g[OLF.ifthen]?`<div class="small"><b>If/then:</b> ${esc(g[OLF.ifthen])}</div>`:""}</div>`; }).join("")}`:""}
     <div class="small muted" style="margin-top:6px">Fees are an estimate (about 5% selling + 3.19% + $0.49 processing).</div></div>`; }
 async function plInfo(title,sku){ const el=$("plinfo"); if(!el) return; try{
@@ -237,6 +260,7 @@ async function plInfo(title,sku){ const el=$("plinfo"); if(!el) return; try{
 async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the top first."); return null; } const d=deskOf(row), to=$("dTo")?$("dTo").value:"", st=$("dSt")?$("dSt").value:"New";
   const f={[DF.title]:row.kind==="offer"?row.L.title+" — "+(row.n.buyer_name||""):row.title+(row.sub?" — "+row.sub:""),[DF.kind]:KINDS[row.kind],[DF.rid]:row.id,[DF.status]:st,[DF.to]:to||null,[DF.needs]:$("dNeeds")?$("dNeeds").checked:false,[DF.notes]:$("dNotes")?$("dNotes").value:"",[DF.last]:row.at||null,
     [DF.buyer]:row.kind==="offer"?(row.n.buyer_name||""):row.kind==="msg"?row.title:"",[DF.listing]:row.kind==="offer"?row.L.title:row.sub||""};
+  if(row.kind==="offer"){ f[DF.lid]=String(row.L.id); f[DF.sku]=row.L.sku||""; f[DF.offer]=offerAmt(row.n)||null; if(!d) f[DF.result]="Open"; }
   if(to&&to!==(dv(d,"to")||"")) f[DF.by]=WHO; Object.assign(f,extra||{});
   const j=d?await at(`${DESK}/${d.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true})}):await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields:f,typecast:true})});
   DESKROWS[row.kind+":"+row.id]=j; return j; }
@@ -263,14 +287,15 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
     if(a==="counter"&&!(+price>0)){ alertBox("Enter a counter price."); return; }
     if(!t.dataset.sure){ document.querySelectorAll("[data-oact]").forEach(b=>{ delete b.dataset.sure; b.textContent=b.dataset.oact[0].toUpperCase()+b.dataset.oact.slice(1); }); t.dataset.sure="1"; t.textContent=a==="counter"?`Counter at $${price}?`:a[0].toUpperCase()+a.slice(1)+"?"; $("oRes").textContent="Click again to confirm. This goes straight to the buyer on Reverb."; $("oRes").style.color=""; return; }
     t.disabled=true; try{ const body=a==="counter"?{price:{amount:price,currency:"USD"},message:msg||undefined}:{message:msg||undefined};
-      await rv(row.n._links[a].href,{method:"POST",body:JSON.stringify(body)}); await saveDesk(row,{[DF.status]:a==="counter"?"Answered":"Done",[DF.lastBy]:WHO}); await loadOffers(); renderList(); $("detail").innerHTML=`<div class="note ok">Done: ${esc(a)} sent.</div>`; }
+      await rv(row.n._links[a].href,{method:"POST",body:JSON.stringify(body)}); await saveDesk(row,{[DF.status]:a==="counter"?"Answered":"Done",[DF.lastBy]:WHO,[DF.resp]:{accept:"Accepted",counter:"Countered",decline:"Declined"}[a],[DF.result]:{accept:"Sold",counter:"Open",decline:"We declined"}[a],...(a==="counter"?{[DF.counter]:+price}:{})}); await loadOffers(); renderList(); $("detail").innerHTML=`<div class="note ok">Done: ${esc(a)} sent.</div>`; }
     catch(err){ $("oRes").textContent=err.message; $("oRes").style.color="var(--warn)"; t.disabled=false; } return; }
 });
 document.addEventListener("change",e=>{ if(e.target.id==="who"){ WHO=e.target.value; store.set("mrm-photos-who",WHO); renderList(); if(SEL) openRow(SEL.kind,SEL.id); } });
 $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
 
 (async()=>{ renderTabs(); try{ await loadDesk(); }catch(e){ $("banner").className="note warn"; $("banner").textContent="Couldn't load assignments: "+e.message; }
-  await Promise.all([loadMsgs().catch(e=>{$("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`}),loadOffers().catch(()=>{}),loadRefunds().catch(()=>{})]); renderList(); })();
+  await Promise.all([loadMsgs().catch(e=>{$("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`}),loadOffers().catch(()=>{}),loadRefunds().catch(()=>{})]); renderList();
+  try{ await syncOffers(); renderList(); }catch(e){ console.warn("offer log",e); } })();
 </script>
 </body>
 </html>
