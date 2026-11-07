@@ -118,8 +118,9 @@ const BASE="appZD2jJGbSlvofcV", DESK="tblNByB9aK4puxKFb", PL="tbleYgUhKCIepPtFR"
 const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v",lid:"fldj5Dl4XWNvv2vwr",sku:"fld4nknkxxMe4bTBZ",offer:"fldhzYYWNYXEp1QNy",resp:"fldWvPbCMSEnXm79Y",counter:"fldlu7xPqr9y4KSM7",result:"fld5Podo2PfhkNBz6"};
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const MANAGERS=["Jon","Sam","Nina"];
+const MGR_OK=false; // manager approval switched off for now (Jon, 11/7)
 const OLD_CUTOFF=Date.parse("2026-10-31T16:00:00Z"); // 11/7: Jon cleared everything older than a week; anything after this is tracked
-const STATUSES=["New","Assigned","Waiting on manager","Answered","Done"];
+const STATUSES=["New","Assigned",...(MGR_OK?["Waiting on manager"]:[]),"Answered","Done"];
 const KINDS={msg:"Message",offer:"Offer",refund:"Refund request",order:"Order"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -174,7 +175,7 @@ function deskOf(row){ return DESKROWS[row.kind+":"+row.id]; }
 function statusOf(row){ const d=deskOf(row), s=dv(d,"status");
   if(row.kind==="offer"){ if(row.n.actionable) return s==="Assigned"||s==="Waiting on manager"?s:"New"; return s==="Done"?"Done":"Waiting on buyer"; } // offer status follows whose turn it is on Reverb
   if(s) return s; if(row.kind==="msg"){ if((row.last&&row.last.authored)||row.replied) return "Answered"; if(row.at&&Date.parse(row.at)<OLD_CUTOFF) return "Done"; return "New"; } if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
-const FILTERS=[["open","Needs attention"],["buyer","Waiting on buyer"],["new","Not assigned"],["mine","Assigned to me"],["assigned","Assigned"],["mgr","Waiting on manager"],["answered","Answered"],["done","Done"],["all","All"]];
+const FILTERS=[["open","Needs attention"],["buyer","Waiting on buyer"],["new","Not assigned"],["mine","Assigned to me"],["assigned","Assigned"],["answered","Answered"],["done","Done"],["all","All"]];
 const OFILTERS=[["oship","To ship"],["ounpaid","Waiting for payment"],["otransit","In transit"],["odeliv","Delivered / received"],["orefund","Refunded / cancelled"],["mine","Assigned to me"],["all","All"]];
 function passOrder(row){ const g=row.stage; switch(FILTER){ case "oship": return /Paid/.test(g); case "ounpaid": return /Waiting for payment/.test(g); case "otransit": return /transit|Out for delivery/.test(g); case "odeliv": return /Delivered|Received|Picked up/.test(g); case "orefund": return /Refunded|Cancelled/.test(g); case "mine": return WHO&&dv(deskOf(row),"to")===WHO; default: return true; } }
 function pass(row){ if(row.kind==="order") return passOrder(row); const st=statusOf(row), d=deskOf(row), to=dv(d,"to");
@@ -185,7 +186,7 @@ function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), t=[
   t.push(`<span class="tag ${st==="New"?"hot":st==="Done"||st==="Answered"?"ok":st==="Waiting on manager"?"sugg":st==="Waiting on buyer"?"":"info"}">${esc(st)}</span>`);
   if(row.kind==="offer"&&row.n.you_last_initiated) t.push(`<span class="tag">${row.n.offers_count<=1?"Our offer to a watcher":"Our counter"} · ${esc(row.n.last_offered_price&&row.n.last_offered_price.display&&row.n.last_offered_price.display.display||"")}</span>`);
   if(to) t.push(`<span class="tag info">→ ${esc(to)}</span>`); else if(st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer") t.push(`<span class="tag">Not assigned</span>`);
-  if(d&&dv(d,"needs")) t.push(`<span class="tag sugg">${dv(d,"okBy")?"Manager OK ✓":"Needs manager OK"}</span>`);
+  if(MGR_OK&&d&&dv(d,"needs")) t.push(`<span class="tag sugg">${dv(d,"okBy")?"Manager OK ✓":"Needs manager OK"}</span>`);
   if(d&&/no reply needed/.test(dv(d,"lastBy")||"")) t.push(`<span class="tag ok">No reply needed · ${esc((dv(d,"lastBy")||"").replace(" (no reply needed)",""))}</span>`);
   else if(row.kind==="msg"&&!d&&st==="Done"&&row.at&&Date.parse(row.at)<OLD_CUTOFF) t.push(`<span class="tag">Older than a week</span>`);
   else if(row.kind==="msg"&&row.read===false&&st!=="Done") t.push(`<span class="tag hot">Unread</span>`);
@@ -208,12 +209,12 @@ function deskPanel(row){ const d=deskOf(row), to=dv(d,"to")||"", st=statusOf(row
   return `<div class="sect"><div class="grid2">
     <label class="f">Assigned to<select class="t" id="dTo"><option value="">Not assigned</option>${STAFF.map(n=>`<option ${n===to?"selected":""}>${n}</option>`).join("")}</select></label>
     <label class="f">Status<select class="t" id="dSt">${STATUSES.map(s=>`<option ${s===st?"selected":""}>${s}</option>`).join("")}</select></label>
-    <label class="f">Manager OK<span class="row" style="min-height:38px"><label class="row small" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="dNeeds" ${needs?"checked":""}> Needs manager OK</label></span></label>
+    ${MGR_OK?`<label class="f">Manager OK<span class="row" style="min-height:38px"><label class="row small" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="dNeeds" ${needs?"checked":""}> Needs manager OK</label></span></label>`:""}
   </div>
-  ${needs?`<div class="note ${ok?"ok":"warn"}">${ok?"Approved by "+esc(ok)+".":"Waiting for Jon, Sam or Nina to approve before anything is sent."} ${!ok&&MANAGERS.includes(WHO)?`<button class="btn sm" id="dApprove" style="margin-left:8px">Approve as ${esc(WHO)}</button>`:""}</div>`:""}
+  ${MGR_OK&&needs?`<div class="note ${ok?"ok":"warn"}">${ok?"Approved by "+esc(ok)+".":"Waiting for Jon, Sam or Nina to approve before anything is sent."} ${!ok&&MANAGERS.includes(WHO)?`<button class="btn sm" id="dApprove" style="margin-left:8px">Approve as ${esc(WHO)}</button>`:""}</div>`:""}
   <label class="f">${row.kind==="order"?"Employee notes (only us, not sent to the buyer)":"Notes for the team"}<textarea class="t" id="dNotes" placeholder="${row.kind==="order"?"e.g. Packed in a double box; buyer asked to ship Monday":"Anything the next person should know"}">${esc(dv(d,"notes")||"")}</textarea></label>
   <div class="row" style="margin-top:8px"><button class="btn sec" id="dTask" type="button">+ Task</button><button class="btn sec" id="dSave">${row.kind==="order"?"Save notes and assignment":"Save assignment"}</button><span class="small muted" id="dMsg">${d&&dv(d,"by")?"Assigned by "+esc(dv(d,"by")):""}</span></div></div>`; }
-function locked(row){ const d=deskOf(row); return !!(d&&dv(d,"needs")&&!dv(d,"okBy")); }
+function locked(row){ if(!MGR_OK) return false; const d=deskOf(row); return !!(d&&dv(d,"needs")&&!dv(d,"okBy")); }
 
 async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!row) return; SEL={kind,id}; renderList(); const box=$("detail"); document.body.classList.add("mdet"); if(matchMedia("(max-width:900px)").matches) window.scrollTo(0,Math.max(0,$("mback").getBoundingClientRect().top+scrollY-70));
   if(kind==="msg"){ box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${esc(row.sub)}</div><div class="msgs"><div class="muted">Loading conversation…</div></div>`;
@@ -326,7 +327,7 @@ async function plInfo(title,sku){ const el=$("plinfo"); if(!el) return; try{
   }catch(e){ el.innerHTML=""; } }
 
 async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the top first."); return null; } const d=deskOf(row), to=$("dTo")?$("dTo").value:"", st=$("dSt")?$("dSt").value:"New";
-  const f={[DF.title]:row.kind==="offer"?row.L.title+" — "+(row.n.buyer_name||""):row.title+(row.sub?" — "+row.sub:""),[DF.kind]:KINDS[row.kind],[DF.rid]:row.id,[DF.status]:st,[DF.to]:to||null,[DF.needs]:$("dNeeds")?$("dNeeds").checked:false,[DF.notes]:$("dNotes")?$("dNotes").value:"",[DF.last]:row.at||null,
+  const f={[DF.title]:row.kind==="offer"?row.L.title+" — "+(row.n.buyer_name||""):row.title+(row.sub?" — "+row.sub:""),[DF.kind]:KINDS[row.kind],[DF.rid]:row.id,[DF.status]:st,[DF.to]:to||null,[DF.needs]:$("dNeeds")?$("dNeeds").checked:!!dv(deskOf(row),"needs"),[DF.notes]:$("dNotes")?$("dNotes").value:"",[DF.last]:row.at||null,
     [DF.buyer]:row.kind==="offer"?(row.n.buyer_name||""):row.kind==="msg"?row.title:"",[DF.listing]:row.kind==="offer"?row.L.title:row.sub||""};
   if(row.kind==="offer"){ f[DF.lid]=String(row.L.id); f[DF.sku]=row.L.sku||""; f[DF.offer]=offerAmt(row.n)||null; if(!d) f[DF.result]="Open"; }
   if(to&&to!==(dv(d,"to")||"")) f[DF.by]=WHO; Object.assign(f,extra||{});
@@ -502,7 +503,7 @@ function gaps(){ const out=[]; const add=(sev,title,items,hint)=>{ if(items.leng
   const refunds=S.refund.rows.filter(r=>statusOf(r)!=="Done");
   add(1,"Refund requests open",refunds.map(r=>({r,t:nm(r),x:""})),"Decide and respond.");
   const mgrOk=[...S.msg.rows,...S.offer.rows,...S.refund.rows].filter(r=>{ const d=deskOf(r); return d&&dv(d,"needs")&&!dv(d,"okBy"); });
-  add(0,"Waiting for a manager's OK",mgrOk.map(r=>({r,t:nm(r),x:""})),"Jon, Sam or Nina.");
+  if(MGR_OK) add(0,"Waiting for a manager's OK",mgrOk.map(r=>({r,t:nm(r),x:""})),"Jon, Sam or Nina.");
   const unassigned=[...msgs,...offers,...refunds].filter(r=>!dv(deskOf(r),"to"));
   add(2,"Open items not assigned to anyone",unassigned.map(r=>({r,t:nm(r),x:KINDS[r.kind]})),"Assign or make a task.");
   const tk=(TASKS||[]).filter(r=>tv(r,"status")!=="Done"); const today=dayStr(0);
