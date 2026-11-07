@@ -135,6 +135,19 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
 .titem.done{opacity:.55}.late{color:#B4361F;font-weight:700}
 .tform{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:8px}
 .tform .wide{grid-column:1/-1}
+
+#tmsgs .mrow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line)}
+#tmsgs .mrow:first-child{border-top:0}
+#tmsgs .mrow.unread .mtxt{font-weight:600}
+#tmsgs .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px}
+#tmsgs .dot.off{background:transparent}
+.mhead{font-size:12px;color:var(--muted)}
+.mtxt{white-space:pre-wrap;font-size:14px;margin-top:2px}
+.tchip{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-top:4px;background:var(--surface);color:var(--ink);cursor:pointer}
+.mcomp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0;padding:10px;border:1px dashed var(--line);border-radius:8px}
+.mcomp .wide{grid-column:1/-1}
+.tthread{margin:6px 0 2px 25px;padding:6px 8px;border-left:3px solid var(--line);background:var(--surface);border-radius:4px}
+.titem.hl{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -156,6 +169,13 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
   </section>
 
   <div id="tiles"></div>
+
+  <section class="card" id="tmsgs">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team messages</h2><div style="display:flex;gap:6px"><button class="btn sec sm" id="mReadAll" type="button">Mark all read</button><button class="btn sm" id="mNew" type="button">+ New message</button></div></div>
+    <div class="tbar" id="mbar"></div>
+    <div id="mcomp"></div>
+    <div id="mbody"><div class="small" style="color:var(--muted)">Loading messages…</div></div>
+  </section>
 
   <section class="card" id="tasks">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team tasks</h2><button class="btn sm" id="tAddOpen" type="button">+ New task</button></div>
@@ -249,7 +269,7 @@ function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" 
     if(t.soon){ h+=`<a class="soon" aria-disabled="true" title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span></a>`; return; }
     const ext=/^https?:/.test(t.href), ka=t.counts.find(x=>COUNTS[x]&&COUNTS[x].alert&&typeof VAL[x]==="number"&&VAL[x]>0), k=ka||t.counts.find(x=>!(COUNTS[x]&&COUNTS[x].alert)), v=k?VAL[k]:undefined, hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert));
     h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span>${hot?`<span class="n hot">${esc(v)}</span>`:""}</a>`; });
-  { const mine=(typeof TASKS!=="undefined"?TASKS:[]).filter(r=>r.fields&&r.fields["Assigned To"]===WHO&&r.fields.Status!=="Done").length+(typeof DESKA!=="undefined"?DESKA:[]).filter(d=>d.to===WHO).length; h+=`<div class="sh">Team</div><a href="#tasks"><span class="i" aria-hidden="true">✅</span><span class="t">Team tasks</span>${mine?`<span class="n hot">${mine}</span>`:""}</a>`; }
+  { const mine=(typeof TASKS!=="undefined"?TASKS:[]).filter(r=>r.fields&&r.fields["Assigned To"]===WHO&&r.fields.Status!=="Done").length+(typeof DESKA!=="undefined"?DESKA:[]).filter(d=>d.to===WHO).length; { const un=(typeof MSGS!=="undefined"?MSGS:[]).filter(r=>typeof unread==="function"&&unread(r)).length; h+=`<div class="sh">Team</div><a href="#tmsgs"><span class="i" aria-hidden="true">💬</span><span class="t">Team messages</span>${un?`<span class="n hot">${un}</span>`:""}</a>`; } h+=`<a href="#tasks"><span class="i" aria-hidden="true">✅</span><span class="t">Team tasks</span>${mine?`<span class="n hot">${mine}</span>`:""}</a>`; }
   const ql=[...document.querySelectorAll("#qlcard .links a")];
   if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
   el.innerHTML=`<div class="sidein">${h}</div>`; }
@@ -277,11 +297,13 @@ async function loadDeskAssigned(){ const out=[]; let off=""; do{ const j=await a
 async function loadTeamTasks(){ try{ await loadDeskAssigned(); }catch(e){ DESKA=[]; } const out=[]; let off=""; const f=encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-3,'days')))"); do{ const j=await atT(`${TT}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`); out.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=out; renderTasks(); renderSide(); }
 function tToday(){ return new Date().toLocaleDateString("en-CA"); }
 function titem(r){ const st=tf(r,"Status"), due=tf(r,"Due"), late=due&&due<tToday()&&st!=="Done";
-  return `<div class="titem ${st==="Done"?"done":""}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0"><div class="tt">${esc(tf(r,"Task")||"")}</div>
+  const nm=(typeof MSGS!=="undefined"?MSGS:[]).filter(m=>((m.fields||{}).Task||[]).includes(r.id)).length;
+  return `<div class="titem ${st==="Done"?"done":""}" data-tid="${r.id}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0"><div class="tt">${esc(tf(r,"Task")||"")}</div>
    <div class="tm">${due?`<span class="${late?"late":""}">Due ${esc(due.slice(5).replace("-","/"))}</span> · `:""}${esc(TVIEW==="people"?(tf(r,"Department")||""):(tf(r,"Assigned To")||"anyone"))}${tf(r,"Source")?" · "+esc(tf(r,"Source")):""}${tf(r,"Made By")?" · from "+esc(tf(r,"Made By")):""}${st==="Done"&&tf(r,"Done By")?" · done by "+esc(tf(r,"Done By")):""}</div>
    ${tf(r,"Details")?`<div class="tm" style="white-space:pre-wrap;color:var(--ink)">${esc(tf(r,"Details"))}</div>`:""}
    ${st==="Needs OK"?`<div class="tm">Waiting for Jon, Sam or Nina${TMGR.includes(WHO)?` <button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
-   ${tf(r,"Link")?`<a class="tm" href="${esc(tf(r,"Link"))}" target="_blank" rel="noopener">Open</a>`:""}</div></div>`; }
+   ${tf(r,"Link")?`<a class="tm" href="${esc(tf(r,"Link"))}" target="_blank" rel="noopener">Open</a> `:""}<button class="chip" style="padding:0 8px;font-size:12px" data-thopen="${r.id}" type="button">💬 ${nm?nm+" message"+(nm===1?"":"s"):"Message"}</button>
+   ${OPENTHREAD===r.id?threadHTML(r.id):""}</div></div>`; }
 function ditem(d){ return `<div class="titem"><span aria-hidden="true" style="width:17px;flex:none;text-align:center">↪</span><div style="min-width:0"><div class="tt">Reverb ${esc(String(d.kind).toLowerCase())}: ${esc(d.title)}</div><div class="tm">${esc(TVIEW==="people"||TVIEW==="mine"?"Reverb":d.to)} · ${esc(d.status||"Open")}${d.by?" · assigned by "+esc(d.by):""} · <a href="/t/reverb/">Open in Reverb Desk</a></div></div></div>`; }
 function sortT(a){ return a.sort((x,y)=>{ const dx=tf(x,"Status")==="Done", dy=tf(y,"Status")==="Done"; if(dx!==dy) return dx?1:-1; return String(tf(x,"Due")||"9").localeCompare(String(tf(y,"Due")||"9")); }); }
 function renderTasks(){ const open=TASKS.filter(r=>tf(r,"Status")!=="Done"), cnt=k=>open.filter(r=>tf(r,"Department")===k).length+(k==="Reverb"?DESKA.length:0), mine=open.filter(r=>tf(r,"Assigned To")===WHO).length+DESKA.filter(d=>d.to===WHO).length;
@@ -303,7 +325,7 @@ function renderTForm(){ const el=$("tform"); if(!TFORM){ el.innerHTML=""; return
   setTimeout(()=>{ try{ $("tfTask").focus(); }catch(e){} },30); }
 async function saveTForm(){ const task=$("tfTask").value.trim(), m=$("tfMsg"); if(!task){ m.textContent="Write what needs doing."; return; } if(!WHO){ m.textContent="Pick your name at the top first."; return; }
   const to=$("tfTo").value, ok=false; const f={Task:task,Department:$("tfDept").value,Status:ok?"Needs OK":"To do",Details:$("tfDet").value.trim(),Source:"Added on the hub","Made By":WHO}; if(to) f["Assigned To"]=to; if($("tfDue").value) f.Due=$("tfDue").value;
-  $("tfSave").disabled=true; try{ await atT(TT,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); TFORM=false; renderTForm(); await loadTeamTasks(); }catch(e){ m.textContent=e.message; $("tfSave").disabled=false; } }
+  $("tfSave").disabled=true; try{ const j=await atT(TT,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); const nid=j.records&&j.records[0]&&j.records[0].id; if(window.__fromMsg&&nid){ await atT(TM,{method:"PATCH",body:JSON.stringify({records:[{id:window.__fromMsg,fields:{Task:[nid]}}]})}).catch(()=>{}); window.__fromMsg=null; } TFORM=false; renderTForm(); await loadTeamTasks(); await loadMsgs().catch(()=>{}); }catch(e){ m.textContent=e.message; $("tfSave").disabled=false; } }
 document.addEventListener("click",async e=>{ const t=e.target.closest("button"); if(!t) return;
   if(t.dataset.tview){ TVIEW=t.dataset.tview; try{ localStorage.setItem("hub-tview",TVIEW); }catch(_){} renderTasks(); return; }
   if(t.id==="tAddOpen"){ TFORM=!TFORM; renderTForm(); return; } if(t.id==="tfCancel"){ TFORM=false; renderTForm(); return; } if(t.id==="tfSave"){ saveTForm(); return; }
@@ -314,9 +336,58 @@ function alert0(m){ const b=$("tbody"); if(b) b.insertAdjacentHTML("afterbegin",
 loadTeamTasks().catch(e=>{ $("tbody").innerHTML=`<div class="small">Couldn't load tasks: ${esc(e.message)}</div>`; });
 setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 
+// ---- Team messages: Airtable "Team Messages", linked to Team Tasks ----
+const TM="tbl6wGPOAx0AkJwSU", MDEPT={"Reverb":"Reverb dept","Repair":"Repair dept","Shipping":"Shipping dept"};
+var MSGS=[], MVIEW=(()=>{ try{ return localStorage.getItem("hub-mview")||"me"; }catch(e){ return "me"; } })(), MCOMP=null, OPENTHREAD=null;
+const mf=(r,k)=>{ const v=(r.fields||{})[k]; return v&&typeof v==="object"&&!Array.isArray(v)&&v.name?v.name:v; };
+async function loadMsgs(){ const out=[]; let off=""; const f=encodeURIComponent("IS_AFTER(CREATED_TIME(),DATEADD(TODAY(),-21,'days'))"); do{ const j=await atT(`${TM}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`).catch(async e=>{ if(/Created/.test(e.message)) return atT(`${TM}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`); throw e; }); out.push(...(j.records||[])); off=j.offset||""; }while(off);
+  out.sort((a,b)=>new Date(b.createdTime)-new Date(a.createdTime)); MSGS=out; renderMsgs(); renderTasks(); renderSide(); }
+function forMe(r){ const to=mf(r,"To"); return to===WHO||to==="Everyone"||/ dept$/.test(to||""); }
+function unread(r){ return WHO&&mf(r,"From")!==WHO&&forMe(r)&&!((r.fields||{})["Read By"]||[]).includes(WHO); }
+function taskById(id){ return TASKS.find(t=>t.id===id); }
+function mrow(r){ const tid=((r.fields||{}).Task||[])[0], t=tid&&taskById(tid), un=unread(r);
+  return `<div class="mrow ${un?"unread":""}"><span class="dot ${un?"":"off"}" aria-hidden="true"></span><div style="min-width:0;flex:1"><div class="mhead"><b>${esc(mf(r,"From")||"?")}</b> → ${esc(mf(r,"To")||"")} · ${esc(new Date(r.createdTime).toLocaleString([], {month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}</div>
+   <div class="mtxt">${esc(mf(r,"Message")||"")}</div>
+   ${tid?`<span class="tchip" data-gotask="${tid}">✅ ${esc(t?tf(t,"Task"):"a task")}</span> `:""}
+   <span style="display:inline-flex;gap:6px;margin-top:4px">${mf(r,"From")!==WHO&&WHO?`<button class="chip" data-mreply="${r.id}" type="button">Reply</button>`:""}${un?`<button class="chip" data-mread="${r.id}" type="button">Read</button>`:""}${!tid&&WHO?`<button class="chip" data-mtask="${r.id}" type="button">Make it a task</button>`:""}</span></div></div>`; }
+function renderMsgs(){ const mine=MSGS.filter(forMe), un=MSGS.filter(unread).length, sent=MSGS.filter(r=>mf(r,"From")===WHO);
+  $("mbar").innerHTML=[["me","For me",un],["sent","Sent",0],["all","Everyone's",0]].map(([k,l,n])=>`<button class="chip ${MVIEW===k?"on":""}" data-mview="${k}" type="button">${l}${n?`<span class="n">${n} new</span>`:""}</button>`).join("");
+  let rows = MVIEW==="sent"?sent:MVIEW==="all"?MSGS:mine;
+  if(MVIEW!=="all"&&!WHO){ $("mbody").innerHTML=`<div class="small">Pick your name at the top to see your messages.</div>`; return; }
+  $("mbody").innerHTML=rows.length?rows.slice(0,40).map(mrow).join(""):`<div class="small" style="color:var(--muted)">No messages${MVIEW==="me"?" for you":""} in the last 3 weeks.</div>`; }
+function renderMComp(){ const el=$("mcomp"); if(!MCOMP){ el.innerHTML=""; return; } const c=MCOMP, openT=TASKS.filter(t=>tf(t,"Status")!=="Done");
+  const toOpts=["Everyone",...Object.values(MDEPT),...STAFF];
+  el.innerHTML=`<div class="mcomp"><label>To<select class="t" id="mTo">${toOpts.map(o=>`<option ${o===c.to?"selected":""}>${esc(o)}</option>`).join("")}</select></label>
+   <label>About a task (optional)<select class="t" id="mTask"><option value="">No task</option>${openT.map(t=>`<option value="${t.id}" ${t.id===c.task?"selected":""}>${esc((tf(t,"Task")||"").slice(0,60))}${tf(t,"Assigned To")?" ("+esc(tf(t,"Assigned To"))+")":""}</option>`).join("")}</select></label>
+   <label class="wide">Message<textarea class="t" id="mText" rows="3">${esc(c.text||"")}</textarea></label>
+   <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="mSend" type="button">Send</button><button class="btn sec" id="mCancel" type="button">Cancel</button><span class="tm" id="mMsg"></span></div></div>`;
+  setTimeout(()=>{ try{ $("mText").focus(); }catch(e){} },30); }
+async function sendMsg(fields){ await atT(TM,{method:"POST",body:JSON.stringify({records:[{fields}],typecast:true})}); await loadMsgs(); }
+async function markRead(ids){ const recs=ids.map(id=>{ const r=MSGS.find(m=>m.id===id); const rb=((r&&r.fields)||{})["Read By"]||[]; return {id,fields:{"Read By":[...new Set([...rb,WHO])]}}; }); for(let i=0;i<recs.length;i+=10) await atT(TM,{method:"PATCH",body:JSON.stringify({records:recs.slice(i,i+10),typecast:true})}); await loadMsgs(); }
+function taskMsgs(tid){ return MSGS.filter(m=>((m.fields||{}).Task||[]).includes(tid)).slice().reverse(); }
+function threadHTML(tid){ const ms=taskMsgs(tid), t=taskById(tid), to=(t&&tf(t,"Assigned To"))||(t&&MDEPT[tf(t,"Department")])||"Everyone";
+  return `<div class="tthread">${ms.length?ms.map(m=>`<div style="margin:4px 0"><span class="mhead"><b>${esc(mf(m,"From")||"")}</b> · ${esc(new Date(m.createdTime).toLocaleString([], {month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}</span><div class="mtxt">${esc(mf(m,"Message")||"")}</div></div>`).join(""):`<div class="mhead">No messages about this task yet.</div>`}
+   <div style="display:flex;gap:6px;margin-top:6px"><input class="t" id="th-${tid}" placeholder="Message ${esc(to)} about this task" style="flex:1;min-width:0"><button class="btn sm" data-thsend="${tid}" data-thto="${esc(to)}" type="button">Send</button></div></div>`; }
+document.addEventListener("click",async e=>{ const t=e.target.closest("button,.tchip"); if(!t) return;
+  if(t.dataset.mview){ MVIEW=t.dataset.mview; try{ localStorage.setItem("hub-mview",MVIEW); }catch(_){} renderMsgs(); return; }
+  if(t.id==="mNew"){ MCOMP=MCOMP?null:{to:"Everyone"}; renderMComp(); return; }
+  if(t.id==="mCancel"){ MCOMP=null; renderMComp(); return; }
+  if(t.id==="mSend"){ const text=$("mText").value.trim(), m=$("mMsg"); if(!WHO){ m.textContent="Pick your name at the top first."; return; } if(!text){ m.textContent="Write a message."; return; }
+    const f={Message:text,From:WHO,To:$("mTo").value,"Read By":[WHO]}; if($("mTask").value) f.Task=[$("mTask").value]; t.disabled=true; try{ await sendMsg(f); MCOMP=null; renderMComp(); }catch(err){ m.textContent=err.message; t.disabled=false; } return; }
+  if(t.id==="mReadAll"){ if(!WHO) return; const ids=MSGS.filter(unread).map(r=>r.id); if(ids.length){ t.disabled=true; try{ await markRead(ids); }finally{ t.disabled=false; } } return; }
+  if(t.dataset.mread){ t.disabled=true; await markRead([t.dataset.mread]); return; }
+  if(t.dataset.mreply){ const r=MSGS.find(m=>m.id===t.dataset.mreply); MCOMP={to:mf(r,"From"),task:((r.fields||{}).Task||[])[0]||""}; renderMComp(); $("mcomp").scrollIntoView({block:"center"}); if(unread(r)) markRead([r.id]).catch(()=>{}); return; }
+  if(t.dataset.mtask){ const r=MSGS.find(m=>m.id===t.dataset.mtask); TFORM=true; renderTForm(); $("tfTask").value=(mf(r,"Message")||"").split("\n")[0].slice(0,120); $("tfDet").value=`From ${mf(r,"From")}'s message: ${mf(r,"Message")}`; window.__fromMsg=r.id; $("tasks").scrollIntoView({block:"start"}); return; }
+  if(t.dataset.gotask){ OPENTHREAD=t.dataset.gotask; const tk=taskById(OPENTHREAD); if(tk){ const ass=tf(tk,"Assigned To"); TVIEW=ass?"people":(TSHOWN.includes(tf(tk,"Department"))?tf(tk,"Department"):"other"); } renderTasks(); const el=document.querySelector(`[data-tid="${OPENTHREAD}"]`); if(el){ el.classList.add("hl"); el.scrollIntoView({block:"center"}); } return; }
+  if(t.dataset.thopen){ OPENTHREAD=OPENTHREAD===t.dataset.thopen?null:t.dataset.thopen; renderTasks(); return; }
+  if(t.dataset.thsend){ const tid=t.dataset.thsend, inp=$("th-"+tid), text=(inp&&inp.value||"").trim(); if(!text||!WHO) return; t.disabled=true; try{ await sendMsg({Message:text,From:WHO,To:t.dataset.thto,Task:[tid],"Read By":[WHO]}); OPENTHREAD=tid; renderTasks(); }catch(err){ t.disabled=false; } return; }
+});
+loadMsgs().catch(e=>{ $("mbody").innerHTML=`<div class="small">Couldn't load messages: ${esc(e.message)}</div>`; });
+setInterval(()=>{ if(!document.hidden) loadMsgs().catch(()=>{}); },60000);
+
 function hello(){ const h=new Date().getHours(); $("hello").textContent=(WHO?(h<12?"Morning, ":h<17?"Afternoon, ":"Evening, ")+WHO:"Mill River Music tools"); }
 $("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
-$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); hello(); try{ renderTasks(); renderSide(); }catch(_){} });
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); hello(); try{ renderTasks(); renderMsgs(); renderSide(); }catch(_){} });
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
   const prev=TOKEN; TOKEN=t; $("setmsg").innerHTML=`<div class="note">Testing…</div>`;
   try{ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}?maxRecords=1&fields%5B%5D=Name`,{headers:{Authorization:"Bearer "+t}}); if(!r.ok) throw new Error("Airtable didn't accept that key ("+r.status+").");
