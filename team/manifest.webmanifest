@@ -1,0 +1,31 @@
+{
+  "id": "/",
+  "name": "MRM Team Hub",
+  "short_name": "MRM Hub",
+  "description": "Mill River Music staff tools: intake, tech bench, photos, listing, lookup.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5EFE4",
+  "theme_color": "#7A2E1F",
+  "icons": [
+    {
+      "src": "/t/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/t/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/t/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
