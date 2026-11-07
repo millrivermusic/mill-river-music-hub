@@ -87,12 +87,20 @@ table.ht{width:100%;border-collapse:collapse;font-size:13.5px}
 table.ht th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line2);padding:5px 8px;white-space:nowrap}
 table.ht td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
 table.ht tr.cur td{background:var(--accent-soft)}
+
+.mback{position:fixed;inset:0;background:rgba(30,20,12,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:6vh max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));overflow:auto}
+.mbox{background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:10px;max-width:520px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.mbox h3{margin:0 0 4px;font-size:18px}
+.tpanel{max-width:760px}
+.tgrp{margin:14px 0 6px;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}
+.titem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--sunk)}
+.titem.done{opacity:.55}.titem .tt{font-weight:600}.titem input{margin-top:3px;width:18px;height:18px;flex:none}
 </style>
 <link rel="stylesheet" href="../warm.css?v=1">
 </head>
 <body>
 <header class="bar"><div class="in"><h1>Reverb Desk<small>Preview</small></h1>
-  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><button class="btn sec sm" id="tasksBtn" type="button">Tasks</button><a href="../">Hub</a></div></div></header>
 <main class="wrap">
   <div class="note" id="banner">Live: replies and offer answers go straight to the buyer on Reverb. Every send asks you to confirm first.</div>
   <div class="tabs" id="tabs"></div>
@@ -201,7 +209,7 @@ function deskPanel(row){ const d=deskOf(row), to=dv(d,"to")||"", st=statusOf(row
   </div>
   ${needs?`<div class="note ${ok?"ok":"warn"}">${ok?"Approved by "+esc(ok)+".":"Waiting for Jon, Sam or Nina to approve before anything is sent."} ${!ok&&MANAGERS.includes(WHO)?`<button class="btn sm" id="dApprove" style="margin-left:8px">Approve as ${esc(WHO)}</button>`:""}</div>`:""}
   <label class="f">${row.kind==="order"?"Employee notes (only us, not sent to the buyer)":"Notes for the team"}<textarea class="t" id="dNotes" placeholder="${row.kind==="order"?"e.g. Packed in a double box; buyer asked to ship Monday":"Anything the next person should know"}">${esc(dv(d,"notes")||"")}</textarea></label>
-  <div class="row" style="margin-top:8px"><button class="btn sec" id="dSave">${row.kind==="order"?"Save notes and assignment":"Save assignment"}</button><span class="small muted" id="dMsg">${d&&dv(d,"by")?"Assigned by "+esc(dv(d,"by")):""}</span></div></div>`; }
+  <div class="row" style="margin-top:8px"><button class="btn sec" id="dTask" type="button">+ Task</button><button class="btn sec" id="dSave">${row.kind==="order"?"Save notes and assignment":"Save assignment"}</button><span class="small muted" id="dMsg">${d&&dv(d,"by")?"Assigned by "+esc(dv(d,"by")):""}</span></div></div>`; }
 function locked(row){ const d=deskOf(row); return !!(d&&dv(d,"needs")&&!dv(d,"okBy")); }
 
 async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!row) return; SEL={kind,id}; renderList(); const box=$("detail"); document.body.classList.add("mdet"); if(matchMedia("(max-width:900px)").matches) window.scrollTo(0,Math.max(0,$("mback").getBoundingClientRect().top+scrollY-70));
@@ -340,7 +348,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
       if(!conv){ const web=o._links&&o._links.web&&o._links.web.href; res.innerHTML=`No Reverb conversation with this buyer yet, so nothing was sent. Start it with Message Buyer on <a href="${esc(web||"https://reverb.com/my/selling/orders")}" target="_blank" rel="noopener">the order on Reverb</a>; after that you can write from here.`; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; return; }
       const cid=(conv._links.self.href.match(/conversations\/(\d+)/)||[])[1];
       await rv(`my/conversations/${cid}/messages`,{method:"POST",body:JSON.stringify({body})});
-      await saveDesk(row,{[DF.lastBy]:WHO}).catch(()=>{}); $("oMsgBuyer").value=""; res.textContent="Sent to "+(o.buyer_name||"the buyer")+"."; res.style.color="var(--ok)"; t.textContent="Send to buyer"; delete t.dataset.sure; t.disabled=false; }
+      await saveDesk(row,{[DF.lastBy]:WHO}).catch(()=>{}); $("oMsgBuyer").value=""; res.textContent="Sent to "+(o.buyer_name||"the buyer")+"."; taskPrompt(taskCtx(row,"order")); res.style.color="var(--ok)"; t.textContent="Send to buyer"; delete t.dataset.sure; t.disabled=false; }
     catch(err){ res.textContent=err.message; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; } return; }
   if(t.id==="loadmore"){ t.disabled=true; try{ await (TAB==="order"?loadOrders(true):loadMsgs(true)); }catch(err){} renderList(); return; }
   const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
@@ -355,7 +363,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
   if(t.id==="rSend"){ const body=$("rBody").value.trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Type a reply first."); return; }
     if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+row.title+"?"; $("rMsg").textContent="Click again to send. This goes straight to the buyer on Reverb."; $("rMsg").style.color=""; return; }
     t.disabled=true; try{ const href=row.detail&&row.detail._links&&row.detail._links.reply&&row.detail._links.reply.href||`my/conversations/${row.id}/messages`;
-      await rv(href,{method:"POST",body:JSON.stringify({body})}); await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO}); await loadMsgs(); renderList(); await openRow(row.kind,row.id); }
+      await rv(href,{method:"POST",body:JSON.stringify({body})}); await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO}); await loadMsgs(); renderList(); await openRow(row.kind,row.id); taskPrompt(taskCtx(row,"reply")); }
     catch(err){ $("rMsg").textContent=err.message; $("rMsg").style.color="var(--warn)"; t.disabled=false; t.textContent="Send reply"; delete t.dataset.sure; } return; }
   if(t.dataset.oact){ const a=t.dataset.oact, msg=$("oMsg").value.trim(), price=$("oPrice").value.replace(/[$,]/g,"").trim(), shipv=($("oShip")?$("oShip").value:"").replace(/[$,]/g,"").trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; }
     if(a==="counter"&&!(+price>0)){ alertBox("Enter a counter price."); return; }
@@ -363,7 +371,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
     if(!t.dataset.sure){ document.querySelectorAll("[data-oact]").forEach(b=>{ delete b.dataset.sure; b.textContent=b.dataset.oact[0].toUpperCase()+b.dataset.oact.slice(1); }); t.dataset.sure="1"; t.textContent=a==="counter"?`Counter at $${price}${shipv!==""?" + $"+shipv+" shipping":""}?`:a[0].toUpperCase()+a.slice(1)+"?"; $("oRes").textContent="Click again to confirm. This goes straight to the buyer on Reverb."; $("oRes").style.color=""; return; }
     t.disabled=true; try{ const body=a==="counter"?{price:{amount:price,currency:"USD"},shipping_price:{amount:shipv,currency:"USD"},message:msg||undefined}:{message:msg||undefined};
       await rv(row.n._links[a].href,{method:"POST",body:JSON.stringify(body)}); await saveDesk(row,{[DF.status]:a==="counter"?"Answered":"Done",[DF.lastBy]:WHO,[DF.resp]:{accept:"Accepted",counter:"Countered",decline:"Declined"}[a],[DF.result]:{accept:"Sold",counter:"Open",decline:"We declined"}[a],...(a==="counter"?{[DF.counter]:+price}:{})}); let warn=""; if(a==="counter"){ try{ const chk=await rv(`my/negotiations/${row.n.id}`); const got=amtX(chk.last_offered_shipping||(chk.offers&&chk.offers.length&&chk.offers[chk.offers.length-1].shipping_price)); if(Math.abs(got-(+shipv))>0.009) warn=`<div class="note warn"><b>Check this on Reverb now:</b> we sent $${esc(shipv)} shipping but Reverb shows $${got}. Fix or withdraw the counter on Reverb.</div>`; }catch(e){ warn=`<div class="note warn">Couldn't double-check the shipping on Reverb. Please look at this counter on Reverb.</div>`; } }
-      await loadOffers(); renderList(); $("detail").innerHTML=`<div class="note ok">Done: ${esc(a)} sent${a==="counter"?` ($${esc(price)} + $${esc(shipv)} shipping)`:""}.</div>`+warn; }
+      await loadOffers(); renderList(); setTimeout(()=>taskPrompt(taskCtx(row,"offer")),300); $("detail").innerHTML=`<div class="note ok">Done: ${esc(a)} sent${a==="counter"?` ($${esc(price)} + $${esc(shipv)} shipping)`:""}.</div>`+warn; }
     catch(err){ $("oRes").textContent=err.message; $("oRes").style.color="var(--warn)"; t.disabled=false; } return; }
 });
 document.addEventListener("change",e=>{ if(e.target.id==="who"){ WHO=e.target.value; store.set("mrm-photos-who",WHO); renderList(); if(SEL) openRow(SEL.kind,SEL.id); } });
@@ -372,6 +380,75 @@ $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<opt
 (async()=>{ renderTabs(); try{ await loadDesk(); }catch(e){ $("banner").className="note warn"; $("banner").textContent="Couldn't load assignments: "+e.message; }
   await Promise.all([loadMsgs().catch(e=>{$("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`}),loadOffers().catch(()=>{}),loadRefunds().catch(()=>{}),loadOrders().catch(()=>{})]); renderList();
   try{ await syncOffers(); renderList(); }catch(e){ console.warn("offer log",e); } })();
+// ---- Team Tasks (Airtable "Team Tasks"; Google Tasks copy comes later) ----
+const TT="tblOwTXbybJC6K9Xn", TF={task:"fldUmwZCpYmY4ydf4",to:"fldULoJtT1tjDewdy",dept:"fldI5KOzdrPwbar0s",status:"fldX2trA6QSciYsT4",due:"fldnzJlk5rWhduMoI",details:"fld4laJasSMdypGRQ",source:"fldZQT4sY9W9ZOusm",link:"fld6iLbLRVCke9OA0",madeBy:"fldlJbD6svflYUgEg",doneBy:"fldB5i9XgOsK4i2Zs"};
+const DEPTS=["Reverb","Repair","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
+function dayStr(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("en-CA"); }
+function closeModal(){ const m=$("mback"); if(m) m.remove(); }
+function taskPrompt(ctx){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  el.innerHTML=`<div class="mbox" role="dialog" aria-label="Add a task"><h3>${ctx.ask===false?"Add a task":"Put this on someone's list?"}</h3><div class="small muted" style="margin-bottom:10px">${esc(ctx.source||"")}</div>
+   <label class="f">Task<input class="t" id="tTask" value="${esc(ctx.task||"")}"></label>
+   <div class="grid2"><label class="f">For<select class="t" id="tTo"><option value="">Reverb department (anyone)</option>${STAFF.map(n=>`<option ${n===ctx.to?"selected":""}>${n}</option>`).join("")}</select></label>
+   <label class="f">Department<select class="t" id="tDept">${DEPTS.map(d=>`<option ${d===(ctx.dept||"Reverb")?"selected":""}>${d}</option>`).join("")}</select></label>
+   <label class="f">Due<input class="t" type="date" id="tDue" value="${dayStr(1)}"></label></div>
+   <label class="f">Details<textarea class="t" id="tDet">${esc(ctx.details||"")}</textarea></label>
+   <div class="small muted" id="tNote" style="margin:6px 0"></div>
+   <div class="row" style="margin-top:6px"><button class="btn" id="tAdd" type="button">Add to the list</button><button class="btn sec" id="tSkip" type="button">${ctx.ask===false?"Cancel":"No thanks"}</button></div></div>`;
+  document.body.appendChild(el); el.__ctx=ctx;
+  const upd=()=>{ $("tNote").textContent= $("tTo").value==="Julia"&&!MANAGERS.includes(WHO) ? "Julia's list needs an OK from Jon, Sam or Nina, so this will wait for one of them." : ""; };
+  $("tTo").addEventListener("change",upd); upd(); setTimeout(()=>{ try{ $("tTask").focus(); $("tTask").select(); }catch(e){} },50); }
+async function addTask(){ const ctx=$("mback").__ctx, b=$("tAdd"); const task=$("tTask").value.trim(); if(!task){ $("tNote").textContent="Write what needs doing."; return; }
+  if(!WHO){ $("tNote").textContent="Pick your name at the top first."; return; }
+  const to=$("tTo").value, needsOk = to==="Julia" && !MANAGERS.includes(WHO);
+  const f={[TF.task]:task,[TF.dept]:$("tDept").value,[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:$("tDet").value.trim(),[TF.source]:ctx.source||"",[TF.madeBy]:WHO};
+  if(to) f[TF.to]=to; if($("tDue").value) f[TF.due]=$("tDue").value; if(ctx.link) f[TF.link]=ctx.link;
+  b.disabled=true; try{ await at(`${TT}`,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); closeModal(); TASKS=null; updTaskBtn(); flashTop(`Added to ${to?to+"'s":"the Reverb"} list${needsOk?" (waiting for a manager's OK)":""}.`); }
+  catch(err){ $("tNote").textContent=err.message; b.disabled=false; } }
+function flashTop(m){ let el=$("topflash"); if(!el){ el=document.createElement("div"); el.id="topflash"; el.className="note ok"; el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;max-width:90vw"; document.body.appendChild(el); } el.textContent=m; el.hidden=false; clearTimeout(el.__t); el.__t=setTimeout(()=>{ el.hidden=true; },4000); }
+let TASKS=null, TVIEW="mine";
+async function loadTasks(){ const recs=[]; let off=""; do{ const j=await at(`${TT}?returnFieldsByFieldId=true&pageSize=100${off?"&offset="+off:""}&filterByFormula=${encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-7,'days')))")}`); recs.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=recs; return recs; }
+function tv(r,k){ const v=(r.fields||{})[TF[k]]; return v&&typeof v==="object"&&v.name?v.name:v; }
+async function updTaskBtn(){ const b=$("tasksBtn"); if(!b) return; try{ const t=TASKS||await loadTasks(); const mine=t.filter(r=>tv(r,"status")!=="Done"&&(tv(r,"to")===WHO||(!tv(r,"to")&&tv(r,"dept")==="Reverb"))).length; b.textContent=mine?`Tasks (${mine})`:"Tasks"; }catch(e){} }
+async function openTasks(){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  el.innerHTML=`<div class="mbox tpanel"><div class="row" style="justify-content:space-between"><h3>Reverb tasks</h3><button class="btn sec sm" id="tClose" type="button">Close</button></div>
+   <div class="filters" style="margin:8px 0">${[["mine","Mine"],["reverb","Reverb department"],["all","Everyone"],["done","Done this week"]].map(([k,l])=>`<button class="chip ${TVIEW===k?"on":""}" data-tv="${k}" type="button">${l}</button>`).join("")}<button class="chip" id="tNew" type="button">+ New task</button></div>
+   <div id="tList"><div class="muted">Loading…</div></div></div>`;
+  document.body.appendChild(el); renderTasks(); }
+async function renderTasks(){ const box=$("tList"); if(!box) return; let t; try{ t=TASKS||await loadTasks(); }catch(err){ box.innerHTML=`<div class="note warn">${esc(err.message)}</div>`; return; }
+  const open=r=>tv(r,"status")!=="Done";
+  let rows = TVIEW==="mine" ? t.filter(r=>open(r)&&(tv(r,"to")===WHO||(!tv(r,"to")&&tv(r,"dept")==="Reverb")))
+    : TVIEW==="reverb" ? t.filter(r=>open(r)&&tv(r,"dept")==="Reverb")
+    : TVIEW==="done" ? t.filter(r=>!open(r)) : t.filter(open);
+  if(TVIEW==="mine"&&!WHO){ box.innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; return; }
+  if(!rows.length){ box.innerHTML=`<div class="empty">Nothing here.</div>`; return; }
+  const groups={}; rows.forEach(r=>{ const k=tv(r,"to")||((tv(r,"dept")||"General")+" department (anyone)"); (groups[k]=groups[k]||[]).push(r); });
+  const today=dayStr(0);
+  box.innerHTML=Object.keys(groups).sort().map(k=>`<div class="tgrp">${esc(k)} <span class="small muted">${groups[k].length}</span></div>`+groups[k].sort((a,b)=>String(tv(a,"due")||"9").localeCompare(String(tv(b,"due")||"9"))).map(r=>{ const due=tv(r,"due"), st=tv(r,"status"), late=due&&due<today&&st!=="Done";
+    return `<div class="titem ${st==="Done"?"done":""}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0;flex:1"><div class="tt">${esc(tv(r,"task")||"")}</div>
+     <div class="small muted">${due?`<span style="${late?"color:var(--warn);font-weight:700":""}">Due ${esc(due)}</span> · `:""}${esc(tv(r,"dept")||"")}${tv(r,"source")?" · "+esc(tv(r,"source")):""}${tv(r,"madeBy")?" · from "+esc(tv(r,"madeBy")):""}${st==="Done"&&tv(r,"doneBy")?" · done by "+esc(tv(r,"doneBy")):""}</div>
+     ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
+     ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
+     ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }).join("")).join(""); }
+async function setTask(id,fields){ await at(`${TT}`,{method:"PATCH",body:JSON.stringify({records:[{id,fields}],typecast:true})}); TASKS=null; await renderTasks(); updTaskBtn(); }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.id==="tasksBtn"){ openTasks(); return; }
+  if(t.id==="tClose"||t.id==="tSkip"||(t.id==="mback")){ closeModal(); return; }
+  if(t.id==="tAdd"){ addTask(); return; }
+  if(t.id==="tNew"){ taskPrompt({ask:false,source:"Added from the Reverb Desk",dept:"Reverb"}); return; }
+  if(t.dataset&&t.dataset.tv){ TVIEW=t.dataset.tv; document.querySelectorAll("[data-tv]").forEach(c=>c.classList.toggle("on",c.dataset.tv===TVIEW)); renderTasks(); return; }
+  if(t.dataset&&t.dataset.tok){ t.disabled=true; await setTask(t.dataset.tok,{[TF.status]:"To do",[TF.details]:undefined}); return; }
+  if(t.id==="dTask"){ const row=S[SEL.kind].rows.find(r=>r.id===SEL.id); if(row) taskPrompt(Object.assign(taskCtx(row,"manual"),{ask:false})); return; }
+});
+document.addEventListener("change",async e=>{ const t=e.target; if(t.dataset&&t.dataset.tdone){ if(!WHO){ t.checked=!t.checked; flashTop("Pick your name at the top first."); return; } t.disabled=true; await setTask(t.dataset.tdone,t.checked?{[TF.status]:"Done",[TF.doneBy]:WHO}:{[TF.status]:"To do",[TF.doneBy]:""}); } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+function taskCtx(row,what){ const who=row.kind==="offer"?(row.n.buyer_name||"the buyer"):row.kind==="order"?(row.o.buyer_name||"the buyer"):row.title;
+  const item=row.kind==="offer"?row.L.title:row.kind==="order"?row.title:(row.sub||"");
+  const web=row.kind==="order"?(row.o._links&&row.o._links.web&&row.o._links.web.href):row.kind==="offer"?`https://reverb.com/item/${row.L.id}`:"https://reverb.com/my/messages";
+  const src=row.kind==="order"?`Reverb order #${row.o.order_number} · ${who}`:row.kind==="offer"?`Reverb offer · ${who}`:row.kind==="refund"?`Reverb refund request · ${who}`:`Reverb message · ${who}`;
+  const task = what==="offer" ? `Follow up on the offer from ${who}` : what==="order" ? `Follow up with ${who} about their order` : what==="reply" ? `Follow up with ${who}` : "";
+  return {source:src, link:web, task, details:item?("Item: "+item):"", dept:"Reverb"}; }
+setTimeout(updTaskBtn,1500);
+
 </script>
 </body>
 </html>
