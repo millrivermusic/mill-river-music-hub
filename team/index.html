@@ -148,6 +148,11 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
 .mcomp .wide{grid-column:1/-1}
 .tthread{margin:6px 0 2px 25px;padding:6px 8px;border-left:3px solid var(--line);background:var(--surface);border-radius:4px}
 .titem.hl{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+.rchip{display:inline-flex;align-items:center;gap:4px;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin:4px 4px 0 0;background:var(--surface);color:var(--ink);text-decoration:none}
+.rchip button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 2px;font-size:13px}
+.rres{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:4px}
+.rres div{padding:5px 8px;border-top:1px solid var(--line);cursor:pointer;font-size:13px}.rres div:first-child{border-top:0}.rres div:hover{background:var(--surface)}
 </style>
 </head>
 <body>
@@ -336,6 +341,30 @@ function alert0(m){ const b=$("tbody"); if(b) b.insertAdjacentHTML("afterbegin",
 loadTeamTasks().catch(e=>{ $("tbody").innerHTML=`<div class="small">Couldn't load tasks: ${esc(e.message)}</div>`; });
 setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 
+// ---- References on messages: Reverb, gear items, customers (emails later) ----
+const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","email":"✉ Email","task":"✅ Task"};
+function refsOf(r){ try{ return JSON.parse((r.fields||{}).Refs||"[]"); }catch(e){ return []; } }
+function refChip(x,rm){ return `<a class="rchip" href="${esc(x.url||"#")}" ${/^https?:/.test(x.url||"")?'target="_blank" rel="noopener"':""}>${esc(RICON[x.t]||"🔗")}: ${esc(String(x.label||"").slice(0,60))}${rm!=null?`<button type="button" data-rmref="${rm}" aria-label="Remove">×</button>`:""}</a>`; }
+let RVCACHE=null;
+async function rvAll(){ if(RVCACHE) return RVCACHE; const g=p=>fetch("/rv/"+p).then(r=>r.ok?r.json():{}).catch(()=>({}));
+  const [c,n,o]=await Promise.all([g("my/conversations?per_page=50"),g("my/listings/negotiations?per_page=50"),g("my/orders/selling/all?per_page=50")]); const out=[];
+  (c.conversations||[]).forEach(x=>{ const id=(x._links.self.href.match(/conversations\/(\d+)/)||[])[1]; out.push({t:"reverb-msg",id,label:`${x.other_party&&x.other_party.name||"Buyer"} — ${x.listing&&x.listing.title||"message"}`,url:`/t/reverb/#msg-${id}`}); });
+  (n.listings||[]).forEach(L=>(L.negotiations||[]).forEach(x=>out.push({t:"reverb-offer",id:String(x.id),label:`${x.buyer_name||"Buyer"} — ${L.title}`,url:`/t/reverb/#offer-${x.id}`})));
+  (o.orders||[]).forEach(x=>out.push({t:"reverb-order",id:String(x.order_number),label:`#${x.order_number} ${x.buyer_name||""} — ${x.title||""}`,url:`/t/reverb/#order-${x.order_number}`}));
+  RVCACHE=out; return out; }
+async function refSearch(type,q){ q=q.trim(); if(!q) return []; const ql=q.toLowerCase().replace(/'/g,"\\'");
+  if(type==="reverb"){ const all=await rvAll(); return all.filter(x=>x.label.toLowerCase().includes(q.toLowerCase())).slice(0,15); }
+  if(type==="item"){ const f=encodeURIComponent(`OR({SKU}='${q.replace(/'/g,"")}',FIND('${ql}',LOWER({Name})))`); const j=await atT(`tbleYgUhKCIepPtFR?maxRecords=12&fields%5B%5D=Name&fields%5B%5D=SKU&filterByFormula=${f}`); return (j.records||[]).map(r=>{ const sku=(r.fields.SKU&&r.fields.SKU.text)||r.fields.SKU||""; return {t:"item",id:r.id,label:`${sku?sku+" · ":""}${r.fields.Name||""}`,url:sku?`/t/lookup/?sku=${encodeURIComponent(sku)}`:`/t/lookup/?q=${encodeURIComponent(r.fields.Name||"")}`}; }); }
+  if(type==="customer"){ const f=encodeURIComponent(`OR(FIND('${ql}',LOWER({First Name}&' '&{Last Name})),FIND('${ql}',LOWER({E-mail})))`); const j=await atT(`tblGJnacXCV52gZdS?maxRecords=12&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&filterByFormula=${f}`); return (j.records||[]).map(r=>({t:"customer",id:r.id,label:`${r.fields["First Name"]||""} ${r.fields["Last Name"]||""}${r.fields["E-mail"]?" · "+r.fields["E-mail"]:""}`.trim(),url:`/t/customers/#${r.id}`})); }
+  return []; }
+function refPickerHTML(){ const refs=(MCOMP&&MCOMP.refs)||[]; return `<label class="wide">About (optional): Reverb, a gear item or a customer
+   <div style="display:flex;gap:6px;flex-wrap:wrap"><select class="t" id="rType" style="max-width:150px"><option value="reverb">Reverb</option><option value="item">Gear item</option><option value="customer">Customer</option></select><input class="t" id="rQ" placeholder="Search by name, SKU, email…" style="flex:1;min-width:140px"></div>
+   <div id="rRes"></div><div id="rChips">${refs.map((x,i)=>refChip(x,i)).join("")}</div></label>`; }
+let RTIMER=null;
+document.addEventListener("input",e=>{ if(e.target.id!=="rQ") return; clearTimeout(RTIMER); RTIMER=setTimeout(async()=>{ const box=$("rRes"); if(!box) return; const q=$("rQ").value; if(q.trim().length<2){ box.innerHTML=""; return; } box.innerHTML=`<div class="tm" style="padding:4px">Searching…</div>`; try{ const res=await refSearch($("rType").value,q); window.__rres=res; box.innerHTML=res.length?`<div class="rres">${res.map((x,i)=>`<div data-pickref="${i}">${esc(RICON[x.t])}: ${esc(x.label)}</div>`).join("")}</div>`:`<div class="tm" style="padding:4px">Nothing found.</div>`; }catch(err){ box.innerHTML=`<div class="tm">${esc(err.message)}</div>`; } },300); });
+document.addEventListener("click",e=>{ const p=e.target.closest("[data-pickref]"); if(p){ const x=(window.__rres||[])[+p.dataset.pickref]; if(x&&MCOMP){ MCOMP.refs=(MCOMP.refs||[]).filter(r=>!(r.t===x.t&&r.id===x.id)).concat([x]); $("rChips").innerHTML=MCOMP.refs.map((r,i)=>refChip(r,i)).join(""); $("rRes").innerHTML=""; $("rQ").value=""; } return; }
+  const rm=e.target.closest("[data-rmref]"); if(rm){ e.preventDefault(); if(MCOMP){ MCOMP.refs.splice(+rm.dataset.rmref,1); $("rChips").innerHTML=MCOMP.refs.map((r,i)=>refChip(r,i)).join(""); } } });
+
 // ---- Team messages: Airtable "Team Messages", linked to Team Tasks ----
 const TM="tbl6wGPOAx0AkJwSU", MDEPT={"Reverb":"Reverb dept","Repair":"Repair dept","Shipping":"Shipping dept"};
 var MSGS=[], MVIEW=(()=>{ try{ return localStorage.getItem("hub-mview")||"me"; }catch(e){ return "me"; } })(), MCOMP=null, OPENTHREAD=null;
@@ -348,7 +377,7 @@ function taskById(id){ return TASKS.find(t=>t.id===id); }
 function mrow(r){ const tid=((r.fields||{}).Task||[])[0], t=tid&&taskById(tid), un=unread(r);
   return `<div class="mrow ${un?"unread":""}"><span class="dot ${un?"":"off"}" aria-hidden="true"></span><div style="min-width:0;flex:1"><div class="mhead"><b>${esc(mf(r,"From")||"?")}</b> → ${esc(mf(r,"To")||"")} · ${esc(new Date(r.createdTime).toLocaleString([], {month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}</div>
    <div class="mtxt">${esc(mf(r,"Message")||"")}</div>
-   ${tid?`<span class="tchip" data-gotask="${tid}">✅ ${esc(t?tf(t,"Task"):"a task")}</span> `:""}
+   ${tid?`<span class="tchip" data-gotask="${tid}">✅ ${esc(t?tf(t,"Task"):"a task")}</span> `:""}${refsOf(r).map(x=>refChip(x)).join("")}
    <span style="display:inline-flex;gap:6px;margin-top:4px">${mf(r,"From")!==WHO&&WHO?`<button class="chip" data-mreply="${r.id}" type="button">Reply</button>`:""}${un?`<button class="chip" data-mread="${r.id}" type="button">Read</button>`:""}${!tid&&WHO?`<button class="chip" data-mtask="${r.id}" type="button">Make it a task</button>`:""}</span></div></div>`; }
 function renderMsgs(){ const mine=MSGS.filter(forMe), un=MSGS.filter(unread).length, sent=MSGS.filter(r=>mf(r,"From")===WHO);
   $("mbar").innerHTML=[["me","For me",un],["sent","Sent",0],["all","Everyone's",0]].map(([k,l,n])=>`<button class="chip ${MVIEW===k?"on":""}" data-mview="${k}" type="button">${l}${n?`<span class="n">${n} new</span>`:""}</button>`).join("");
@@ -360,23 +389,24 @@ function renderMComp(){ const el=$("mcomp"); if(!MCOMP){ el.innerHTML=""; return
   el.innerHTML=`<div class="mcomp"><label>To<select class="t" id="mTo">${toOpts.map(o=>`<option ${o===c.to?"selected":""}>${esc(o)}</option>`).join("")}</select></label>
    <label>About a task (optional)<select class="t" id="mTask"><option value="">No task</option>${openT.map(t=>`<option value="${t.id}" ${t.id===c.task?"selected":""}>${esc((tf(t,"Task")||"").slice(0,60))}${tf(t,"Assigned To")?" ("+esc(tf(t,"Assigned To"))+")":""}</option>`).join("")}</select></label>
    <label class="wide">Message<textarea class="t" id="mText" rows="3">${esc(c.text||"")}</textarea></label>
+   ${refPickerHTML()}
    <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="mSend" type="button">Send</button><button class="btn sec" id="mCancel" type="button">Cancel</button><span class="tm" id="mMsg"></span></div></div>`;
   setTimeout(()=>{ try{ $("mText").focus(); }catch(e){} },30); }
 async function sendMsg(fields){ await atT(TM,{method:"POST",body:JSON.stringify({records:[{fields}],typecast:true})}); await loadMsgs(); }
 async function markRead(ids){ const recs=ids.map(id=>{ const r=MSGS.find(m=>m.id===id); const rb=((r&&r.fields)||{})["Read By"]||[]; return {id,fields:{"Read By":[...new Set([...rb,WHO])]}}; }); for(let i=0;i<recs.length;i+=10) await atT(TM,{method:"PATCH",body:JSON.stringify({records:recs.slice(i,i+10),typecast:true})}); await loadMsgs(); }
 function taskMsgs(tid){ return MSGS.filter(m=>((m.fields||{}).Task||[]).includes(tid)).slice().reverse(); }
 function threadHTML(tid){ const ms=taskMsgs(tid), t=taskById(tid), to=(t&&tf(t,"Assigned To"))||(t&&MDEPT[tf(t,"Department")])||"Everyone";
-  return `<div class="tthread">${ms.length?ms.map(m=>`<div style="margin:4px 0"><span class="mhead"><b>${esc(mf(m,"From")||"")}</b> · ${esc(new Date(m.createdTime).toLocaleString([], {month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}</span><div class="mtxt">${esc(mf(m,"Message")||"")}</div></div>`).join(""):`<div class="mhead">No messages about this task yet.</div>`}
+  return `<div class="tthread">${ms.length?ms.map(m=>`<div style="margin:4px 0"><span class="mhead"><b>${esc(mf(m,"From")||"")}</b> · ${esc(new Date(m.createdTime).toLocaleString([], {month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"}))}</span><div class="mtxt">${esc(mf(m,"Message")||"")}</div>${refsOf(m).map(x=>refChip(x)).join("")}</div>`).join(""):`<div class="mhead">No messages about this task yet.</div>`}
    <div style="display:flex;gap:6px;margin-top:6px"><input class="t" id="th-${tid}" placeholder="Message ${esc(to)} about this task" style="flex:1;min-width:0"><button class="btn sm" data-thsend="${tid}" data-thto="${esc(to)}" type="button">Send</button></div></div>`; }
 document.addEventListener("click",async e=>{ const t=e.target.closest("button,.tchip"); if(!t) return;
   if(t.dataset.mview){ MVIEW=t.dataset.mview; try{ localStorage.setItem("hub-mview",MVIEW); }catch(_){} renderMsgs(); return; }
-  if(t.id==="mNew"){ MCOMP=MCOMP?null:{to:"Everyone"}; renderMComp(); return; }
+  if(t.id==="mNew"){ MCOMP=MCOMP?null:{to:"Everyone",refs:[]}; renderMComp(); return; }
   if(t.id==="mCancel"){ MCOMP=null; renderMComp(); return; }
   if(t.id==="mSend"){ const text=$("mText").value.trim(), m=$("mMsg"); if(!WHO){ m.textContent="Pick your name at the top first."; return; } if(!text){ m.textContent="Write a message."; return; }
-    const f={Message:text,From:WHO,To:$("mTo").value,"Read By":[WHO]}; if($("mTask").value) f.Task=[$("mTask").value]; t.disabled=true; try{ await sendMsg(f); MCOMP=null; renderMComp(); }catch(err){ m.textContent=err.message; t.disabled=false; } return; }
+    const f={Message:text,From:WHO,To:$("mTo").value,"Read By":[WHO]}; if($("mTask").value) f.Task=[$("mTask").value]; if(MCOMP.refs&&MCOMP.refs.length) f.Refs=JSON.stringify(MCOMP.refs); t.disabled=true; try{ await sendMsg(f); MCOMP=null; renderMComp(); }catch(err){ m.textContent=err.message; t.disabled=false; } return; }
   if(t.id==="mReadAll"){ if(!WHO) return; const ids=MSGS.filter(unread).map(r=>r.id); if(ids.length){ t.disabled=true; try{ await markRead(ids); }finally{ t.disabled=false; } } return; }
   if(t.dataset.mread){ t.disabled=true; await markRead([t.dataset.mread]); return; }
-  if(t.dataset.mreply){ const r=MSGS.find(m=>m.id===t.dataset.mreply); MCOMP={to:mf(r,"From"),task:((r.fields||{}).Task||[])[0]||""}; renderMComp(); $("mcomp").scrollIntoView({block:"center"}); if(unread(r)) markRead([r.id]).catch(()=>{}); return; }
+  if(t.dataset.mreply){ const r=MSGS.find(m=>m.id===t.dataset.mreply); MCOMP={to:mf(r,"From"),task:((r.fields||{}).Task||[])[0]||"",refs:refsOf(r)}; renderMComp(); $("mcomp").scrollIntoView({block:"center"}); if(unread(r)) markRead([r.id]).catch(()=>{}); return; }
   if(t.dataset.mtask){ const r=MSGS.find(m=>m.id===t.dataset.mtask); TFORM=true; renderTForm(); $("tfTask").value=(mf(r,"Message")||"").split("\n")[0].slice(0,120); $("tfDet").value=`From ${mf(r,"From")}'s message: ${mf(r,"Message")}`; window.__fromMsg=r.id; $("tasks").scrollIntoView({block:"start"}); return; }
   if(t.dataset.gotask){ OPENTHREAD=t.dataset.gotask; const tk=taskById(OPENTHREAD); if(tk){ const ass=tf(tk,"Assigned To"); TVIEW=ass?"people":(TSHOWN.includes(tf(tk,"Department"))?tf(tk,"Department"):"other"); } renderTasks(); const el=document.querySelector(`[data-tid="${OPENTHREAD}"]`); if(el){ el.classList.add("hl"); el.scrollIntoView({block:"center"}); } return; }
   if(t.dataset.thopen){ OPENTHREAD=OPENTHREAD===t.dataset.thopen?null:t.dataset.thopen; renderTasks(); return; }
