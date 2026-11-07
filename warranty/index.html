@@ -419,10 +419,9 @@ async function loadConvo(c){ if(!c.emIds.length) return; const box=$("convo");
     if(CUR!==c||!$("convo")) return;
     box.innerHTML=rs.map(r=>{ const F=r.fields||{}; const out=s(F[EM.dir])!=="Received"; const ss=s(F[EM.sendStatus]); const atts=F[EM.files]||[];
       return `<div class="mail" style="margin-top:8px;${out?"margin-left:24px;background:var(--accent-soft)":"margin-right:24px"}"><div class="small muted">${out?"Sent"+(F[EM.sentBy]?" by "+esc(F[EM.sentBy]):""):"From "+esc(F[EM.from]||"")} · ${esc(new Date(F[EM.date]).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}))}${!out&&!F[EM.seen]?' <span class="pill s-approved">new</span>':""}${ss&&ss!=="Sent"?` <span class="pill ${ss==="Failed"?"s-pending":"s-emailed"}">${esc(ss)}</span>`:""}</div>${ss==="Failed"?`<div class="note warn" style="margin-top:6px">Not sent: ${esc(F[EM.sendError]||"")}</div>`:""}
-        <b>${esc(F[EM.subject]||"")}</b><pre>${esc(F[EM.body]||"")}</pre>${atts.length?`<div class="files" style="margin-top:6px">${atts.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}</div>`; }).join("")||'<div class="small muted">No emails yet.</div>';
-    const unseen=rs.filter(r=>s(r.fields[EM.dir])==="Received"&&!r.fields[EM.seen]);
-    for(let i=0;i<unseen.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:unseen.slice(i,i+10).map(r=>({id:r.id,fields:{[EM.seen]:true}}))})});
-    if(unseen.length){ delete UNSEEN[c.id]; }
+        <b>${esc(F[EM.subject]||"")}</b><pre>${esc(F[EM.body]||"")}</pre>${atts.length?`<div class="files" style="margin-top:6px">${atts.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("")}</div>`:""}${!out&&!F[EM.seen]?`<div class="row" style="margin-top:6px"><button class="btn sec sm" data-act="mread" data-ids="${r.id}">Mark read: no reply needed</button></div>`:""}</div>`; }).join("")||'<div class="small muted">No emails yet.</div>';
+    const unseen=rs.filter(r=>s(r.fields[EM.dir])==="Received"&&!r.fields[EM.seen]); c.unseenIds=unseen.map(r=>r.id);
+    if(unseen.length>1) box.insertAdjacentHTML("afterbegin",`<div class="row" style="margin-top:4px"><span class="small muted">${unseen.length} new emails from ${esc(BR[c.b].toName)}.</span><button class="btn sec sm" data-act="mread" data-ids="${unseen.map(r=>r.id).join(",")}">Mark all read: no reply needed</button></div>`);
   }catch(e){ box.innerHTML=`<div class="note warn">Couldn't load emails: ${esc(e.message)}</div>`; } }
 function gmSearch(c){ const terms=[c.serial, c.num].filter(Boolean).map(x=>`"${x}"`); const q=(terms.length?terms.join(" OR "):`"${custName(c)}"`); return "https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"#search/"+encodeURIComponent(q); }
 function updMail(force){ const m=mailFor(CUR,MAILKIND); if(!MAILEDIT||force){ $("msu").value=m.su; $("mbody").value=m.body; if(force) MAILEDIT=false; } updGm(); }
@@ -430,6 +429,8 @@ function curMail(){ return { su:$("msu").value.trim(), body:$("mbody").value }; 
 function updGm(){ const m=curMail(); $("gm").href="https://mail.google.com/mail/?authuser="+encodeURIComponent(SHOP.email)+"&view=cm&fs=1&to="+encodeURIComponent(BR[CUR.b].to)+"&su="+encodeURIComponent(m.su)+"&body="+encodeURIComponent(m.body); }
 
 async function patch(c,fields){ const j=await at(BR[c.b].table,"",{method:"PATCH",body:JSON.stringify({records:[{id:c.id,fields}],typecast:true,returnFieldsByFieldId:true})}); const n=norm(c.b,j.records[0]); Object.assign(c,n); return c; }
+async function markSeen(ids){ ids=(ids||[]).filter(Boolean); for(let i=0;i<ids.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:ids.slice(i,i+10).map(id=>({id,fields:{[EM.seen]:true}}))})});
+  if(CUR&&ids.length){ const left=Math.max(0,(UNSEEN[CUR.id]||0)-ids.length); if(left) UNSEEN[CUR.id]=left; else delete UNSEEN[CUR.id]; CUR.unseenIds=(CUR.unseenIds||[]).filter(x=>!ids.includes(x)); } }
 function noteLine(txt){ return `[${shortD()} ${WHO||"?"}] ${txt}`; }
 async function setStatus(k,extraNote){ const c=CUR, B=BR[c.b]; const fields={[B.F.status]:B.S[k]};
   if(extraNote) fields[B.F.notes]=(c.notes?c.notes+"\n\n":"")+noteLine(extraNote);
@@ -516,6 +517,9 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
     $("mconfirm").innerHTML=`<div class="confirm"><b>Send this email now?</b><dl class="kv" style="margin-top:6px"><dt>To</dt><dd>${esc(BR[CUR.b].to)}</dd><dt>Subject</dt><dd>${esc(m.su)}</dd><dt>Attachments</dt><dd>${picked.length?picked.map(x=>esc(x.filename)).join("<br>"):"none"}</dd><dt>From</dt><dd>info@millrivermusic.com (sent by ${esc(WHO)})</dd></dl>
       <div class="row" style="margin-top:8px"><button class="btn" data-act="msendok">Yes, send it</button><button class="btn sec" data-act="msendno">Cancel</button></div></div>`; }
   else if(a==="msendno") $("mconfirm").innerHTML="";
+  else if(a==="mread"){ const c=CUR; if(!c) return; if(!WHO){ alertBox("Pick who's working (top right) first."); return; } const ids=b.dataset.ids.split(",").filter(Boolean); b.disabled=true;
+    try{ await markSeen(ids); await patch(c,{[BR[c.b].F.notes]:(c.notes?c.notes+"\n\n":"")+noteLine("Marked "+(ids.length>1?ids.length+" emails":"email")+" from "+BR[c.b].toName+" read, no reply needed")}).catch(()=>{}); await refreshCase(c); }
+    catch(err){ alertBox(err.message); b.disabled=false; } }
   else if(a==="msendok"){ b.disabled=true; const c=CUR, B=BR[c.b]; const m=curMail(); const files=allFiles(c); const picked=[...document.querySelectorAll(".matt:checked")].map(x=>files[+x.dataset.i]);
     const replyT=MAILKIND!=="request"&&c.threads.length?c.threads[c.threads.length-1]:"";
     $("mconfirm").innerHTML='<div class="note">Sending…</div>';
@@ -526,7 +530,7 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
         const j=await at(EM.table,"/"+id+"?returnFieldsByFieldId=true"); st=s(j.fields[EM.sendStatus]); err=s(j.fields[EM.sendError]); }
       if(st==="Failed") throw new Error(err||"info@ couldn't send it.");
       if(st!=="Sent"){ $("mconfirm").innerHTML='<div class="note">It\'s queued and info@ will send it within 10 minutes. It will show in the conversation below once sent. Change the status yourself after that.</div>'; await refreshCase(c); return; }
-      $("mconfirm").innerHTML='<div class="note ok">Sent from info@.</div>';
+      $("mconfirm").innerHTML='<div class="note ok">Sent from info@.</div>'; await markSeen(c.unseenIds||[]).catch(()=>{});
       const kind=MAILKIND, lbl={request:"warranty request",follow:"follow-up",paperwork:"completion paperwork"}[kind];
       if(kind==="request"&&(c.status==="pending"||c.status==="waiting")) await setStatus("emailed","Emailed "+B.toName+" the "+lbl);
       else if(kind==="paperwork"&&c.status!=="paperwork"&&c.status!=="paid") await setStatus("paperwork","Sent "+lbl+" to "+B.toName);
