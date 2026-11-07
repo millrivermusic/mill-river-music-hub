@@ -475,13 +475,14 @@ function renderTaskTab(){ renderTabs();
   $("more").innerHTML="";
   if(!SEL) $("detail").innerHTML=mgrPane(); }
 function mgrPane(){ const g=gaps();
-  return `<h2>What's slipping</h2><div class="small muted" style="margin-bottom:6px">Everything open on Reverb right now.</div>
-   ${g.length?g.map(x=>`<div class="gap ${x.sev>1?"ok":""}"><b>${esc(x.title)}</b> <span class="small muted">${x.items.length}</span>${x.hint?` <span class="small muted">· ${esc(x.hint)}</span>`:""}
-      <div class="small">${x.items.slice(0,6).map(it=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>6?`<div class="muted">…and ${x.items.length-6} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing is slipping right now.</div>`}
-   <h3 style="margin:14px 0 6px;font-size:16px">Ask</h3>
+  return `   <h2 style="margin-top:0">Ask</h2>
    <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${md(ASK[ASK.length-1].content.replace(/TASKS_JSON:[\s\S]*$/,""))}</div>`:""}</div>
    <div class="row"><input class="t" id="askIn" placeholder="e.g. What's slipping? Who has the most open? Give the Martin offers to Sam." style="flex:1;min-width:0"><button class="btn" id="askGo" type="button">Ask</button></div>
-   <div id="askAct"></div>`; }
+   <div id="askAct"></div>
+   <h2 style="margin-top:18px">What's slipping</h2><div class="small muted" style="margin-bottom:6px">Everything open on Reverb right now.</div>
+   ${g.length?g.map(x=>`<div class="gap ${x.sev>1?"ok":""}"><b>${esc(x.title)}</b> <span class="small muted">${x.items.length}</span>${x.hint?` <span class="small muted">· ${esc(x.hint)}</span>`:""}
+      <div class="small">${x.items.slice(0,6).map(it=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>6?`<div class="muted">…and ${x.items.length-6} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing is slipping right now.</div>`}
+`; }
 
 setTimeout(updTaskBtn,1500);
 // ---- Manager view: everything open on Reverb, what's missing, and an Ask box (Claude via the hub's /ai) ----
