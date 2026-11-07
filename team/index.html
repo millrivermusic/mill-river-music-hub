@@ -247,7 +247,7 @@ $("skip")&&$("skip").addEventListener("click",()=>{ $("setup").hidden=true; stor
 $("setbtn").addEventListener("click",()=>{ $("setup").hidden=false; $("setup").scrollIntoView(); });
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&TOKEN) refresh(); });
 if(location.hostname!=="hub.millrivermusic.com") $("sandbox").textContent="This page only works at hub.millrivermusic.com.";
-fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.email) $("me").innerHTML=esc(j.email)+' · <a href="/cdn-cgi/access/logout">Sign out</a>'; }).catch(()=>{});
+fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.email) $("me").innerHTML='Signed in as '+esc(j.email)+' · <a href="/cdn-cgi/access/logout" title="Sign out, then sign back in as info@ or admin@">Switch account</a>'; }).catch(()=>{});
 hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
 </script>
 </body>
