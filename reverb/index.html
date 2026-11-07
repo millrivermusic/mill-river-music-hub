@@ -134,8 +134,8 @@ async function syncOffers(){ // keep our own offer history: Reverb only reports 
       if(Object.keys(fx).length) patches.push({id:d.id,fields:fx}); } });
   Object.entries(DESKROWS).forEach(([k,d])=>{ if(!k.startsWith("offer:")) return; const id=k.slice(6); if(now.has(id)) return; const res=dv(d,"result");
     if(!res||res==="Open") patches.push({id:d.id,fields:{[DF.result]:dv(d,"resp")==="Accepted"?"Sold":"Expired / closed",...(dv(d,"resp")?{}:{[DF.resp]:"No response"}),...(dv(d,"status")==="Done"?{}:{[DF.status]:"Done"})}}); });
-  for(let i=0;i<creates.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({records:creates.slice(i,i+10),typecast:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); }
-  for(let i=0;i<patches.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({records:patches.slice(i,i+10),typecast:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); } }
+  for(let i=0;i<creates.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({records:creates.slice(i,i+10),typecast:true,returnFieldsByFieldId:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); }
+  for(let i=0;i<patches.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({records:patches.slice(i,i+10),typecast:true,returnFieldsByFieldId:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); } }
 function historyTable(row){ const L=row.L, rows=Object.entries(DESKROWS).filter(([k,d])=>k.startsWith("offer:")&&(String(dv(d,"lid")||"")===String(L.id)||(!dv(d,"lid")&&dv(d,"listing")===L.title))).map(([k,d])=>d)
     .sort((a,b)=>String(dv(b,"last")||b.createdTime||"").localeCompare(String(dv(a,"last")||a.createdTime||"")));
   if(!rows.length) return "";
@@ -182,7 +182,9 @@ function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); re
   const nOrd=S.order.rows.filter(r=>/needs shipping/.test(r.stage)).length;
   $("tabs").innerHTML=[["msg","Messages"],["offer","Offers"],["refund","Refund requests"],["order","Orders"]].map(([k,l])=>`<button class="tab ${TAB===k?"on":""}" data-tab="${k}">${l}<span class="n">${k==="order"?(nOrd?nOrd+" to ship":""):S[k].rows.length?n(k):""}</span></button>`).join("");
   $("filters").innerHTML=(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
-function renderList(){ renderTabs(); const rows=S[TAB].rows.filter(pass);
+let LASTVIS=[];
+function flash(m){ const box=$("detail"); if(box) box.insertAdjacentHTML("afterbegin",`<div class="note ok" id="flash">${esc(m)}</div>`); setTimeout(()=>{ const f=$("flash"); if(f) f.remove(); },4000); }
+function renderList(){ renderTabs(); const rows=S[TAB].rows.filter(pass); LASTVIS=rows.slice();
   $("list").innerHTML=rows.length?rows.map(r=>`<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(r.title)}</div><div class="s">${esc(r.sub)}${r.kind==="msg"&&r.last?" — "+esc((r.last.authored?"You: ":"")+r.last.body):""}</div><div class="tags">${tagsFor(r)}</div></div>`).join(""):`<div class="empty">Nothing here.</div>`;
   $("more").innerHTML=(TAB==="msg"||TAB==="order")&&S[TAB].page<S[TAB].pages?`<button class="btn sec" id="loadmore">Load older ${TAB==="msg"?"messages":"orders"}</button> <span class="muted small">${S[TAB].rows.length} of ${S[TAB].total||"?"} loaded</span>`:""; }
 
@@ -296,7 +298,7 @@ async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the to
     [DF.buyer]:row.kind==="offer"?(row.n.buyer_name||""):row.kind==="msg"?row.title:"",[DF.listing]:row.kind==="offer"?row.L.title:row.sub||""};
   if(row.kind==="offer"){ f[DF.lid]=String(row.L.id); f[DF.sku]=row.L.sku||""; f[DF.offer]=offerAmt(row.n)||null; if(!d) f[DF.result]="Open"; }
   if(to&&to!==(dv(d,"to")||"")) f[DF.by]=WHO; Object.assign(f,extra||{});
-  const j=d?await at(`${DESK}/${d.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true})}):await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields:f,typecast:true})});
+  const j=d?await at(`${DESK}/${d.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true,returnFieldsByFieldId:true})}):await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields:f,typecast:true,returnFieldsByFieldId:true})});
   DESKROWS[row.kind+":"+row.id]=j; return j; }
 function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
 
@@ -311,7 +313,9 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
   if(t.id==="dApprove"){ if(!MANAGERS.includes(WHO)) return; t.disabled=true; try{ await saveDesk(row,{[DF.okBy]:WHO+" "+new Date().toLocaleString()}); await openRow(row.kind,row.id); renderList(); }catch(err){ alertBox(err.message); } return; }
   if(t.id==="mNoReply"){ if(!WHO){ alertBox("Pick your name at the top first."); return; } t.disabled=true;
     try{ rv(`my/conversations/${row.id}`,{method:"PUT",body:JSON.stringify({read:true})}).then(()=>{ row.read=true; }).catch(()=>{});
-      const d=deskOf(row), prev=dv(d,"notes")||""; await saveDesk(row,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`}); renderList(); await openRow(row.kind,row.id); }
+      const d=deskOf(row), prev=dv(d,"notes")||""; await saveDesk(row,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`});
+      const vis=S[row.kind].rows.filter(pass), idx=Math.max(0,LASTVIS.findIndex(r=>r.id===row.id)), next=vis.find(r=>LASTVIS.indexOf(r)>idx)||vis[0];
+      SEL=null; renderList(); if(next){ await openRow(next.kind,next.id); flash(`Marked read: ${row.title}. Showing the next one.`); } else { $("detail").innerHTML=`<div class="note ok">Marked read: ${esc(row.title)}. Nothing else needs attention here.</div>`; } }
     catch(err){ alertBox(err.message); t.disabled=false; } return; }
   if(t.id==="rSend"){ const body=$("rBody").value.trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Type a reply first."); return; }
     if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+row.title+"?"; $("rMsg").textContent="Click again to send. This goes straight to the buyer on Reverb."; $("rMsg").style.color=""; return; }
