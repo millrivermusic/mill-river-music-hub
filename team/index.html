@@ -155,14 +155,14 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
     <div id="setmsg"></div>
   </section>
 
+  <div id="tiles"></div>
+
   <section class="card" id="tasks">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team tasks</h2><button class="btn sm" id="tAddOpen" type="button">+ New task</button></div>
     <div class="tbar" id="tbar"></div>
     <div id="tform"></div>
     <div id="tbody"><div class="small" style="color:var(--muted)">Loading tasks…</div></div>
   </section>
-
-  <div id="tiles"></div>
 
   <section class="card" id="qlcard">
     <h2>Quick links</h2>
@@ -243,12 +243,13 @@ async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
     n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<5);
   return offset?n+"+":n; }
 
-function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" href="/"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`; { const mine=(typeof TASKS!=="undefined"?TASKS:[]).filter(r=>r.fields&&r.fields["Assigned To"]===WHO&&r.fields.Status!=="Done").length; h+=`<a href="#tasks"><span class="i" aria-hidden="true">✅</span><span class="t">Team tasks</span>${mine?`<span class="n hot">${mine}</span>`:""}</a>`; }
+function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" href="/"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`; 
   TILES.forEach(t=>{ if(t.sec){ h+=`<div class="sh">${esc(t.sec.replace(/ · .*/,""))}</div>`; return; }
     if(t.soon&&t.href){ h+=`<a class="preview" href="${t.href}" title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span></a>`; return; }
     if(t.soon){ h+=`<a class="soon" aria-disabled="true" title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span></a>`; return; }
     const ext=/^https?:/.test(t.href), ka=t.counts.find(x=>COUNTS[x]&&COUNTS[x].alert&&typeof VAL[x]==="number"&&VAL[x]>0), k=ka||t.counts.find(x=>!(COUNTS[x]&&COUNTS[x].alert)), v=k?VAL[k]:undefined, hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert));
     h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span>${hot?`<span class="n hot">${esc(v)}</span>`:""}</a>`; });
+  { const mine=(typeof TASKS!=="undefined"?TASKS:[]).filter(r=>r.fields&&r.fields["Assigned To"]===WHO&&r.fields.Status!=="Done").length; h+=`<div class="sh">Team</div><a href="#tasks"><span class="i" aria-hidden="true">✅</span><span class="t">Team tasks</span>${mine?`<span class="n hot">${mine}</span>`:""}</a>`; }
   const ql=[...document.querySelectorAll("#qlcard .links a")];
   if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
   el.innerHTML=`<div class="sidein">${h}</div>`; }
