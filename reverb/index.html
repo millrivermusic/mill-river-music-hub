@@ -96,6 +96,7 @@ table.ht tr.cur td{background:var(--accent-soft)}
 .titem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--sunk)}
 .mgr{max-width:900px}.gap{border-left:4px solid var(--warn);padding:6px 10px;margin:6px 0;background:var(--sunk);border-radius:6px}.gap.ok{border-left-color:var(--ok)}.gap .small{margin-top:2px}.askout{white-space:pre-wrap;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;max-height:45vh;overflow:auto}
 @media (max-width:900px){ body.tasksTab:not(.mdet) #detail{display:block} body.tasksTab:not(.mdet) .cols>div:first-child{display:block} }
+.mphotos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.mphotos img{width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
 .titem.done{opacity:.55}.titem .tt{font-weight:600}.titem input{margin-top:3px;width:18px;height:18px;flex:none}
 </style>
 <link rel="stylesheet" href="../warm.css?v=1">
@@ -221,7 +222,7 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
   if(kind==="msg"){ box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${esc(row.sub)}</div><div class="msgs"><div class="muted">Loading conversation…</div></div>`;
     try{ const c=await rv(`my/conversations/${id}`); row.detail=c; const L=c.listing||row.raw.listing; const sku=L&&L.sku;
       box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${L?`About: <a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">${esc(L.title)}</a>`:"General question"}</div>
-      <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}</div>`).join("")}</div>
+      <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}${(m.photos||[]).length?`<div class="mphotos">${m.photos.map(ph=>{ const L=ph._links||{}, th=(L.thumbnail||L.small_crop||L.full||{}).href, full=(L.full||L.large_crop||L.thumbnail||{}).href; return th?`<a href="${esc(full)}" target="_blank" rel="noopener"><img src="${esc(th)}" alt="Photo from the buyer" loading="lazy"></a>`:""; }).join("")}</div>`:""}</div>`).join("")}</div>
       <div class="sect"><label class="f">Reply to ${esc(row.title)}<textarea class="t" id="rBody" data-rid="${esc(row.id)}" placeholder="Type a reply…">${esc(DRAFTS_R[row.id]||"")}</textarea></label>
       <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${statusOf(row)!=="Done"?`<button class="btn sec" id="mNoReply">Mark read: no reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
       <div id="plinfo"></div>
