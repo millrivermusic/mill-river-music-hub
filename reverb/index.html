@@ -121,13 +121,16 @@ async function loadDesk(){ DESKROWS={}; let off=""; do{ const j=await at(`${DESK
 const dv=(r,k)=>{ const v=r&&r.fields&&r.fields[DF[k]]; return v&&typeof v==="object"&&!Array.isArray(v)?v.name:v; };
 async function loadMsgs(more){ const st=S.msg; if(!more){ st.rows=[]; st.page=0; } if(st.page>=st.pages&&more) return; const j=await rv(`my/conversations?per_page=50&page=${st.page+1}`); st.page=j.current_page||st.page+1; st.pages=j.total_pages||1; st.total=j.total;
   (j.conversations||[]).forEach(c=>{ const id=(c._links.self.href.match(/conversations\/(\d+)/)||[])[1]; st.rows.push({kind:"msg",id,title:c.other_party&&c.other_party.name||"Buyer",sub:(c.listing&&c.listing.title)||"",last:c.last_message,read:c.read,replied:c.replied,at:c.last_message&&c.last_message.created_at,raw:c}); }); }
-async function loadOffers(){ const st=S.offer; st.rows=[]; let p=1,pages=1; do{ const j=await rv(`my/listings/negotiations?per_page=50&page=${p}`); pages=j.total_pages||1; (j.listings||[]).forEach(L=>(L.negotiations||[]).forEach(n=>st.rows.push({kind:"offer",id:String(n.id),title:L.title,sub:(n.buyer_name||n.other_party_name||"Buyer")+" · "+(n.last_offered_price&&n.last_offered_price.display&&n.last_offered_price.display.display||""),at:n.updated_at||n.created_at,n,L}))); p++; }while(p<=pages&&p<6); }
+async function loadOffers(){ const st=S.offer; st.rows=[]; let p=1,pages=1; do{ const j=await rv(`my/listings/negotiations?per_page=50&page=${p}`); pages=j.total_pages||1; (j.listings||[]).forEach(L=>(L.negotiations||[]).forEach(n=>st.rows.push({kind:"offer",id:String(n.id),title:L.title,sub:(n.buyer_name||n.other_party_name||"Buyer")+(n.you_last_initiated?" · waiting on them":" · offered "+(n.last_offered_price&&n.last_offered_price.display&&n.last_offered_price.display.display||"")),at:n.updated_at||n.created_at,n,L}))); p++; }while(p<=pages&&p<6); }
 function offerAmt(n){ const x=n&&n.last_offered_price; return x&&x.original&&+x.original.amount||x&&x.display&&+String(x.display.display||"").replace(/[^0-9.]/g,"")||0; }
 async function syncOffers(){ // keep our own offer history: Reverb only reports open offers
   const now=new Set(S.offer.rows.map(r=>r.id)), creates=[], patches=[];
   S.offer.rows.forEach(r=>{ const d=deskOf(r), amt=offerAmt(r.n);
-    if(!d) creates.push({fields:{[DF.title]:r.L.title+" — "+(r.n.buyer_name||""),[DF.kind]:"Offer",[DF.rid]:r.id,[DF.buyer]:r.n.buyer_name||"",[DF.listing]:r.L.title,[DF.lid]:String(r.L.id),[DF.sku]:r.L.sku||"",[DF.offer]:amt||null,[DF.status]:"New",[DF.result]:"Open",[DF.last]:r.at||null}});
-    else if(amt&&+dv(d,"offer")!==amt) patches.push({id:d.id,fields:{[DF.offer]:amt,[DF.last]:r.at||null}}); });
+    if(!d) creates.push({fields:{[DF.title]:r.L.title+" — "+(r.n.buyer_name||""),[DF.kind]:"Offer",[DF.rid]:r.id,[DF.buyer]:r.n.buyer_name||"",[DF.listing]:r.L.title,[DF.lid]:String(r.L.id),[DF.sku]:r.L.sku||"",[DF.offer]:amt||null,[DF.status]:r.n.actionable?"New":"Answered",...(r.n.you_last_initiated&&r.n.offers_count>1?{[DF.resp]:"Countered"}:{}),[DF.result]:"Open",[DF.last]:r.at||null}});
+    else { const fx={}; if(amt&&+dv(d,"offer")!==amt){ fx[DF.offer]=amt; fx[DF.last]=r.at||null; }
+      if(!r.n.actionable&&dv(d,"status")==="New") fx[DF.status]="Answered";
+      if(r.n.actionable&&(dv(d,"status")==="Answered"||dv(d,"status")==="Done")) fx[DF.status]="New"; // buyer answered back
+      if(Object.keys(fx).length) patches.push({id:d.id,fields:fx}); } });
   Object.entries(DESKROWS).forEach(([k,d])=>{ if(!k.startsWith("offer:")) return; const id=k.slice(6); if(now.has(id)) return; const res=dv(d,"result");
     if(!res||res==="Open") patches.push({id:d.id,fields:{[DF.result]:dv(d,"resp")==="Accepted"?"Sold":"Expired / closed",...(dv(d,"resp")?{}:{[DF.resp]:"No response"}),...(dv(d,"status")==="Done"?{}:{[DF.status]:"Done"})}}); });
   for(let i=0;i<creates.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({records:creates.slice(i,i+10),typecast:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); }
@@ -138,7 +141,7 @@ function historyTable(row){ const L=row.L, rows=Object.entries(DESKROWS).filter(
   const m=v=>v||v===0?"$"+Number(v).toLocaleString("en-US"):"–";
   return `<h3 style="margin:12px 0 6px;font-size:15px">All offers on this listing <span class="small muted" style="font-weight:500">(${rows.length})</span></h3>
   <div style="overflow-x:auto"><table class="ht"><thead><tr><th>Date</th><th>Buyer</th><th>Offer</th><th>Our response</th><th>Result</th><th>Handled by</th><th>Assigned</th></tr></thead><tbody>
-  ${rows.map(d=>{ const cur=String(dv(d,"rid"))===String(row.id); const resp=dv(d,"resp")||(cur?"Waiting on us":"–"); return `<tr class="${cur?"cur":""}"><td>${esc(dv(d,"last")?new Date(dv(d,"last")).toLocaleDateString([], {month:"short",day:"numeric",year:"2-digit"}):"–")}</td><td>${esc(dv(d,"buyer")||"")}${cur?' <span class="tag info">this one</span>':""}</td><td>${m(dv(d,"offer"))}</td><td>${esc(resp)}${dv(d,"counter")?" at "+m(dv(d,"counter")):""}</td><td>${esc(dv(d,"result")||"Open")}</td><td>${esc((dv(d,"lastBy")||"–").replace(" (no reply needed)",""))}</td><td>${esc(dv(d,"to")||"–")}</td></tr>`; }).join("")}
+  ${rows.map(d=>{ const cur=String(dv(d,"rid"))===String(row.id); const resp=dv(d,"resp")||(cur?(row.n.you_last_initiated?(row.n.offers_count<=1?"Our offer to watcher":"Waiting on buyer"):"Waiting on us"):"–"); return `<tr class="${cur?"cur":""}"><td>${esc(dv(d,"last")?new Date(dv(d,"last")).toLocaleDateString([], {month:"short",day:"numeric",year:"2-digit"}):"–")}</td><td>${esc(dv(d,"buyer")||"")}${cur?' <span class="tag info">this one</span>':""}</td><td>${m(dv(d,"offer"))}</td><td>${esc(resp)}${dv(d,"counter")?" at "+m(dv(d,"counter")):""}</td><td>${esc(dv(d,"result")||"Open")}</td><td>${esc((dv(d,"lastBy")||"–").replace(" (no reply needed)",""))}</td><td>${esc(dv(d,"to")||"–")}</td></tr>`; }).join("")}
   </tbody></table></div><div class="small muted">History starts 11/7/2026. Reverb only reports open offers, so the hub keeps its own record from here on.</div>`; }
 function stageOf(o){ const st=o.status, sh=o.shipment_status;
   if(st==="unpaid"||st==="pending_review"||st==="payment_pending") return "Waiting for payment";
@@ -152,17 +155,20 @@ async function loadRefunds(){ const st=S.refund; st.rows=[]; const j=await rv(`m
 
 /* ---------- status / filters ---------- */
 function deskOf(row){ return DESKROWS[row.kind+":"+row.id]; }
-function statusOf(row){ const d=deskOf(row), s=dv(d,"status"); if(s) return s; if(row.kind==="msg") return (row.last&&row.last.authored)||row.replied?"Answered":"New"; if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
-const FILTERS=[["open","Needs attention"],["new","Not assigned"],["mine","Assigned to me"],["assigned","Assigned"],["mgr","Waiting on manager"],["answered","Answered"],["done","Done"],["all","All"]];
+function statusOf(row){ const d=deskOf(row), s=dv(d,"status");
+  if(row.kind==="offer"){ if(row.n.actionable) return s==="Assigned"||s==="Waiting on manager"?s:"New"; return s==="Done"?"Done":"Waiting on buyer"; } // offer status follows whose turn it is on Reverb
+  if(s) return s; if(row.kind==="msg") return (row.last&&row.last.authored)||row.replied?"Answered":"New"; if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
+const FILTERS=[["open","Needs attention"],["buyer","Waiting on buyer"],["new","Not assigned"],["mine","Assigned to me"],["assigned","Assigned"],["mgr","Waiting on manager"],["answered","Answered"],["done","Done"],["all","All"]];
 const OFILTERS=[["oship","To ship"],["ounpaid","Waiting for payment"],["otransit","In transit"],["odeliv","Delivered / received"],["orefund","Refunded / cancelled"],["mine","Assigned to me"],["all","All"]];
 function passOrder(row){ const g=row.stage; switch(FILTER){ case "oship": return /Paid/.test(g); case "ounpaid": return /Waiting for payment/.test(g); case "otransit": return /transit|Out for delivery/.test(g); case "odeliv": return /Delivered|Received|Picked up/.test(g); case "orefund": return /Refunded|Cancelled/.test(g); case "mine": return WHO&&dv(deskOf(row),"to")===WHO; default: return true; } }
 function pass(row){ if(row.kind==="order") return passOrder(row); const st=statusOf(row), d=deskOf(row), to=dv(d,"to");
-  switch(FILTER){ case "open": return st!=="Done"&&st!=="Answered"; case "new": return !to&&st!=="Done"; case "mine": return WHO&&to===WHO; case "assigned": return !!to; case "mgr": return st==="Waiting on manager"||(d&&dv(d,"needs")&&!dv(d,"okBy")); case "answered": return st==="Answered"; case "done": return st==="Done"; default: return true; } }
+  switch(FILTER){ case "open": return st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer"; case "buyer": return st==="Waiting on buyer"; case "new": return !to&&st!=="Done"&&st!=="Waiting on buyer"; case "mine": return WHO&&to===WHO; case "assigned": return !!to; case "mgr": return st==="Waiting on manager"||(d&&dv(d,"needs")&&!dv(d,"okBy")); case "answered": return st==="Answered"; case "done": return st==="Done"; default: return true; } }
 function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), t=[];
   if(row.kind==="order"){ const g=row.stage; t.push(`<span class="tag ${/needs shipping|Waiting|pickup/.test(g)?"hot":/Delivered|Received|Picked/.test(g)?"ok":/Refunded|Cancelled/.test(g)?"":"info"}">${esc(g)}</span>`);
     if(to) t.push(`<span class="tag info">→ ${esc(to)}</span>`); t.push(`<span class="tag">#${esc(row.id)}</span>`); if(row.at) t.push(`<span class="tag">${esc(ago(row.at))}</span>`); return t.join(""); }
-  t.push(`<span class="tag ${st==="New"?"hot":st==="Done"||st==="Answered"?"ok":st==="Waiting on manager"?"sugg":"info"}">${esc(st)}</span>`);
-  if(to) t.push(`<span class="tag info">→ ${esc(to)}</span>`); else if(st!=="Done"&&st!=="Answered") t.push(`<span class="tag">Not assigned</span>`);
+  t.push(`<span class="tag ${st==="New"?"hot":st==="Done"||st==="Answered"?"ok":st==="Waiting on manager"?"sugg":st==="Waiting on buyer"?"":"info"}">${esc(st)}</span>`);
+  if(row.kind==="offer"&&row.n.you_last_initiated) t.push(`<span class="tag">${row.n.offers_count<=1?"Our offer to a watcher":"Our counter"} · ${esc(row.n.last_offered_price&&row.n.last_offered_price.display&&row.n.last_offered_price.display.display||"")}</span>`);
+  if(to) t.push(`<span class="tag info">→ ${esc(to)}</span>`); else if(st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer") t.push(`<span class="tag">Not assigned</span>`);
   if(d&&dv(d,"needs")) t.push(`<span class="tag sugg">${dv(d,"okBy")?"Manager OK ✓":"Needs manager OK"}</span>`);
   if(d&&/no reply needed/.test(dv(d,"lastBy")||"")) t.push(`<span class="tag ok">No reply needed · ${esc((dv(d,"lastBy")||"").replace(" (no reply needed)",""))}</span>`);
   else if(row.kind==="msg"&&row.read===false&&st!=="Done") t.push(`<span class="tag hot">Unread</span>`);
@@ -170,7 +176,7 @@ function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), t=[
   if(row.at) t.push(`<span class="tag">${esc(ago(row.at))}</span>`); return t.join(""); }
 
 /* ---------- render ---------- */
-function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); return st!=="Done"&&st!=="Answered"; }).length;
+function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); return st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer"; }).length;
   const nOrd=S.order.rows.filter(r=>/needs shipping/.test(r.stage)).length;
   $("tabs").innerHTML=[["msg","Messages"],["offer","Offers"],["refund","Refund requests"],["order","Orders"]].map(([k,l])=>`<button class="tab ${TAB===k?"on":""}" data-tab="${k}">${l}<span class="n">${k==="order"?(nOrd?nOrd+" to ship":""):S[k].rows.length?n(k):""}</span></button>`).join("");
   $("filters").innerHTML=(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
