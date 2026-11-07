@@ -130,7 +130,8 @@ function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), t=[
   t.push(`<span class="tag ${st==="New"?"hot":st==="Done"||st==="Answered"?"ok":st==="Waiting on manager"?"sugg":"info"}">${esc(st)}</span>`);
   if(to) t.push(`<span class="tag info">→ ${esc(to)}</span>`); else if(st!=="Done"&&st!=="Answered") t.push(`<span class="tag">Not assigned</span>`);
   if(d&&dv(d,"needs")) t.push(`<span class="tag sugg">${dv(d,"okBy")?"Manager OK ✓":"Needs manager OK"}</span>`);
-  if(row.kind==="msg"&&row.read===false) t.push(`<span class="tag hot">Unread</span>`);
+  if(d&&/no reply needed/.test(dv(d,"lastBy")||"")) t.push(`<span class="tag ok">No reply needed · ${esc((dv(d,"lastBy")||"").replace(" (no reply needed)",""))}</span>`);
+  else if(row.kind==="msg"&&row.read===false&&st!=="Done") t.push(`<span class="tag hot">Unread</span>`);
   if(row.kind==="offer"&&row.n.expires_at&&row.n.actionable) t.push(`<span class="tag hot">Expires ${esc(when(row.n.expires_at))}</span>`);
   if(row.at) t.push(`<span class="tag">${esc(ago(row.at))}</span>`); return t.join(""); }
 
@@ -160,7 +161,7 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
       <div id="plinfo"></div>
       <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}</div>`).join("")}</div>
       <div class="sect"><label class="f">Reply to ${esc(row.title)}<textarea class="t" id="rBody" placeholder="Type a reply…"></textarea></label>
-      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button><span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${statusOf(row)!=="Done"?`<button class="btn sec" id="mNoReply">Mark read: no reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
       ${deskPanel(row)}`;
       const ms=$("msgs"); ms.scrollTop=ms.scrollHeight; if(L) plInfo(L.title);
     }catch(e){ box.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
@@ -200,7 +201,7 @@ async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the to
 function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
 
 /* ---------- actions ---------- */
-document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#dSave,#dApprove,#rSend,[data-oact]"); if(!t) return;
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
   if(t.dataset.tab){ TAB=t.dataset.tab; store.set("rv-tab",TAB); SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
@@ -208,6 +209,9 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
   const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
   if(t.id==="dSave"){ t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
   if(t.id==="dApprove"){ if(!MANAGERS.includes(WHO)) return; t.disabled=true; try{ await saveDesk(row,{[DF.okBy]:WHO+" "+new Date().toLocaleString()}); await openRow(row.kind,row.id); renderList(); }catch(err){ alertBox(err.message); } return; }
+  if(t.id==="mNoReply"){ if(!WHO){ alertBox("Pick your name at the top first."); return; } t.disabled=true;
+    try{ const d=deskOf(row), prev=dv(d,"notes")||""; await saveDesk(row,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`}); renderList(); await openRow(row.kind,row.id); }
+    catch(err){ alertBox(err.message); t.disabled=false; } return; }
   if(t.id==="rSend"){ const body=$("rBody").value.trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Type a reply first."); return; }
     if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+row.title+"?"; $("rMsg").textContent="Click again to send. This goes straight to the buyer on Reverb."; $("rMsg").style.color=""; return; }
     t.disabled=true; try{ const href=row.detail&&row.detail._links&&row.detail._links.reply&&row.detail._links.reply.href||`my/conversations/${row.id}/messages`;
