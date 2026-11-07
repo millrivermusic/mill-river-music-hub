@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7A2E1F">
+<title>MRM Team Hub</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="/t/manifest.webmanifest">
+<link rel="icon" href="/t/icon-192.png">
+<link rel="apple-touch-icon" href="/t/icon-192.png">
+<style>
+/* MRM Team Hub (sandbox at hub.millrivermusic.com, behind the shop login). Same tools and counts as the MRM Hub. Mill River Music's staff home screen. One tile per tool, with live counts of where work is waiting. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif;
+  --mono:"Roboto Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.bar{background:var(--accent);color:var(--accent-ink);padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em}
+.barr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lsbtn{color:inherit;text-decoration:none;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);border-radius:10px;padding:7px 12px}
+.lsbtn:hover{background:rgba(255,255,255,.24)}
+.bar .who{display:flex;align-items:center;gap:8px;font-size:14px}
+.bar select{font:inherit;font-size:15px;border-radius:10px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:6px 10px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:1080px;margin:0 auto;padding-top:18px;padding-bottom:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.greet{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.greet h2{margin:0;font-size:20px}
+.greet .small{color:var(--muted);font-size:13.5px}
+.sec{margin:22px 0 10px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sec:first-child{margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0;color:inherit;text-decoration:none;position:relative}
+.tile .open{display:block;text-align:center;background:var(--accent);color:var(--accent-ink);border-radius:11px;padding:11px;font-weight:800;text-decoration:none}
+.tile .open:hover{filter:brightness(1.08)}
+.tile .top{display:flex;gap:12px;align-items:center}
+.tile .ic{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:22px;flex:none}
+.tile h3{margin:0;font-size:18px;font-weight:800}
+.tile p{margin:0;color:var(--muted);font-size:14px}
+.tile .where{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.tile.soon{opacity:.7;border-style:dashed}
+.tile.soon .top{padding-right:52px}
+.tile.soon .badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.counts{display:flex;flex-direction:column;gap:6px;margin-top:auto}
+.count{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:14px;color:inherit;text-decoration:none}
+a.count:hover{border-color:var(--accent)}
+.count b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.count.hot b{color:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{margin:0 0 8px;font-size:18px}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links a{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;color:inherit;text-decoration:none}
+.links a:hover{border-color:var(--accent)}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:48px;cursor:pointer;font:inherit;font-weight:700}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;padding:12px;font:inherit;font-size:16px;width:100%;min-height:48px;color:inherit}
+.note{border-radius:12px;padding:10px 12px;font-size:14.5px;margin-top:10px;background:var(--info-soft);color:var(--info);font-weight:700}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.foot{color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.foot button{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;padding:0}
+/* left sidebar (wide screens) */
+.shell{display:block}
+.side{display:none}
+@media (min-width:960px){
+  .shell{display:grid;grid-template-columns:248px minmax(0,1fr);align-items:start;min-height:calc(100vh - 64px)}
+  .side{display:block;align-self:stretch;border-right:1px solid var(--line);background:var(--sunk);min-height:calc(100vh - 64px)}
+  .sidein{display:flex;flex-direction:column;gap:2px;position:sticky;top:0;max-height:100vh;overflow:auto;padding:18px 12px 24px max(14px,env(safe-area-inset-left,0px))}
+  .shell .wrap{max-width:1100px;margin:0;padding-left:28px;padding-right:max(24px,env(safe-area-inset-right,0px))}
+  .bar .in{max-width:none}
+  #qlcard{display:none}
+}
+.side .sh{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 10px 4px}
+.side .sh:first-child{margin-top:2px}
+.side a{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:14.5px;font-weight:500;min-width:0}
+.side a:hover{background:var(--surface)}
+.side a.on{background:var(--accent-soft);color:var(--accent-text,var(--accent));font-weight:700}
+.side a .i{width:22px;text-align:center;flex:none}
+.side a .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side a .n{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+.side a .n.hot{color:var(--warn);border-color:var(--warn)}
+.side a.ext .t::after{content:" ↗";color:var(--muted);font-size:12px}
+</style>
+<link rel="stylesheet" href="/t/warm.css?v=1">
+<style>
+/* Team Hub blend: warm shop colors, calmer type and flatter cards */
+body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
+.bar{padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:12px}
+.bar h1{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:19px;font-weight:600;letter-spacing:0}
+.bar h1 small{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-left:10px;border:1px solid rgba(255,255,255,.45);border-radius:4px;padding:1px 6px;vertical-align:3px}
+.bar .me{font-size:13px;opacity:.9}.bar .me a{color:inherit}
+.lsbtn,.bar select{border-radius:6px;font-weight:600}
+.greet h2{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:24px}
+.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.tile{border-radius:10px!important;box-shadow:none!important;border:1px solid var(--line)!important;background:var(--surface)!important;padding:16px!important}
+.tile h3{font-family:"Work Sans","Segoe UI",system-ui,sans-serif!important;font-size:16.5px!important;font-weight:600!important}
+.tile .ic{width:36px!important;height:36px!important;border-radius:8px!important;font-size:18px!important}
+.tile .open{border-radius:6px!important;font-weight:600!important;padding:9px!important}
+.tile .where{font-weight:600!important;letter-spacing:.05em!important}
+.count{border-radius:6px!important}
+.tile.soon{background:var(--sunk)!important;border-style:dashed!important;opacity:.85}
+.tile.soon .badge{border-radius:4px!important}
+.side a{border-radius:6px}
+.side a.soon{color:var(--muted);cursor:default}.side a.soon:hover{background:none}
+.side a.soon .t::after{content:" · soon";font-size:11.5px}
+.sandbox{background:var(--accent-soft);color:var(--accent-text,var(--accent));border-radius:8px;padding:10px 12px;font-size:14px}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>Mill River Music · Team Hub<small>Sandbox</small></h1>
+  <div class="barr"><a class="lsbtn" href="https://us.merchantos.com/?form_name=ui_tab&amp;tab=register" target="_blank" rel="noopener">🧾 Lightspeed register</a><span class="me" id="me"></span><label class="who">Who's working?<select id="who"><option value="">Pick your name</option></select></label></div></div></header>
+<div class="shell"><nav class="side" id="side" aria-label="Hub tools"></nav>
+<main class="wrap">
+  <div class="greet"><h2 id="hello">Mill River Music tools</h2><span class="small" id="fresh"></span></div>
+  <div class="sandbox" id="sandbox">This is the new Team Hub, still being tried out. The tools are the same ones as the regular Hub, already connected, so there's nothing to set up on this computer.</div>
+
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device to Airtable</h2>
+    <p style="margin:0 0 10px;color:var(--muted)">Paste the MRM Photos Airtable key (starts with pat) to see live counts on the tiles. It stays on this device only. Phones that already have the Photo Uploader set up are connected automatically.</p>
+    <form id="setform" style="display:flex;flex-direction:column;gap:8px" autocomplete="off">
+      <input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" autocomplete="off">
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">Save and test</button><button class="btn sec" type="button" id="skip">Not now</button></div>
+    </form>
+    <div id="setmsg"></div>
+  </section>
+
+  <div id="tiles"></div>
+
+  <section class="card" id="qlcard">
+    <h2>Quick links</h2>
+    <div class="links">
+      <a href="https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR" target="_blank" rel="noopener">Airtable Purchase Log</a>
+      <a href="https://airtable.com/appZD2jJGbSlvofcV/tbleYgUhKCIepPtFR/viwuD9J3f1Ie9Q9yY" target="_blank" rel="noopener">Purchased – Not POS Synced</a>
+      <a href="https://reverb.com/my/selling/listings" target="_blank" rel="noopener">Reverb listings</a>
+      <a href="https://reverb.com/shop/millrivermusic" target="_blank" rel="noopener">Our Reverb shop</a>
+      <a href="https://us.merchantos.com/?form_name=ui_tab&amp;tab=register" target="_blank" rel="noopener">Lightspeed register</a>
+      <a href="https://www.millrivermusic.com/" target="_blank" rel="noopener">Our website</a>
+    </div>
+  </section>
+
+  <div class="foot"><span>Intake Desk and Listing Desk open in a new tab.</span><button id="setbtn" hidden>Airtable key</button></div>
+</main></div>
+
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token")||"via-hub", WHO=store.get("mrm-photos-who");   // shared with MRM Photos (same site)
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* Tiles. Counts are Airtable formulas on the Purchase Log. */
+const ACTIVE="OR(TRIM({Data Status}&'')='Purchased / Approved',{Data Status}='POS Synced',{Data Status}='Ready For Ecommerce')";
+const COUNTS={
+  posWait:{label:"Waiting to POS sync (60 days)", f:"AND(TRIM({Data Status}&'')='Purchased / Approved',IS_AFTER({Date In},DATEADD(TODAY(),-60,'days')))", href:"/t/lookup/?tab=pos"},
+  tbd:{label:"Not checked yet (TBD)", f:`AND({Physical Status}='TBD',${ACTIVE})`},
+  needsGuitar:{label:"Guitar repair", f:`AND({Physical Status}='Needs Work: Guitar Repair',${ACTIVE})`},
+  needsAmp:{label:"Electronics + tube amps", f:`AND(OR({Physical Status}='Needs Work: Electronics Repair',{Physical Status}='Needs Work: Tube Amp Repair'),${ACTIVE})`},
+  needsOther:{label:"Horns + misc", f:`AND(OR({Physical Status}='Needs Work: Horn Repair',{Physical Status}='Needs Work: Misc'),${ACTIVE})`},
+  pendingItems:{label:"Items in pending deals", f:"{Data Status}='Pending'"},
+  warrantyMail:{label:"✉ Unread emails", table:"tblEJMNYQqquKdAH7", field:"Subject", f:"AND({Direction}='Received',NOT({Seen}))", href:"/t/warranty/", alert:true},
+  returnsMail:{label:"✉ Unread emails", table:"tbl35TzF46dljMoYg", field:"Subject", f:"AND({Direction}='Received',NOT({Seen}))", href:"/t/returns/", alert:true},
+  returnsOpen:{label:"Open returns", table:"tblkWYK4EudB8tW7G", f:"NOT(OR({Status}='Closed',{Status}='Done'))"},
+  needsPhotos:{label:"POS synced, no photos yet", f:"AND({Data Status}='POS Synced',NOT({Cloudinary URLs}),NOT({Image 1}))"},
+  upNext:{label:"Up next to list", f:"AND({Data Status}='POS Synced',OR({Physical Status}='Ready to Sell',{Physical Status}='PriorityReady'),NOT({Description Done}))"},
+  live:{label:"Listed (live online)", f:"AND(TRIM({Data Status}&'')='Ready For Ecommerce',{Listing Live?}='Live')", href:"/t/lookup/?tab=live"},
+  going:{label:"Going online, not live yet", f:"AND(TRIM({Data Status}&'')='Ready For Ecommerce',{Listing Live?}!='Live')", href:"/t/lookup/?tab=going"},
+  ecom:{label:"Going to Reverb tonight", f:"AND({Ecommerce Sync},{Data Status}='Ready For Ecommerce',NOT({Reverb URL}))"},
+};
+const TILES=[
+  {sec:"Used Intake, Inventory & Listing"},
+  {ic:"🤝", t:"Intake Desk", p:"Start a buy, trade or consignment.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P", counts:["posWait"]},
+  {ic:"🧾", t:"Finish an Intake", p:"Find a pending deal and close it.", where:"Computer", href:"https://claude.ai/artifact/53eNURrnbXMZott1YXRH7P#finish", counts:["pendingItems"]},
+  {ic:"📷", t:"Photo Uploader", p:"Scan the SKU, shoot, upload.", where:"Phone app", href:"/t/photos/", counts:["needsPhotos"]},
+  {ic:"✍️", t:"Listing Desk", p:"Pick an item and write it up, manually or with Claude.", where:"Computer", href:"https://claude.ai/artifact/VSwVXZ7VoZta5SKd9TBtsu", counts:["upNext","ecom"]},
+  {ic:"🔎", t:"Lookup & Notes", p:"Search an item, a deal or a customer's history; add notes.", where:"Phone or computer", href:"/t/lookup/", counts:["live","going"]},
+  {sec:"Tech"},
+  {ic:"🔧", t:"Tech Bench", p:"Pick your queue, log work, mark ready.", where:"Phone or computer", href:"/t/tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
+  {ic:"🛠️", t:"Martin & Taylor Warranty Desk", p:"Warranty cases: status, notes, Martin forms and emails to the factory.", where:"Phone or computer", href:"/t/warranty/", counts:["warrantyMail"]},
+  {sec:"Customer Service · Ops Desk"},
+  {ic:"👤", t:"Customers", p:"Find a customer: contact info, Lightspeed status, deals, items, consignments, warranty, wants and returns.", where:"Phone or computer", href:"/t/customers/", counts:[]},
+  {ic:"↩️", t:"Returns", p:"Log a return, track it, email the customer.", where:"Phone or computer", href:"/t/returns/", counts:["returnsMail","returnsOpen"]},
+  {ic:"🔎", t:"Lookup & Notes", p:"Search an item, a deal or a customer's history; add notes.", where:"Phone or computer", href:"/t/lookup/", counts:["live","going"]},
+  {sec:"Utilities"},
+  {ic:"🏷️", t:"Label Maker", p:"Print a 2×1 address label on the Zebra.", where:"2nd register Mac", href:"/t/labels/", counts:[]},
+  {ic:"🎁", t:"Gift Card Labels", p:"Print gift card barcode stickers on the Zebra.", where:"2nd register Mac", href:"https://claude.ai/artifact/R94NpkQ2V2rBStckyNLkEJ", counts:[]},
+  {sec:"Help"},
+  {ic:"📘", t:"Instructions", p:"How to use the Hub and its tools. Start here.", where:"Shop login", href:"https://claude.ai/artifact/Dpb2rXXipBWg3a9SRgdVZB", counts:[]},
+  {sec:"Coming soon"},
+  {ic:"📥", t:"Team Inbox", p:"Every customer email and message in one place, sorted by department: Reverb, repair, sales, customer success, vendors.", where:"Being built", soon:true, counts:[]},
+  {ic:"✅", t:"My Work", p:"Your tasks, listings, work orders, warranties, returns and follow-ups in one list.", where:"Being built", soon:true, counts:[]},
+  {ic:"📋", t:"Manager View", p:"Assign and sort the team's work; see what's stuck.", where:"Being built", soon:true, counts:[]},
+  {ic:"🔐", t:"Private Sign-in", p:"Sign in with your own account for your own email and private lists.", where:"Being built", soon:true, counts:[]},
+  {ic:"📦", t:"New Product Builder", p:"Build a new product for Lightspeed and the website from the vendor info.", where:"Being built", soon:true, counts:[]},
+  {ic:"🛒", t:"Special Orders", p:"Track customer special orders from request to pickup.", where:"Being built", soon:true, counts:[]},
+];
+const VAL={};
+
+async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
+  do{ const u=`https://api.airtable.com/v0/${BASE}/${c.table||TABLE}?pageSize=100&fields%5B%5D=${encodeURIComponent(c.field||"Name")}&filterByFormula=${encodeURIComponent(c.f)}${offset?"&offset="+encodeURIComponent(offset):""}`;
+    const r=await fetch(u,{headers:{Authorization:"Bearer "+TOKEN}}); const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("HTTP "+r.status));
+    n+=(j.records||[]).length; offset=j.offset||""; pages++; }while(offset&&pages<5);
+  return offset?n+"+":n; }
+
+function renderSide(){ const el=$("side"); if(!el) return; let h=`<a class="on" href="/"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`;
+  TILES.forEach(t=>{ if(t.sec){ h+=`<div class="sh">${esc(t.sec.replace(/ · .*/,""))}</div>`; return; }
+    if(t.soon){ h+=`<a class="soon" aria-disabled="true" title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span></a>`; return; }
+    const ext=/^https?:/.test(t.href), ka=t.counts.find(x=>COUNTS[x]&&COUNTS[x].alert&&typeof VAL[x]==="number"&&VAL[x]>0), k=ka||t.counts.find(x=>!(COUNTS[x]&&COUNTS[x].alert)), v=k?VAL[k]:undefined, hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert));
+    h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} title="${esc(t.p)}"><span class="i" aria-hidden="true">${t.ic}</span><span class="t">${esc(t.t)}</span>${v!==undefined&&v!=="?"?`<span class="n ${hot?"hot":""}">${esc(v)}</span>`:""}</a>`; });
+  const ql=[...document.querySelectorAll("#qlcard .links a")];
+  if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
+  el.innerHTML=`<div class="sidein">${h}</div>`; }
+function renderTiles(){ renderSide(); const groups=[]; TILES.forEach(t=>{ if(t.sec) groups.push({sec:t.sec,items:[]}); else (groups[groups.length-1]||groups[groups.push({sec:"",items:[]})-1]).items.push(t); });
+  $("tiles").innerHTML=groups.map(g=>`${g.sec?`<h2 class="sec">${esc(g.sec)}</h2>`:""}<div class="grid">${g.items.map(tile).join("")}</div>`).join(""); }
+function tile(t){ { const inner=`<div class="top"><div class="ic" aria-hidden="true">${t.ic}</div><div><h3>${esc(t.t)}</h3><div class="where">${esc(t.where)}</div></div></div><p>${esc(t.p)}</p>
+  ${t.counts.length?`<div class="counts">${t.counts.map(k=>{ const v=VAL[k], c=COUNTS[k], txt=v===undefined?(TOKEN?"…":"–"):v; const hot=typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert)); return c.href?`<a class="count ${hot?"hot":""}" href="${c.href}"${/^https?:/.test(c.href)?' target="_blank" rel="noopener"':""}><span>${esc(c.label)}</span><b>${esc(txt)}</b></a>`:`<div class="count ${hot?"hot":""}"><span>${esc(c.label)}</span><b>${esc(txt)}</b></div>`; }).join("")}</div>`:""}`;
+  if(t.soon) return `<div class="tile soon"><span class="badge">Soon</span>${inner}</div>`;
+  const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; } }
+
+async function refresh(){ if(!TOKEN){ renderTiles(); return; } renderTiles(); let err="";
+  await Promise.all(Object.keys(COUNTS).map(async k=>{ try{ VAL[k]=await count(k); }catch(e){ err=e.message; VAL[k]="?"; } }));
+  renderTiles(); $("fresh").textContent=err?("Counts: "+err):("Counts as of "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})); }
+
+function hello(){ const h=new Date().getHours(); $("hello").textContent=(WHO?(h<12?"Morning, ":h<17?"Afternoon, ":"Evening, ")+WHO:"Mill River Music tools"); }
+$("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); hello(); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  const prev=TOKEN; TOKEN=t; $("setmsg").innerHTML=`<div class="note">Testing…</div>`;
+  try{ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}?maxRecords=1&fields%5B%5D=Name`,{headers:{Authorization:"Bearer "+t}}); if(!r.ok) throw new Error("Airtable didn't accept that key ("+r.status+").");
+    store.set("mrm-photos-token",t); $("tok").value=""; $("setmsg").innerHTML=""; $("setup").hidden=true; refresh(); }
+  catch(err){ TOKEN=prev; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+$("skip")&&$("skip").addEventListener("click",()=>{ $("setup").hidden=true; store.set("mrm-hub-skip","1"); });
+$("setbtn").addEventListener("click",()=>{ $("setup").hidden=false; $("setup").scrollIntoView(); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&TOKEN) refresh(); });
+if(location.hostname!=="hub.millrivermusic.com") $("sandbox").textContent="This page only works at hub.millrivermusic.com.";
+fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.email) $("me").innerHTML=esc(j.email)+' · <a href="/cdn-cgi/access/logout">Sign out</a>'; }).catch(()=>{});
+hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
+</script>
+</body>
+</html>
