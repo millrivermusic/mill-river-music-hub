@@ -103,6 +103,7 @@ const BASE="appZD2jJGbSlvofcV", DESK="tblNByB9aK4puxKFb", PL="tbleYgUhKCIepPtFR"
 const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v",lid:"fldj5Dl4XWNvv2vwr",sku:"fld4nknkxxMe4bTBZ",offer:"fldhzYYWNYXEp1QNy",resp:"fldWvPbCMSEnXm79Y",counter:"fldlu7xPqr9y4KSM7",result:"fld5Podo2PfhkNBz6"};
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const MANAGERS=["Jon","Sam","Nina"];
+const OLD_CUTOFF=Date.parse("2026-10-31T16:00:00Z"); // 11/7: Jon cleared everything older than a week; anything after this is tracked
 const STATUSES=["New","Assigned","Waiting on manager","Answered","Done"];
 const KINDS={msg:"Message",offer:"Offer",refund:"Refund request",order:"Order"};
 const $=id=>document.getElementById(id);
@@ -157,7 +158,7 @@ async function loadRefunds(){ const st=S.refund; st.rows=[]; const j=await rv(`m
 function deskOf(row){ return DESKROWS[row.kind+":"+row.id]; }
 function statusOf(row){ const d=deskOf(row), s=dv(d,"status");
   if(row.kind==="offer"){ if(row.n.actionable) return s==="Assigned"||s==="Waiting on manager"?s:"New"; return s==="Done"?"Done":"Waiting on buyer"; } // offer status follows whose turn it is on Reverb
-  if(s) return s; if(row.kind==="msg") return (row.last&&row.last.authored)||row.replied?"Answered":"New"; if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
+  if(s) return s; if(row.kind==="msg"){ if((row.last&&row.last.authored)||row.replied) return "Answered"; if(row.at&&Date.parse(row.at)<OLD_CUTOFF) return "Done"; return "New"; } if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
 const FILTERS=[["open","Needs attention"],["buyer","Waiting on buyer"],["new","Not assigned"],["mine","Assigned to me"],["assigned","Assigned"],["mgr","Waiting on manager"],["answered","Answered"],["done","Done"],["all","All"]];
 const OFILTERS=[["oship","To ship"],["ounpaid","Waiting for payment"],["otransit","In transit"],["odeliv","Delivered / received"],["orefund","Refunded / cancelled"],["mine","Assigned to me"],["all","All"]];
 function passOrder(row){ const g=row.stage; switch(FILTER){ case "oship": return /Paid/.test(g); case "ounpaid": return /Waiting for payment/.test(g); case "otransit": return /transit|Out for delivery/.test(g); case "odeliv": return /Delivered|Received|Picked up/.test(g); case "orefund": return /Refunded|Cancelled/.test(g); case "mine": return WHO&&dv(deskOf(row),"to")===WHO; default: return true; } }
@@ -171,6 +172,7 @@ function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), t=[
   if(to) t.push(`<span class="tag info">→ ${esc(to)}</span>`); else if(st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer") t.push(`<span class="tag">Not assigned</span>`);
   if(d&&dv(d,"needs")) t.push(`<span class="tag sugg">${dv(d,"okBy")?"Manager OK ✓":"Needs manager OK"}</span>`);
   if(d&&/no reply needed/.test(dv(d,"lastBy")||"")) t.push(`<span class="tag ok">No reply needed · ${esc((dv(d,"lastBy")||"").replace(" (no reply needed)",""))}</span>`);
+  else if(row.kind==="msg"&&!d&&st==="Done"&&row.at&&Date.parse(row.at)<OLD_CUTOFF) t.push(`<span class="tag">Older than a week</span>`);
   else if(row.kind==="msg"&&row.read===false&&st!=="Done") t.push(`<span class="tag hot">Unread</span>`);
   if(row.kind==="offer"&&row.n.expires_at&&row.n.actionable) t.push(`<span class="tag hot">Expires ${esc(when(row.n.expires_at))}</span>`);
   if(row.at) t.push(`<span class="tag">${esc(ago(row.at))}</span>`); return t.join(""); }
@@ -308,7 +310,8 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
   if(t.id==="dSave"){ t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
   if(t.id==="dApprove"){ if(!MANAGERS.includes(WHO)) return; t.disabled=true; try{ await saveDesk(row,{[DF.okBy]:WHO+" "+new Date().toLocaleString()}); await openRow(row.kind,row.id); renderList(); }catch(err){ alertBox(err.message); } return; }
   if(t.id==="mNoReply"){ if(!WHO){ alertBox("Pick your name at the top first."); return; } t.disabled=true;
-    try{ const d=deskOf(row), prev=dv(d,"notes")||""; await saveDesk(row,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`}); renderList(); await openRow(row.kind,row.id); }
+    try{ rv(`my/conversations/${row.id}`,{method:"PUT",body:JSON.stringify({read:true})}).then(()=>{ row.read=true; }).catch(()=>{});
+      const d=deskOf(row), prev=dv(d,"notes")||""; await saveDesk(row,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`}); renderList(); await openRow(row.kind,row.id); }
     catch(err){ alertBox(err.message); t.disabled=false; } return; }
   if(t.id==="rSend"){ const body=$("rBody").value.trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Type a reply first."); return; }
     if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+row.title+"?"; $("rMsg").textContent="Click again to send. This goes straight to the buyer on Reverb."; $("rMsg").style.color=""; return; }
