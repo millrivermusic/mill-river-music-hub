@@ -118,6 +118,7 @@ const BASE="appZD2jJGbSlvofcV", DESK="tblNByB9aK4puxKFb", PL="tbleYgUhKCIepPtFR"
 const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v",lid:"fldj5Dl4XWNvv2vwr",sku:"fld4nknkxxMe4bTBZ",offer:"fldhzYYWNYXEp1QNy",resp:"fldWvPbCMSEnXm79Y",counter:"fldlu7xPqr9y4KSM7",result:"fld5Podo2PfhkNBz6"};
 const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Allie","Jeff","Chris","Sturgis","Mike","Ben"];
 const MANAGERS=["Jon","Sam","Nina"];
+var DRAFTS_R={};
 const MGR_OK=false; // manager approval switched off for now (Jon, 11/7)
 const OLD_CUTOFF=Date.parse("2026-10-31T16:00:00Z"); // 11/7: Jon cleared everything older than a week; anything after this is tracked
 const STATUSES=["New","Assigned",...(MGR_OK?["Waiting on manager"]:[]),"Answered","Done"];
@@ -221,7 +222,7 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
     try{ const c=await rv(`my/conversations/${id}`); row.detail=c; const L=c.listing||row.raw.listing; const sku=L&&L.sku;
       box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${L?`About: <a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">${esc(L.title)}</a>`:"General question"}</div>
       <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}</div>`).join("")}</div>
-      <div class="sect"><label class="f">Reply to ${esc(row.title)}<textarea class="t" id="rBody" placeholder="Type a reply…"></textarea></label>
+      <div class="sect"><label class="f">Reply to ${esc(row.title)}<textarea class="t" id="rBody" data-rid="${esc(row.id)}" placeholder="Type a reply…">${esc(DRAFTS_R[row.id]||"")}</textarea></label>
       <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${statusOf(row)!=="Done"?`<button class="btn sec" id="mNoReply">Mark read: no reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
       <div id="plinfo"></div>
       ${deskPanel(row)}`;
@@ -356,7 +357,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
     catch(err){ res.textContent=err.message; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; } return; }
   if(t.id==="loadmore"){ t.disabled=true; try{ await (TAB==="order"?loadOrders(true):loadMsgs(true)); }catch(err){} renderList(); return; }
   const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
-  if(t.id==="dSave"){ t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
+  if(t.id==="dSave"){ const rb=$("rBody"); if(rb&&rb.value.trim()&&!t.dataset.sure2){ t.dataset.sure2="1"; alertBox("Your reply to the buyer has NOT been sent yet. It stays in the box. Press Save again to save the assignment, then press Send reply."); return; } t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
   if(t.id==="dApprove"){ if(!MANAGERS.includes(WHO)) return; t.disabled=true; try{ await saveDesk(row,{[DF.okBy]:WHO+" "+new Date().toLocaleString()}); await openRow(row.kind,row.id); renderList(); }catch(err){ alertBox(err.message); } return; }
   if(t.id==="mNoReply"){ if(!WHO){ alertBox("Pick your name at the top first."); return; } t.disabled=true;
     try{ rv(`my/conversations/${row.id}`,{method:"PUT",body:JSON.stringify({read:true})}).then(()=>{ row.read=true; }).catch(()=>{});
@@ -367,7 +368,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
   if(t.id==="rSend"){ const body=$("rBody").value.trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Type a reply first."); return; }
     if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+row.title+"?"; $("rMsg").textContent="Click again to send. This goes straight to the buyer on Reverb."; $("rMsg").style.color=""; return; }
     t.disabled=true; try{ const href=row.detail&&row.detail._links&&row.detail._links.reply&&row.detail._links.reply.href||`my/conversations/${row.id}/messages`;
-      await rv(href,{method:"POST",body:JSON.stringify({body})}); await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO}); await loadMsgs(); renderList(); await openRow(row.kind,row.id); taskPrompt(taskCtx(row,"reply")); }
+      await rv(href,{method:"POST",body:JSON.stringify({body})}); delete DRAFTS_R[row.id]; await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO}); await loadMsgs(); renderList(); await openRow(row.kind,row.id); taskPrompt(taskCtx(row,"reply")); }
     catch(err){ $("rMsg").textContent=err.message; $("rMsg").style.color="var(--warn)"; t.disabled=false; t.textContent="Send reply"; delete t.dataset.sure; } return; }
   if(t.dataset.oact){ const a=t.dataset.oact, msg=$("oMsg").value.trim(), price=$("oPrice").value.replace(/[$,]/g,"").trim(), shipv=($("oShip")?$("oShip").value:"").replace(/[$,]/g,"").trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; }
     if(a==="counter"&&!(+price>0)){ alertBox("Enter a counter price."); return; }
@@ -485,6 +486,8 @@ function mgrPane(){ const g=gaps();
       <div class="small">${x.items.slice(0,6).map(it=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>6?`<div class="muted">…and ${x.items.length-6} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing is slipping right now.</div>`}
 `; }
 
+document.addEventListener("input",e=>{ if(e.target.id==="rBody"&&e.target.dataset.rid) DRAFTS_R[e.target.dataset.rid]=e.target.value; });
+window.addEventListener("beforeunload",e=>{ if(Object.values(DRAFTS_R).some(v=>v&&v.trim())){ e.preventDefault(); e.returnValue=""; } });
 setTimeout(updTaskBtn,1500);
 // ---- Manager view: everything open on Reverb, what's missing, and an Ask box (Claude via the hub's /ai) ----
 const HRS=ms=>Math.round((Date.now()-ms)/36e5);
