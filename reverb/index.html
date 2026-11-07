@@ -42,7 +42,12 @@ a{color:var(--accent-text)}
 .chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:5px 12px;font-size:13.5px;cursor:pointer}
 .chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text);font-weight:600}
 .cols{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:14px;align-items:start}
-@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}
+  /* phones: list OR the open item, not both stacked */
+  body:not(.mdet) #detail,body:not(.mdet) #mback{display:none}
+  body.mdet .cols>div:first-child{display:none}
+  #mback{display:block;margin:0 0 8px}}
+@media (min-width:901px){#mback{display:none}}
 .list{display:flex;flex-direction:column;gap:6px}
 .item{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;min-width:0}
 .item:hover{border-color:var(--line2)}
@@ -94,7 +99,7 @@ table.ht tr.cur td{background:var(--accent-soft)}
   <div class="filters" id="filters"></div>
   <div class="cols">
     <div><div class="list" id="list"><div class="empty">Loading…</div></div><div class="more" id="more"></div></div>
-    <div id="detail" class="card"><div class="muted">Pick something on the left.</div></div>
+    <div><button class="btn sec" id="mback" type="button">← Back to list</button><div id="detail" class="card"><div class="muted">Pick something on the left.</div></div></div>
   </div>
 </main>
 <script>
@@ -199,7 +204,7 @@ function deskPanel(row){ const d=deskOf(row), to=dv(d,"to")||"", st=statusOf(row
   <div class="row" style="margin-top:8px"><button class="btn sec" id="dSave">Save assignment</button><span class="small muted" id="dMsg">${d&&dv(d,"by")?"Assigned by "+esc(dv(d,"by")):""}</span></div></div>`; }
 function locked(row){ const d=deskOf(row); return !!(d&&dv(d,"needs")&&!dv(d,"okBy")); }
 
-async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!row) return; SEL={kind,id}; renderList(); const box=$("detail");
+async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!row) return; SEL={kind,id}; renderList(); const box=$("detail"); document.body.classList.add("mdet"); if(matchMedia("(max-width:900px)").matches) window.scrollTo(0,Math.max(0,$("mback").getBoundingClientRect().top+scrollY-70));
   if(kind==="msg"){ box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${esc(row.sub)}</div><div class="msgs"><div class="muted">Loading conversation…</div></div>`;
     try{ const c=await rv(`my/conversations/${id}`); row.detail=c; const L=c.listing||row.raw.listing; const sku=L&&L.sku;
       box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${L?`About: <a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">${esc(L.title)}</a>`:"General question"}</div>
@@ -306,10 +311,11 @@ async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the to
 function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
 
 /* ---------- actions ---------- */
-document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
-  if(t.dataset.tab){ TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
+  if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
+  if(t.id==="mback"){ document.body.classList.remove("mdet"); const on=document.querySelector("#list .on"); if(on) on.scrollIntoView({block:"center"}); return; }
   if(t.id==="loadmore"){ t.disabled=true; try{ await (TAB==="order"?loadOrders(true):loadMsgs(true)); }catch(err){} renderList(); return; }
   const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
   if(t.id==="dSave"){ t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
