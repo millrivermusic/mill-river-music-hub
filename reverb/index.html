@@ -408,7 +408,7 @@ async function addTask(){ const ctx=$("mback").__ctx, b=$("tAdd"); const task=$(
   b.disabled=true; try{ await at(`${TT}`,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); closeModal(); TASKS=null; updTaskBtn(); if(TAB==="tasks"){ loadTasks().then(()=>renderList()); } flashTop(`Added to ${to?to+"'s":"the Reverb"} list${needsOk?" (waiting for a manager's OK)":""}.`); }
   catch(err){ $("tNote").textContent=err.message; b.disabled=false; } }
 function flashTop(m){ let el=$("topflash"); if(!el){ el=document.createElement("div"); el.id="topflash"; el.className="note ok"; el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;max-width:90vw"; document.body.appendChild(el); } el.textContent=m; el.hidden=false; clearTimeout(el.__t); el.__t=setTimeout(()=>{ el.hidden=true; },4000); }
-let TASKS=null, TVIEW="mine";
+var TASKS=null, TVIEW="mine";
 async function loadTasks(){ const recs=[]; let off=""; do{ const j=await at(`${TT}?returnFieldsByFieldId=true&pageSize=100${off?"&offset="+off:""}&filterByFormula=${encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-7,'days')))")}`); recs.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=recs; return recs; }
 function tv(r,k){ const v=(r.fields||{})[TF[k]]; return v&&typeof v==="object"&&v.name?v.name:v; }
 async function updTaskBtn(){ const b=$("tasksBtn"); if(!b) return; try{ const t=TASKS||await loadTasks(); const mine=t.filter(r=>tv(r,"status")!=="Done"&&(tv(r,"to")===WHO||(!tv(r,"to")&&tv(r,"dept")==="Reverb"))).length; b.textContent=mine?`Tasks (${mine})`:"Tasks"; }catch(e){} }
@@ -458,7 +458,7 @@ function taskItems(view){ const out=[]; const tasks=(TASKS||[]).filter(r=>tv(r,"
   if(view==="tmine") return out.filter(x=>x.open&&(x.who===WHO||(x.type==="task"&&!x.who)));
   if(view==="tdone") return out.filter(x=>x.type==="task"&&!x.open);
   return out.filter(x=>x.open); }
-let TLOADING=false;
+var TLOADING=false;
 function renderTaskTab(){ renderTabs();
   if(!TASKS){ $("list").innerHTML=`<div class="empty">Loading tasks…</div>`; if(!TLOADING){ TLOADING=true; loadTasks().then(()=>{ TLOADING=false; if(TAB==="tasks") renderList(); }).catch(e=>{ TLOADING=false; $("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; }); } }
   else if(FILTER==="tmine"&&!WHO){ $("list").innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; }
@@ -514,7 +514,7 @@ function snapshot(){ const L=r=>{ const d=deskOf(r); return {kind:KINDS[r.kind],
    last:r.kind==="msg"&&r.last?{fromUs:!!r.last.authored,text:String(r.last.body||"").slice(0,200)}:undefined}; };
   const open=[...S.msg.rows.filter(r=>statusOf(r)!=="Done"),...S.offer.rows,...S.refund.rows,...S.order.rows.filter(r=>!/Delivered|Received|Picked|Refunded|Cancelled/.test(r.stage))];
   return {now:new Date().toString(),you:WHO,staff:STAFF,managers:MANAGERS,items:open.slice(0,200).map(L),tasks:(TASKS||[]).filter(r=>tv(r,"status")!=="Done").map(r=>({task:tv(r,"task"),to:tv(r,"to")||"",dept:tv(r,"dept"),due:tv(r,"due")||"",status:tv(r,"status"),source:tv(r,"source")||""}))}; }
-let ASK=[]; let ASKBUSY=false;
+var ASK=[]; var ASKBUSY=false;
 function md(t){ return esc(t).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/^#+\s*(.+)$/gm,"<b>$1</b>"); }
 async function openMgr(){ closeModal(); try{ if(!TASKS) await loadTasks(); }catch(e){}
   const el=document.createElement("div"); el.className="mback"; el.id="mback";
