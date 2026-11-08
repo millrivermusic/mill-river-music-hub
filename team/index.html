@@ -43,7 +43,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16p
 .greet{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .greet h2{margin:0;font-size:20px}
 .greet .small{color:var(--muted);font-size:13.5px}
-.sec{margin:22px 0 10px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h2.sec{margin:22px 0 10px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .sec:first-child{margin-top:4px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0;color:inherit;text-decoration:none;position:relative}
@@ -96,7 +96,7 @@ input.t{border:1px solid var(--line);background:var(--sunk);border-radius:12px;p
 .side a .n.hot{color:var(--warn);border-color:var(--warn)}
 .side a.ext .t::after{content:" ↗";color:var(--muted);font-size:12px}
 </style>
-<link rel="stylesheet" href="/t/warm.css?v=1">
+<link rel="stylesheet" href="/t/warm.css?v=2">
 <style>
 /* Team Hub blend: warm shop colors, calmer type and flatter cards */
 body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
@@ -106,7 +106,7 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
 .bar .me{font-size:13px;opacity:.9}.bar .me a{color:inherit}
 .lsbtn,.bar select{border-radius:6px;font-weight:600}
 .greet h2{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:24px}
-.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .tile{border-radius:10px!important;box-shadow:none!important;border:1px solid var(--line)!important;background:var(--surface)!important;padding:16px!important}
 .tile h3{font-family:"Work Sans","Segoe UI",system-ui,sans-serif!important;font-size:16.5px!important;font-weight:600!important}
 .tile .ic{width:36px!important;height:36px!important;border-radius:8px!important;font-size:18px!important}
@@ -122,10 +122,10 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
 .tile.soon.preview{border-style:solid!important;opacity:1}
 .sandbox{background:var(--accent-soft);color:var(--accent-text,var(--accent));border-radius:8px;padding:10px 12px;font-size:14px}
 
-#tasks .tbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
-#tasks .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
-#tasks .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff)}
-#tasks .chip .n{font-weight:700;margin-left:4px;opacity:.8}
+#tasks .tbar,#tmsgs .tbar,.pbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+#tasks .chip,#tmsgs .chip,.pbar .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+#tasks .chip.on,#tmsgs .chip.on,.pbar .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#fff)}
+#tasks .chip .n,#tmsgs .chip .n,.pbar .chip .n{font-weight:700;margin-left:4px;opacity:.8}
 .tcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .tcol{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);min-width:0}
 .tcol h4{margin:0 0 6px;font-size:14px;display:flex;justify-content:space-between;gap:6px}
@@ -153,6 +153,21 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
 .rchip button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 2px;font-size:13px}
 .rres{max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin-top:4px}
 .rres div{padding:5px 8px;border-top:1px solid var(--line);cursor:pointer;font-size:13px}.rres div:first-child{border-top:0}.rres div:hover{background:var(--surface)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.ptile{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line2);padding:16px 16px 14px;color:var(--ink);text-decoration:none;min-height:118px}
+.ptile:hover{border-color:var(--accent)}
+.ptile .pt{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.ptile .pt .i{font-size:18px}
+.ptile p{margin:0;color:var(--muted);font-size:14px;line-height:1.4}
+.ptile .flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+.flag{font-size:12.5px;font-weight:700;padding:3px 7px;border:1px solid var(--line2);background:var(--sunk);color:var(--muted);border-radius:3px}
+.flag.hot{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.crumb{display:flex;align-items:center;gap:10px;margin:4px 0 14px;flex-wrap:wrap}
+.crumb a{color:var(--accent-text);font-weight:600;text-decoration:none}
+.crumb h2{margin:0;font-size:22px}
+.ann{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--sunk);padding:10px 12px;margin:8px 0}
+.ann .at{font-weight:700}.ann .am{font-size:12.5px;color:var(--muted)}
+.annstrip{margin:0 0 14px}
 </style>
 </head>
 <body>
@@ -174,6 +189,12 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
   </section>
 
   <div id="tiles"></div>
+
+  <section class="card" id="ann" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Announcements</h2><button class="btn sm" id="aNew" type="button">+ New announcement</button></div>
+    <div id="acomp"></div>
+    <div id="abody"><div class="small" style="color:var(--muted)">Loading…</div></div>
+  </section>
 
   <section class="card" id="tmsgs">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team messages</h2><div style="display:flex;gap:6px"><button class="btn sec sm" id="mReadAll" type="button">Mark all read</button><button class="btn sm" id="mNew" type="button">+ New message</button></div></div>
@@ -301,7 +322,7 @@ async function atT(path,opt){ const r=await fetch(`https://api.airtable.com/v0/$
 const tf=(r,k)=>{ const v=(r.fields||{})[k]; return v&&typeof v==="object"&&v.name?v.name:v; };
 async function loadDeskAssigned(){ const out=[]; let off=""; do{ const j=await atT(`tblNByB9aK4puxKFb?pageSize=100&returnFieldsByFieldId=true${off?"&offset="+off:""}`); out.push(...(j.records||[])); off=j.offset||""; }while(off);
   const nm=v=>v&&typeof v==="object"&&v.name?v.name:v;
-  DESKA=out.map(r=>{ const f=r.fields||{}; return {to:nm(f.fldn65XAPP9sf8kOz)||"",status:nm(f.fldhuIlW95NqgANw0)||"",title:f.fldubrj1IcLaHQXBg||"",kind:nm(f.fldZuZSoY93Kmc1lX)||"Reverb",by:f.fldv35IO74arRPOjc||"",needs:!!f.fldHrKUHh3JrdYRQb,okBy:f.fld1KLfYCjgWkFA0D||"",result:nm(f.fld5Podo2PfhkNBz6)||""}; }).filter(d=>d.to&&!/^(Done|Answered)$/.test(d.status)&&!/Sold|Expired|declined|Accepted/i.test(d.result)); }
+  DESKA=out.map(r=>{ const f=r.fields||{}; return {to:nm(f.fldn65XAPP9sf8kOz)||"",status:nm(f.fldhuIlW95NqgANw0)||"",title:f.fldubrj1IcLaHQXBg||"",kind:nm(f.fldZuZSoY93Kmc1lX)||"Reverb",rid:f.fldnFibA16LGVMiUb||"",by:f.fldv35IO74arRPOjc||"",needs:!!f.fldHrKUHh3JrdYRQb,okBy:f.fld1KLfYCjgWkFA0D||"",result:nm(f.fld5Podo2PfhkNBz6)||""}; }).filter(d=>d.to&&!/^(Done|Answered)$/.test(d.status)&&!/Sold|Expired|declined|Accepted/i.test(d.result)); }
 async function loadTeamTasks(){ try{ await loadDeskAssigned(); }catch(e){ DESKA=[]; } const out=[]; let off=""; const f=encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-3,'days')))"); do{ const j=await atT(`${TT}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`); out.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=out; renderTasks(); renderSide(); }
 function tToday(){ return new Date().toLocaleDateString("en-CA"); }
 function titem(r){ const st=tf(r,"Status"), due=tf(r,"Due"), late=due&&due<tToday()&&st!=="Done";
@@ -313,7 +334,8 @@ function titem(r){ const st=tf(r,"Status"), due=tf(r,"Due"), late=due&&due<tToda
    ${st==="Needs OK"?`<div class="tm">Waiting for Jon, Sam or Nina${TMGR.includes(WHO)?` <button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
    ${tf(r,"Link")?`<a class="tm" href="${esc(tf(r,"Link"))}" target="_blank" rel="noopener">Open</a> `:""}<button class="chip" style="padding:0 8px;font-size:12px" data-thopen="${r.id}" type="button">💬 ${nm?nm+" message"+(nm===1?"":"s"):"Message"}</button>
    ${OPENTHREAD===r.id?threadHTML(r.id):""}</div></div>`; }
-function ditem(d){ return `<div class="titem"><span aria-hidden="true" style="width:17px;flex:none;text-align:center">↪</span><div style="min-width:0"><div class="tt">Reverb ${esc(String(d.kind).toLowerCase())}: ${esc(d.title)}</div><div class="tm">${esc(TVIEW==="people"||TVIEW==="mine"?"Reverb":d.to)} · ${esc(d.status||"Open")}${d.by?" · assigned by "+esc(d.by):""} · <a href="/t/reverb/">Open in Reverb Desk</a></div></div></div>`; }
+function deskHash(d){ const k=String(d.kind||"").toLowerCase(), m=/offer/.test(k)?"offer":/order/.test(k)?"order":/refund/.test(k)?"refund":/message|msg|conversation/.test(k)?"msg":""; return m&&d.rid?`#${m}-${encodeURIComponent(d.rid)}`:""; }
+function ditem(d){ return `<div class="titem"><span aria-hidden="true" style="width:17px;flex:none;text-align:center">↪</span><div style="min-width:0"><div class="tt">Reverb ${esc(String(d.kind).toLowerCase())}: ${esc(d.title)}</div><div class="tm">${esc(TVIEW==="people"||TVIEW==="mine"?"Reverb":d.to)} · ${esc(d.status||"Open")}${d.by?" · assigned by "+esc(d.by):""} · <a href="/t/reverb/${deskHash(d)}">Open it in the Reverb Desk</a></div></div></div>`; }
 function sortT(a){ return a.sort((x,y)=>{ const dx=tf(x,"Status")==="Done", dy=tf(y,"Status")==="Done"; if(dx!==dy) return dx?1:-1; return String(tf(x,"Due")||"9").localeCompare(String(tf(y,"Due")||"9")); }); }
 function renderTasks(){ const open=TASKS.filter(r=>tf(r,"Status")!=="Done"), cnt=k=>open.filter(r=>tf(r,"Department")===k).length+(k==="Reverb"?DESKA.length:0), mine=open.filter(r=>tf(r,"Assigned To")===WHO).length+DESKA.filter(d=>d.to===WHO).length;
   const views=[["mine","Mine",mine],["people","Everyone",open.length+DESKA.length],...TSHOWN.map(d=>[d,d,cnt(d)]),["other","Other departments",open.filter(r=>!TSHOWN.includes(tf(r,"Department"))).length]];
@@ -379,7 +401,8 @@ var MSGS=[], MVIEW=(()=>{ try{ return localStorage.getItem("hub-mview")||"me"; }
 const mf=(r,k)=>{ const v=(r.fields||{})[k]; return v&&typeof v==="object"&&!Array.isArray(v)&&v.name?v.name:v; };
 async function loadMsgs(){ const out=[]; let off=""; const f=encodeURIComponent("IS_AFTER(CREATED_TIME(),DATEADD(TODAY(),-21,'days'))"); do{ const j=await atT(`${TM}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`).catch(async e=>{ if(/Created/.test(e.message)) return atT(`${TM}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`); throw e; }); out.push(...(j.records||[])); off=j.offset||""; }while(off);
   out.sort((a,b)=>new Date(b.createdTime)-new Date(a.createdTime)); MSGS=out; renderMsgs(); renderTasks(); renderSide(); }
-function forMe(r){ const to=mf(r,"To"); return to===WHO||to==="Everyone"||/ dept$/.test(to||""); }
+function staffDepts(){ if(window.STAFF_DEPTS) return window.STAFF_DEPTS; try{ return JSON.parse(localStorage.getItem("mrm-staff-depts")||"null")||{}; }catch(e){ return {}; } }
+function forMe(r){ const to=mf(r,"To"); if(to===WHO||to==="Everyone") return true; const m=/^(.*) dept$/.exec(to||""); if(!m) return false; const D=staffDepts()[WHO]; return !D||!D.length||D.includes(m[1]); }
 function unread(r){ return WHO&&mf(r,"From")!==WHO&&forMe(r)&&!((r.fields||{})["Read By"]||[]).includes(WHO); }
 function taskById(id){ return TASKS.find(t=>t.id===id); }
 function mrow(r){ const tid=((r.fields||{}).Task||[])[0], t=tid&&taskById(tid), un=unread(r);
@@ -436,6 +459,69 @@ $("setbtn").addEventListener("click",()=>{ $("setup").hidden=false; $("setup").s
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&TOKEN) refresh(); });
 if(location.hostname!=="hub.millrivermusic.com") $("sandbox").textContent="This page only works at hub.millrivermusic.com.";
 fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.email) $("me").innerHTML='Signed in as '+esc(j.email)+' · <a href="/cdn-cgi/access/logout" title="Sign out, then sign back in as info@ or admin@">Switch account</a>'; }).catch(()=>{});
+
+// ---- Pages (11/7): home is a set of tiles; each opens its own page ----
+const PAGES=[
+ {k:"board",ic:"💬",t:"Team Board",p:"Messages, tasks and announcements for the whole team."},
+ {k:"me",ic:"🙋",t:"My Messages & Tasks",p:"Pick a person: their messages, their tasks and the Reverb items assigned to them."},
+ {k:"reverb",ic:"🎸",t:"Reverb Desk",p:"Reverb messages, offers, orders and the Reverb task list.",href:"/t/reverb/"},
+ {k:"intake",ic:"🤝",t:"Intake & Inventory",p:"Buy, trade and consign; photos, listings and lookup.",secs:["Used Intake, Inventory & Listing"]},
+ {k:"cs",ic:"👤",t:"Customer Service",p:"Customers, returns, lookup and notes.",secs:["Customer Service · Ops Desk"]},
+ {k:"repair",ic:"🔧",t:"Repair & Tech",p:"Tech bench and Martin & Taylor warranty work.",secs:["Tech"]},
+ {k:"util",ic:"🏷️",t:"Utilities & Help",p:"Label printing, gift cards, instructions and quick links.",secs:["Utilities","Help"]},
+ {k:"soon",ic:"🧪",t:"Being built",p:"Tools on the way.",secs:["Coming soon"]}
+];
+var PAGE="home", ANN=[], ACOMP=false, PREVV=null;
+function tilesOf(pg){ const out=[]; let cur=null; TILES.forEach(t=>{ if(t.sec){ cur=t.sec; return; } if(pg.secs&&pg.secs.includes(cur)) out.push(t); }); return out; }
+function hotN(k){ const v=VAL[k]; return typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert))?v:0; }
+function myOpen(){ return TASKS.filter(r=>tf(r,"Assigned To")===WHO&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===WHO).length; }
+function unreadN(){ return (MSGS||[]).filter(unread).length; }
+function pageFlags(pg){ const f=[];
+  if(pg.k==="board"){ const u=unreadN(), o=TASKS.filter(r=>tf(r,"Status")!=="Done").length, a=ANN.length; if(u) f.push([u+" unread",1]); f.push([o+" open task"+(o===1?"":"s"),0]); if(a) f.push([a+" announcement"+(a>1?"s":""),0]); }
+  else if(pg.k==="me"){ if(!WHO) f.push(["Pick your name",0]); else { const u=unreadN(), m=myOpen(); if(u) f.push([u+" unread",1]); f.push([m+" on your list",m>0?1:0]); } }
+  else if(pg.k==="reverb"){ const n=DESKA.length; if(n) f.push([n+" assigned",0]); }
+  else if(pg.secs){ const seen={}; tilesOf(pg).forEach(t=>t.counts.forEach(k=>{ if(seen[k]) return; seen[k]=1; const v=VAL[k]; if(typeof v==="number"&&v>0&&COUNTS[k]) f.push([v+" "+COUNTS[k].label.toLowerCase(),hotN(k)?1:0]); })); }
+  return f.slice(0,4); }
+function annHTML(a,full){ const f=a.fields||{}; return `<div class="ann"><div class="at">${f.Pinned?"📌 ":""}${esc(f.Title||"")}</div>${f.Body&&full!==false?`<div style="white-space:pre-wrap;margin-top:3px">${esc(f.Body)}</div>`:""}<div class="am">${esc(f.From||"")}${f.Department&&f.Department!=="Everyone"?" · "+esc(f.Department):""} · ${esc(new Date(a.createdTime).toLocaleDateString([], {month:"short",day:"numeric"}))}${f["Show Until"]?" · until "+esc(f["Show Until"].slice(5).replace("-","/")):""}${full!==false&&WHO&&(f.From===WHO||TMGR.includes(WHO))?` · <a href="#" data-adown="${a.id}">Take down</a>`:""}</div></div>`; }
+renderTiles=function(){ renderSide(); const box=$("tiles"); const show=(id,on)=>{ const el=$(id); if(el) el.hidden=!on; };
+  const pg=PAGES.find(p=>p.k===PAGE);
+  $("hello").parentElement.hidden=PAGE!=="home"; $("sandbox").hidden=PAGE!=="home";
+  show("ann",PAGE==="board"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
+  if(PAGE==="home"){ const pins=ANN.filter(a=>(a.fields||{}).Pinned);
+    box.innerHTML=(pins.length?`<div class="annstrip">${pins.slice(0,3).map(a=>annHTML(a,false)).join("")}</div>`:"")+`<div class="pgrid">${PAGES.map(pg=>{ const fl=pageFlags(pg); return `<a class="ptile" href="${pg.href||"#"+pg.k}"><div class="pt"><span class="i" aria-hidden="true">${pg.ic}</span>${esc(pg.t)}</div><p>${esc(pg.p)}</p>${fl.length?`<div class="flags">${fl.map(([t,h])=>`<span class="flag ${h?"hot":""}">${esc(t)}</span>`).join("")}</div>`:""}</a>`; }).join("")}</div>`; return; }
+  const head=`<div class="crumb"><a href="#home">← Home</a><h2>${esc(pg?pg.t:"")}</h2></div>`;
+  if(PAGE==="board"){ box.innerHTML=head; return; }
+  if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length;
+    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s messages and tasks. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
+  const ts=tilesOf(pg); box.innerHTML=head+`<div class="grid">${ts.map(tile).join("")}</div>`; };
+renderSide=function(){ const el=$("side"); if(!el) return; let h=`<a class="${PAGE==="home"?"on":""}" href="#home"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`;
+  PAGES.forEach(pg=>{ const fl=pageFlags(pg).filter(x=>x[1]); const n=fl.length?parseInt(fl[0][0]):0; h+=`<a class="${PAGE===pg.k?"on":""}" href="${pg.href||"#"+pg.k}"><span class="i" aria-hidden="true">${pg.ic}</span><span class="t">${esc(pg.t)}</span>${n?`<span class="n hot">${n}</span>`:""}</a>`;
+    if(PAGE===pg.k&&pg.secs){ tilesOf(pg).filter(t=>t.href).forEach(t=>{ const ext=/^https?:/.test(t.href); h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} style="padding-left:30px"><span class="t">${esc(t.t)}</span></a>`; }); } });
+  const ql=[...document.querySelectorAll("#qlcard .links a")];
+  if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
+  el.innerHTML=`<div class="sidein">${h}</div>`; };
+function route(){ let k=(location.hash||"").slice(1); if(k==="tmsgs"||k==="tasks") k="board"; const prev=PAGE; PAGE=PAGES.some(p=>p.k===k&&!p.href)?k:"home";
+  if(PAGE==="me"&&prev!=="me"){ PREVV=[MVIEW,TVIEW]; MVIEW="me"; TVIEW="mine"; } else if(PAGE!=="me"&&prev==="me"&&PREVV){ [MVIEW,TVIEW]=PREVV; PREVV=null; }
+  renderTiles(); try{ renderTasks(); renderMsgs(); }catch(_){} window.scrollTo(0,0); }
+window.addEventListener("hashchange",route);
+async function loadAnn(){ try{ const today=new Date().toISOString().slice(0,10); const f=encodeURIComponent(`OR({Show Until}='',IS_AFTER({Show Until},DATEADD(TODAY(),-1,'days')))`); const j=await atT(`tblRAMJZ2nXXQM9QU?pageSize=50&filterByFormula=${f}`); ANN=(j.records||[]).sort((a,b)=>(((b.fields||{}).Pinned?1:0)-((a.fields||{}).Pinned?1:0))||String(b.createdTime).localeCompare(String(a.createdTime))); }catch(e){ ANN=[]; } renderAnn(); renderTiles(); }
+function renderAnn(){ const b=$("abody"); if(!b) return; b.innerHTML=ANN.length?ANN.map(a=>annHTML(a)).join(""):`<div class="small" style="color:var(--muted)">No announcements right now.</div>`;
+  $("acomp").innerHTML=ACOMP?`<div class="tform"><label class="wide">Title<input class="t" id="aT" placeholder="Short headline"></label><label class="wide">Details<textarea class="t" id="aB" rows="3"></textarea></label>
+   <label>For<select class="t" id="aD">${["Everyone","Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used"].map(d=>`<option>${d}</option>`).join("")}</select></label><label>Show until (optional)<input class="t" type="date" id="aU"></label>
+   <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="aP"> Pin to the hub home</label>
+   <div class="wide" style="display:flex;gap:8px;align-items:center"><button class="btn" id="aSave" type="button">Post</button><button class="btn sec" id="aCancel" type="button">Cancel</button><span class="tm" id="aMsg"></span></div></div>`:""; }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.id==="aNew"){ ACOMP=!ACOMP; renderAnn(); return; } if(t.id==="aCancel"){ ACOMP=false; renderAnn(); return; }
+  if(t.id==="aSave"){ const title=$("aT").value.trim(); if(!title){ $("aMsg").textContent="Add a title."; return; } if(!WHO){ $("aMsg").textContent="Pick your name at the top first."; return; }
+    const f={Title:title,Body:$("aB").value.trim(),From:WHO,Department:$("aD").value,Pinned:$("aP").checked}; if($("aU").value) f["Show Until"]=$("aU").value; const sid=(window.STAFF_IDS||{})[WHO]; if(sid) f["From (Staff)"]=[sid];
+    t.disabled=true; try{ await atT("tblRAMJZ2nXXQM9QU",{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); ACOMP=false; await loadAnn(); }catch(err){ $("aMsg").textContent=err.message; t.disabled=false; } return; }
+  if(t.dataset&&t.dataset.adown){ e.preventDefault(); const y=new Date(Date.now()-864e5).toISOString().slice(0,10); try{ await atT("tblRAMJZ2nXXQM9QU",{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.adown,fields:{"Show Until":y,Pinned:false}}]})}); await loadAnn(); }catch(err){ alert(err.message); } } });
+$("who").addEventListener("change",()=>{ renderTiles(); });
+window.onStaff=function(){ try{ $("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join(""); renderTasks(); }catch(_){} };
+function forMeAs(r,n){ const o=WHO; WHO=n; try{ return forMe(r); } finally{ WHO=o; } }
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; WHO=b.dataset.pickwho; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} renderTiles(); try{ renderTasks(); renderMsgs(); }catch(_){} });
+const _rT=renderTasks, _rM=renderMsgs; renderTasks=function(){ _rT(); if(PAGE==="home") renderTiles(); else renderSide(); }; renderMsgs=function(){ _rM(); if(PAGE==="home") renderTiles(); else renderSide(); };
+route(); loadAnn();
 hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
 </script>
 </body>

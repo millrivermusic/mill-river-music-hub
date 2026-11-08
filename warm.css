@@ -51,7 +51,7 @@ input.t:focus,select.t:focus,textarea.t:focus{border-color:var(--accent);outline
 .note{font-weight:600}
 
 /* Hub dashboard: section labels stay plain, tile buttons quieter (one strong color per screen is the bar) */
-h2.sec,.sec{font-family:var(--font);font-weight:700;letter-spacing:.08em}
+h2.sec,.sec:not(.btn){font-family:var(--font);font-weight:700;letter-spacing:.08em}
 .tile .open{background:transparent;color:var(--accent-text);border:1px solid var(--line2)}
 .tile .open:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);filter:none}
 .tile:hover{border-color:var(--line2)}
@@ -60,3 +60,14 @@ h2.sec,.sec{font-family:var(--font);font-weight:700;letter-spacing:.08em}
 a{color:var(--accent-text)}
 .bar a{color:inherit}
 .foot button{color:var(--accent-text)}
+
+/* v2 (11/7): squarer, quieter, more grown-up. Wins over each page's own rounded styles. */
+html body .card,html body .tile,html body .panel,html body .box,html body .item,html body .titem,html body .tcol,html body .modal,html body .sheet,html body .note,html body .ptile,html body .ann{border-radius:4px!important;box-shadow:none!important}
+html body .btn,html body button,html body .tile .open,html body input,html body select,html body textarea,html body .lsbtn{border-radius:3px!important}
+html body .chip,html body .count,html body .links a,html body .rchip,html body .tchip,html body .tag,html body .badge,html body .side a,html body .side a .n,html body .pill,html body .n{border-radius:3px!important}
+html body .tile .ic{border-radius:3px!important;background:transparent!important;width:auto!important;height:auto!important;font-size:18px!important}
+html body .tile{border-color:var(--line2)!important}
+html body .chip{font-weight:600}
+html body h1,html body h2,html body h3{letter-spacing:-.005em}
+html body h2.sec{text-transform:uppercase;color:var(--muted)}
+html body .btn.sm{min-height:36px!important;padding:7px 12px!important;font-size:14px!important}
