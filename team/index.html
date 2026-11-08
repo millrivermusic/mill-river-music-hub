@@ -207,7 +207,10 @@ body{font-family:"Work Sans","Segoe UI",system-ui,sans-serif;font-size:15.5px}
 <script>
 "use strict";
 const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
-const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"];
+const STAFF=(function(){ var fb=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; try{ var c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return fb; })();
+(function(){ try{ fetch("https://api.airtable.com/v0/appZD2jJGbSlvofcV/tbluogAt5hDWgzbgi?filterByFormula="+encodeURIComponent("{In Apps}")+"&fields%5B%5D=Name&fields%5B%5D=Can%20Approve&fields%5B%5D=Departments",{headers:{Authorization:"Bearer via-hub"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){ if(!j||!j.records||!j.records.length) return; var rs=j.records.filter(function(r){return r.fields&&r.fields.Name;}); var n=rs.map(function(r){return r.fields.Name;}); var ap=rs.filter(function(r){return r.fields["Can Approve"];}).map(function(r){return r.fields.Name;}); var ids={}; rs.forEach(function(r){ids[r.fields.Name]=r.id;}); var depts={}; rs.forEach(function(r){depts[r.fields.Name]=r.fields.Departments||[];});
+  try{ localStorage.setItem("mrm-staff",JSON.stringify(n)); localStorage.setItem("mrm-approvers",JSON.stringify(ap)); localStorage.setItem("mrm-staff-ids",JSON.stringify(ids)); localStorage.setItem("mrm-staff-depts",JSON.stringify(depts)); }catch(e){}
+  var changed=n.join("|")!==STAFF.join("|"); STAFF.splice.apply(STAFF,[0,STAFF.length].concat(n)); window.STAFF_IDS=ids; window.STAFF_DEPTS=depts; if(changed&&typeof window.onStaff==="function") window.onStaff(); }).catch(function(){}); }catch(e){} })();
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
 let TOKEN=store.get("mrm-photos-token")||"via-hub", WHO=store.get("mrm-photos-who");   // shared with MRM Photos (same site)
 const $=id=>document.getElementById(id);
@@ -306,6 +309,7 @@ function titem(r){ const st=tf(r,"Status"), due=tf(r,"Due"), late=due&&due<tToda
   return `<div class="titem ${st==="Done"?"done":""}" data-tid="${r.id}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0"><div class="tt">${esc(tf(r,"Task")||"")}</div>
    <div class="tm">${due?`<span class="${late?"late":""}">Due ${esc(due.slice(5).replace("-","/"))}</span> · `:""}${esc(TVIEW==="people"?(tf(r,"Department")||""):(tf(r,"Assigned To")||"anyone"))}${tf(r,"Source")?" · "+esc(tf(r,"Source")):""}${tf(r,"Made By")?" · from "+esc(tf(r,"Made By")):""}${st==="Done"&&tf(r,"Done By")?" · done by "+esc(tf(r,"Done By")):""}</div>
    ${tf(r,"Details")?`<div class="tm" style="white-space:pre-wrap;color:var(--ink)">${esc(tf(r,"Details"))}</div>`:""}
+   ${refsOf(r).length?`<div>${refsOf(r).map(x=>refChip(x)).join("")}</div>`:""}
    ${st==="Needs OK"?`<div class="tm">Waiting for Jon, Sam or Nina${TMGR.includes(WHO)?` <button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
    ${tf(r,"Link")?`<a class="tm" href="${esc(tf(r,"Link"))}" target="_blank" rel="noopener">Open</a> `:""}<button class="chip" style="padding:0 8px;font-size:12px" data-thopen="${r.id}" type="button">💬 ${nm?nm+" message"+(nm===1?"":"s"):"Message"}</button>
    ${OPENTHREAD===r.id?threadHTML(r.id):""}</div></div>`; }
@@ -326,14 +330,15 @@ function renderTForm(){ const el=$("tform"); if(!TFORM){ el.innerHTML=""; return
    <label>Department<select class="t" id="tfDept">${TDEPTS.map(d=>`<option ${d===defD?"selected":""}>${d}</option>`).join("")}</select></label>
    <label>Due<input class="t" type="date" id="tfDue"></label>
    <label class="wide">Details<textarea class="t" id="tfDet" rows="2"></textarea></label>
+   ${refPickerHTML("t")}
    <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="tfSave" type="button">Add task</button><button class="btn sec" id="tfCancel" type="button">Cancel</button><span class="tm" id="tfMsg"></span></div></div>`;
   setTimeout(()=>{ try{ $("tfTask").focus(); }catch(e){} },30); }
 async function saveTForm(){ const task=$("tfTask").value.trim(), m=$("tfMsg"); if(!task){ m.textContent="Write what needs doing."; return; } if(!WHO){ m.textContent="Pick your name at the top first."; return; }
-  const to=$("tfTo").value, ok=false; const f={Task:task,Department:$("tfDept").value,Status:ok?"Needs OK":"To do",Details:$("tfDet").value.trim(),Source:"Added on the hub","Made By":WHO}; if(to) f["Assigned To"]=to; if($("tfDue").value) f.Due=$("tfDue").value;
-  $("tfSave").disabled=true; try{ const j=await atT(TT,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); const nid=j.records&&j.records[0]&&j.records[0].id; if(window.__fromMsg&&nid){ await atT(TM,{method:"PATCH",body:JSON.stringify({records:[{id:window.__fromMsg,fields:{Task:[nid]}}]})}).catch(()=>{}); window.__fromMsg=null; } TFORM=false; renderTForm(); await loadTeamTasks(); await loadMsgs().catch(()=>{}); }catch(e){ m.textContent=e.message; $("tfSave").disabled=false; } }
+  const to=$("tfTo").value, ok=false; const f={Task:task,Department:$("tfDept").value,Status:ok?"Needs OK":"To do",Details:$("tfDet").value.trim(),Source:"Added on the hub","Made By":WHO}; if(to) f["Assigned To"]=to; if($("tfDue").value) f.Due=$("tfDue").value; if(TREFS.refs.length){ f.Refs=JSON.stringify(TREFS.refs); if(TREFS.refs[0].url) f.Link=/^https?:/.test(TREFS.refs[0].url)?TREFS.refs[0].url:location.origin+TREFS.refs[0].url; }
+  $("tfSave").disabled=true; try{ const j=await atT(TT,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); const nid=j.records&&j.records[0]&&j.records[0].id; if(window.__fromMsg&&nid){ await atT(TM,{method:"PATCH",body:JSON.stringify({records:[{id:window.__fromMsg,fields:{Task:[nid]}}]})}).catch(()=>{}); window.__fromMsg=null; } TFORM=false; TREFS={refs:[]}; renderTForm(); await loadTeamTasks(); await loadMsgs().catch(()=>{}); }catch(e){ m.textContent=e.message; $("tfSave").disabled=false; } }
 document.addEventListener("click",async e=>{ const t=e.target.closest("button"); if(!t) return;
   if(t.dataset.tview){ TVIEW=t.dataset.tview; try{ localStorage.setItem("hub-tview",TVIEW); }catch(_){} renderTasks(); return; }
-  if(t.id==="tAddOpen"){ TFORM=!TFORM; renderTForm(); return; } if(t.id==="tfCancel"){ TFORM=false; renderTForm(); return; } if(t.id==="tfSave"){ saveTForm(); return; }
+  if(t.id==="tAddOpen"){ TFORM=!TFORM; TREFS={refs:[]}; renderTForm(); return; } if(t.id==="tfCancel"){ TFORM=false; renderTForm(); return; } if(t.id==="tfSave"){ saveTForm(); return; }
   if(t.dataset.tok){ t.disabled=true; try{ await atT(TT,{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.tok,fields:{Status:"To do"}}],typecast:true})}); await loadTeamTasks(); }catch(err){ t.disabled=false; } return; } });
 document.addEventListener("change",async e=>{ const t=e.target; if(!t.dataset||!t.dataset.tdone) return; if(!WHO){ t.checked=!t.checked; alert0("Pick your name at the top first."); return; } t.disabled=true;
   try{ await atT(TT,{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.tdone,fields:t.checked?{Status:"Done","Done By":WHO}:{Status:"To do","Done By":""}}],typecast:true})}); await loadTeamTasks(); }catch(err){ t.disabled=false; t.checked=!t.checked; } });
@@ -342,7 +347,7 @@ loadTeamTasks().catch(e=>{ $("tbody").innerHTML=`<div class="small">Couldn't loa
 setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 
 // ---- References on messages: Reverb, gear items, customers (emails later) ----
-const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","email":"✉ Email","task":"✅ Task"};
+const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","email":"✉ Email","task":"✅ Task"};
 function refsOf(r){ try{ return JSON.parse((r.fields||{}).Refs||"[]"); }catch(e){ return []; } }
 function refChip(x,rm){ return `<a class="rchip" href="${esc(x.url||"#")}" ${/^https?:/.test(x.url||"")?'target="_blank" rel="noopener"':""}>${esc(RICON[x.t]||"🔗")}: ${esc(String(x.label||"").slice(0,60))}${rm!=null?`<button type="button" data-rmref="${rm}" aria-label="Remove">×</button>`:""}</a>`; }
 let RVCACHE=null;
@@ -356,14 +361,17 @@ async function refSearch(type,q){ q=q.trim(); if(!q) return []; const ql=q.toLow
   if(type==="reverb"){ const all=await rvAll(); return all.filter(x=>x.label.toLowerCase().includes(q.toLowerCase())).slice(0,15); }
   if(type==="item"){ const f=encodeURIComponent(`OR({SKU}='${q.replace(/'/g,"")}',FIND('${ql}',LOWER({Name})))`); const j=await atT(`tbleYgUhKCIepPtFR?maxRecords=12&fields%5B%5D=Name&fields%5B%5D=SKU&filterByFormula=${f}`); return (j.records||[]).map(r=>{ const sku=(r.fields.SKU&&r.fields.SKU.text)||r.fields.SKU||""; return {t:"item",id:r.id,label:`${sku?sku+" · ":""}${r.fields.Name||""}`,url:sku?`/t/lookup/?sku=${encodeURIComponent(sku)}`:`/t/lookup/?q=${encodeURIComponent(r.fields.Name||"")}`}; }); }
   if(type==="customer"){ const f=encodeURIComponent(`OR(FIND('${ql}',LOWER({First Name}&' '&{Last Name})),FIND('${ql}',LOWER({E-mail})))`); const j=await atT(`tblGJnacXCV52gZdS?maxRecords=12&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&filterByFormula=${f}`); return (j.records||[]).map(r=>({t:"customer",id:r.id,label:`${r.fields["First Name"]||""} ${r.fields["Last Name"]||""}${r.fields["E-mail"]?" · "+r.fields["E-mail"]:""}`.trim(),url:`/t/customers/#${r.id}`})); }
+  if(type==="deal"){ const f=encodeURIComponent(`FIND('${ql}',LOWER({Deal}))`); const j=await atT(`tblPJ4W0G96ATXPjD?maxRecords=12&fields%5B%5D=Deal&fields%5B%5D=Customer&fields%5B%5D=Agreed%20Total&sort%5B0%5D%5Bfield%5D=Date&sort%5B0%5D%5Bdirection%5D=desc&filterByFormula=${f}`); return (j.records||[]).map(r=>{ const c=(r.fields.Customer||[])[0], tot=r.fields["Agreed Total"]; return {t:"deal",id:r.id,label:`${r.fields.Deal||"Deal"}${tot!=null?" · $"+tot:""}`,url:c?`/t/customers/#${c}`:`https://airtable.com/appZD2jJGbSlvofcV/tblPJ4W0G96ATXPjD/${r.id}`}; }); }
   return []; }
-function refPickerHTML(){ const refs=(MCOMP&&MCOMP.refs)||[]; return `<label class="wide">About (optional): Reverb, a gear item or a customer
-   <div style="display:flex;gap:6px;flex-wrap:wrap"><select class="t" id="rType" style="max-width:150px"><option value="reverb">Reverb</option><option value="item">Gear item</option><option value="customer">Customer</option></select><input class="t" id="rQ" placeholder="Search by name, SKU, email…" style="flex:1;min-width:140px"></div>
-   <div id="rRes"></div><div id="rChips">${refs.map((x,i)=>refChip(x,i)).join("")}</div></label>`; }
+var TREFS={refs:[]};
+function RH(k){ return k==="t"?TREFS:MCOMP; }
+function refPickerHTML(k){ k=k||"m"; const h=RH(k), refs=(h&&h.refs)||[]; return `<label class="wide">About (optional): Reverb, a gear item, a deal or a customer
+   <div style="display:flex;gap:6px;flex-wrap:wrap"><select class="t" id="rType-${k}" style="max-width:150px"><option value="reverb">Reverb</option><option value="item">Gear item</option><option value="deal">Deal</option><option value="customer">Customer</option></select><input class="t" id="rQ-${k}" data-rq="${k}" placeholder="Search by name, SKU, email…" style="flex:1;min-width:140px"></div>
+   <div id="rRes-${k}" data-rh="${k}"></div><div id="rChips-${k}" data-rh="${k}">${refs.map((x,i)=>refChip(x,i)).join("")}</div></label>`; }
 let RTIMER=null;
-document.addEventListener("input",e=>{ if(e.target.id!=="rQ") return; clearTimeout(RTIMER); RTIMER=setTimeout(async()=>{ const box=$("rRes"); if(!box) return; const q=$("rQ").value; if(q.trim().length<2){ box.innerHTML=""; return; } box.innerHTML=`<div class="tm" style="padding:4px">Searching…</div>`; try{ const res=await refSearch($("rType").value,q); window.__rres=res; box.innerHTML=res.length?`<div class="rres">${res.map((x,i)=>`<div data-pickref="${i}">${esc(RICON[x.t])}: ${esc(x.label)}</div>`).join("")}</div>`:`<div class="tm" style="padding:4px">Nothing found.</div>`; }catch(err){ box.innerHTML=`<div class="tm">${esc(err.message)}</div>`; } },300); });
-document.addEventListener("click",e=>{ const p=e.target.closest("[data-pickref]"); if(p){ const x=(window.__rres||[])[+p.dataset.pickref]; if(x&&MCOMP){ MCOMP.refs=(MCOMP.refs||[]).filter(r=>!(r.t===x.t&&r.id===x.id)).concat([x]); $("rChips").innerHTML=MCOMP.refs.map((r,i)=>refChip(r,i)).join(""); $("rRes").innerHTML=""; $("rQ").value=""; } return; }
-  const rm=e.target.closest("[data-rmref]"); if(rm){ e.preventDefault(); if(MCOMP){ MCOMP.refs.splice(+rm.dataset.rmref,1); $("rChips").innerHTML=MCOMP.refs.map((r,i)=>refChip(r,i)).join(""); } } });
+document.addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.rq; if(!k) return; clearTimeout(RTIMER); RTIMER=setTimeout(async()=>{ const box=$("rRes-"+k); if(!box) return; const q=$("rQ-"+k).value; if(q.trim().length<2){ box.innerHTML=""; return; } box.innerHTML=`<div class="tm" style="padding:4px">Searching…</div>`; try{ const res=await refSearch($("rType-"+k).value,q); window.__rres=res; box.innerHTML=res.length?`<div class="rres">${res.map((x,i)=>`<div data-pickref="${i}">${esc(RICON[x.t])}: ${esc(x.label)}</div>`).join("")}</div>`:`<div class="tm" style="padding:4px">Nothing found.</div>`; }catch(err){ box.innerHTML=`<div class="tm">${esc(err.message)}</div>`; } },300); });
+document.addEventListener("click",e=>{ const p=e.target.closest("[data-pickref]"); if(p){ const k=p.closest("[data-rh]").dataset.rh, h=RH(k), x=(window.__rres||[])[+p.dataset.pickref]; if(x&&h){ h.refs=(h.refs||[]).filter(r=>!(r.t===x.t&&r.id===x.id)).concat([x]); $("rChips-"+k).innerHTML=h.refs.map((r,i)=>refChip(r,i)).join(""); $("rRes-"+k).innerHTML=""; $("rQ-"+k).value=""; } return; }
+  const rm=e.target.closest("[data-rmref]"); if(rm){ e.preventDefault(); const k=rm.closest("[data-rh]").dataset.rh, h=RH(k); if(h){ h.refs.splice(+rm.dataset.rmref,1); $("rChips-"+k).innerHTML=h.refs.map((r,i)=>refChip(r,i)).join(""); } } });
 
 // ---- Team messages: Airtable "Team Messages", linked to Team Tasks ----
 const TM="tbl6wGPOAx0AkJwSU", MDEPT={"Reverb":"Reverb dept","Repair":"Repair dept","Shipping":"Shipping dept"};
@@ -389,7 +397,7 @@ function renderMComp(){ const el=$("mcomp"); if(!MCOMP){ el.innerHTML=""; return
   el.innerHTML=`<div class="mcomp"><label>To<select class="t" id="mTo">${toOpts.map(o=>`<option ${o===c.to?"selected":""}>${esc(o)}</option>`).join("")}</select></label>
    <label>About a task (optional)<select class="t" id="mTask"><option value="">No task</option>${openT.map(t=>`<option value="${t.id}" ${t.id===c.task?"selected":""}>${esc((tf(t,"Task")||"").slice(0,60))}${tf(t,"Assigned To")?" ("+esc(tf(t,"Assigned To"))+")":""}</option>`).join("")}</select></label>
    <label class="wide">Message<textarea class="t" id="mText" rows="3">${esc(c.text||"")}</textarea></label>
-   ${refPickerHTML()}
+   ${refPickerHTML("m")}
    <div class="wide" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="mSend" type="button">Send</button><button class="btn sec" id="mCancel" type="button">Cancel</button><span class="tm" id="mMsg"></span></div></div>`;
   setTimeout(()=>{ try{ $("mText").focus(); }catch(e){} },30); }
 async function sendMsg(fields){ await atT(TM,{method:"POST",body:JSON.stringify({records:[{fields}],typecast:true})}); await loadMsgs(); }
@@ -407,7 +415,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("button,.t
   if(t.id==="mReadAll"){ if(!WHO) return; const ids=MSGS.filter(unread).map(r=>r.id); if(ids.length){ t.disabled=true; try{ await markRead(ids); }finally{ t.disabled=false; } } return; }
   if(t.dataset.mread){ t.disabled=true; await markRead([t.dataset.mread]); return; }
   if(t.dataset.mreply){ const r=MSGS.find(m=>m.id===t.dataset.mreply); MCOMP={to:mf(r,"From"),task:((r.fields||{}).Task||[])[0]||"",refs:refsOf(r)}; renderMComp(); $("mcomp").scrollIntoView({block:"center"}); if(unread(r)) markRead([r.id]).catch(()=>{}); return; }
-  if(t.dataset.mtask){ const r=MSGS.find(m=>m.id===t.dataset.mtask); TFORM=true; renderTForm(); $("tfTask").value=(mf(r,"Message")||"").split("\n")[0].slice(0,120); $("tfDet").value=`From ${mf(r,"From")}'s message: ${mf(r,"Message")}`; window.__fromMsg=r.id; $("tasks").scrollIntoView({block:"start"}); return; }
+  if(t.dataset.mtask){ const r=MSGS.find(m=>m.id===t.dataset.mtask); TFORM=true; TREFS={refs:refsOf(r)}; renderTForm(); $("tfTask").value=(mf(r,"Message")||"").split("\n")[0].slice(0,120); $("tfDet").value=`From ${mf(r,"From")}'s message: ${mf(r,"Message")}`; window.__fromMsg=r.id; $("tasks").scrollIntoView({block:"start"}); return; }
   if(t.dataset.gotask){ OPENTHREAD=t.dataset.gotask; const tk=taskById(OPENTHREAD); if(tk){ const ass=tf(tk,"Assigned To"); TVIEW=ass?"people":(TSHOWN.includes(tf(tk,"Department"))?tf(tk,"Department"):"other"); } renderTasks(); const el=document.querySelector(`[data-tid="${OPENTHREAD}"]`); if(el){ el.classList.add("hl"); el.scrollIntoView({block:"center"}); } return; }
   if(t.dataset.thopen){ OPENTHREAD=OPENTHREAD===t.dataset.thopen?null:t.dataset.thopen; renderTasks(); return; }
   if(t.dataset.thsend){ const tid=t.dataset.thsend, inp=$("th-"+tid), text=(inp&&inp.value||"").trim(); if(!text||!WHO) return; t.disabled=true; try{ await sendMsg({Message:text,From:WHO,To:t.dataset.thto,Task:[tid],"Read By":[WHO]}); OPENTHREAD=tid; renderTasks(); }catch(err){ t.disabled=false; } return; }

@@ -158,7 +158,10 @@ label.f .t{font-weight:400;color:var(--ink);letter-spacing:0;font-size:15px}
 <script>
 "use strict";
 const BASE="appZD2jJGbSlvofcV", UDB="tblGJnacXCV52gZdS";
-const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"];
+const STAFF=(function(){ var fb=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; try{ var c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return fb; })();
+(function(){ try{ fetch("https://api.airtable.com/v0/appZD2jJGbSlvofcV/tbluogAt5hDWgzbgi?filterByFormula="+encodeURIComponent("{In Apps}")+"&fields%5B%5D=Name&fields%5B%5D=Can%20Approve&fields%5B%5D=Departments",{headers:{Authorization:"Bearer via-hub"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){ if(!j||!j.records||!j.records.length) return; var rs=j.records.filter(function(r){return r.fields&&r.fields.Name;}); var n=rs.map(function(r){return r.fields.Name;}); var ap=rs.filter(function(r){return r.fields["Can Approve"];}).map(function(r){return r.fields.Name;}); var ids={}; rs.forEach(function(r){ids[r.fields.Name]=r.id;}); var depts={}; rs.forEach(function(r){depts[r.fields.Name]=r.fields.Departments||[];});
+  try{ localStorage.setItem("mrm-staff",JSON.stringify(n)); localStorage.setItem("mrm-approvers",JSON.stringify(ap)); localStorage.setItem("mrm-staff-ids",JSON.stringify(ids)); localStorage.setItem("mrm-staff-depts",JSON.stringify(depts)); }catch(e){}
+  var changed=n.join("|")!==STAFF.join("|"); STAFF.splice.apply(STAFF,[0,STAFF.length].concat(n)); window.STAFF_IDS=ids; window.STAFF_DEPTS=depts; if(changed&&typeof window.onStaff==="function") window.onStaff(); }).catch(function(){}); }catch(e){} })();
 const STAFFREC={Jon:"rechZIpGZAIOuGaYJ",Jeff:"recLmkipyjft62jRL",Chris:"recEoekxSRq7EsQkO",Sturgis:"recbvNLEkdm4HNu3J",Sam:"rec0u7Ikoxfo5kJCX",Julia:"rec1McunLXCyJNc8b",Andy:"recNaeY3xVY0sKxhH",Nina:"recQpdH2QkplH8Sl0",Ben:"recriRN9RxxEa2PyC",Allie:"recroDei0NGN6CA1R",Ethan:"rect9RExJhI14zXfS"};
 const RECSTAFF=Object.fromEntries(Object.entries(STAFFREC).map(([k,v])=>[v,k]));
 const TECHS=["Jeff","Chris","Jon","Sturgis"];

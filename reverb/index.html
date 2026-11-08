@@ -117,8 +117,11 @@ table.ht tr.cur td{background:var(--accent-soft)}
 "use strict";
 const BASE="appZD2jJGbSlvofcV", DESK="tblNByB9aK4puxKFb", PL="tbleYgUhKCIepPtFR";
 const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v",lid:"fldj5Dl4XWNvv2vwr",sku:"fld4nknkxxMe4bTBZ",offer:"fldhzYYWNYXEp1QNy",resp:"fldWvPbCMSEnXm79Y",counter:"fldlu7xPqr9y4KSM7",result:"fld5Podo2PfhkNBz6"};
-const STAFF=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"];
-const MANAGERS=["Jon","Sam","Nina"];
+const STAFF=(function(){ var fb=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; try{ var c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return fb; })();
+(function(){ try{ fetch("https://api.airtable.com/v0/appZD2jJGbSlvofcV/tbluogAt5hDWgzbgi?filterByFormula="+encodeURIComponent("{In Apps}")+"&fields%5B%5D=Name&fields%5B%5D=Can%20Approve&fields%5B%5D=Departments",{headers:{Authorization:"Bearer via-hub"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){ if(!j||!j.records||!j.records.length) return; var rs=j.records.filter(function(r){return r.fields&&r.fields.Name;}); var n=rs.map(function(r){return r.fields.Name;}); var ap=rs.filter(function(r){return r.fields["Can Approve"];}).map(function(r){return r.fields.Name;}); var ids={}; rs.forEach(function(r){ids[r.fields.Name]=r.id;}); var depts={}; rs.forEach(function(r){depts[r.fields.Name]=r.fields.Departments||[];});
+  try{ localStorage.setItem("mrm-staff",JSON.stringify(n)); localStorage.setItem("mrm-approvers",JSON.stringify(ap)); localStorage.setItem("mrm-staff-ids",JSON.stringify(ids)); localStorage.setItem("mrm-staff-depts",JSON.stringify(depts)); }catch(e){}
+  var changed=n.join("|")!==STAFF.join("|"); STAFF.splice.apply(STAFF,[0,STAFF.length].concat(n)); window.STAFF_IDS=ids; window.STAFF_DEPTS=depts; if(changed&&typeof window.onStaff==="function") window.onStaff(); }).catch(function(){}); }catch(e){} })();
+const MANAGERS=(function(){ try{ var c=JSON.parse(localStorage.getItem("mrm-approvers")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return ["Jon","Sam","Nina"]; })();
 var DRAFTS_R={};
 const MGR_OK=false; // manager approval switched off for now (Jon, 11/7)
 const OLD_CUTOFF=Date.parse("2026-10-31T16:00:00Z"); // 11/7: Jon cleared everything older than a week; anything after this is tracked
@@ -127,7 +130,7 @@ const KINDS={msg:"Message",offer:"Offer",refund:"Refund request",order:"Order"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-let WHO=store.get("mrm-photos-who"), TAB="tasks", FILTER="tmine", SEL=null;
+let WHO=store.get("mrm-photos-who"), TAB="tasks", FILTER="tall", SEL=null;
 const S={msg:{rows:[],page:0,pages:1},offer:{rows:[]},refund:{rows:[]},order:{rows:[],page:0,pages:1}};
 let DESKROWS={}; // key kind:id -> airtable record
 const ago=d=>{ if(!d) return ""; const s=(Date.now()-new Date(d))/1000; if(s<3600) return Math.max(1,Math.round(s/60))+"m ago"; if(s<86400) return Math.round(s/3600)+"h ago"; return Math.round(s/86400)+"d ago"; };
@@ -200,7 +203,7 @@ function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); re
   const nOrd=S.order.rows.filter(r=>/needs shipping/.test(r.stage)).length;
   const nTasks=taskItems("tmine").filter(x=>x.open).length;
   $("tabs").innerHTML=`<button class="tab ${TAB==="tasks"?"on":""}" data-tab="tasks">Tasks<span class="n">${nTasks||""}</span></button>`+[["msg","Messages"],["offer","Offers"],["refund","Refund requests"],["order","Orders"]].map(([k,l])=>`<button class="tab ${TAB===k?"on":""}" data-tab="${k}">${l}<span class="n">${k==="order"?(nOrd?nOrd+" to ship":""):S[k].rows.length?n(k):""}</span></button>`).join("");
-  $("filters").innerHTML=TAB==="tasks"?[["tmine","Mine"],["tall","Everyone"],["tdone","Done this week"]].map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join("")+`<button class="chip" id="tNew" type="button">+ New task</button>`:(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
+  $("filters").innerHTML=TAB==="tasks"?taskChips().map(([k,l,n])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${esc(k)}">${esc(l)}${n!=null?` <span class="small">${n}</span>`:""}</button>`).join("")+`<button class="chip" id="tNew" type="button">+ New task</button>`:(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
 let LASTVIS=[];
 function flash(m){ const box=$("detail"); if(box) box.insertAdjacentHTML("afterbegin",`<div class="note ok" id="flash">${esc(m)}</div>`); setTimeout(()=>{ const f=$("flash"); if(f) f.remove(); },4000); }
 function renderList(){ document.body.classList.toggle("tasksTab",TAB==="tasks"); if(TAB==="tasks"){ renderTaskTab(); return; } renderTabs(); const rows=S[TAB].rows.filter(pass); LASTVIS=rows.slice();
@@ -339,7 +342,7 @@ function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.te
 
 /* ---------- actions ---------- */
 document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
-  if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":TAB==="tasks"?"tmine":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
+  if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":TAB==="tasks"?"tall":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
   if(t.id==="mback"){ document.body.classList.remove("mdet"); const on=document.querySelector("#list .on"); if(on) on.scrollIntoView({block:"center"}); return; }
@@ -407,7 +410,7 @@ async function addTask(){ const ctx=$("mback").__ctx, b=$("tAdd"); const task=$(
   if(!WHO){ $("tNote").textContent="Pick your name at the top first."; return; }
   const to=$("tTo").value, needsOk = false;
   const f={[TF.task]:task,[TF.dept]:$("tDept").value,[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:$("tDet").value.trim(),[TF.source]:ctx.source||"",[TF.madeBy]:WHO};
-  if(to) f[TF.to]=to; if($("tDue").value) f[TF.due]=$("tDue").value; if(ctx.link) f[TF.link]=ctx.link;
+  if(to) f[TF.to]=to; if($("tDue").value) f[TF.due]=$("tDue").value; if(ctx.link) f[TF.link]=ctx.link; if(ctx.ref) f["fldZLryzmga9mRkFa"]=JSON.stringify([ctx.ref]);
   b.disabled=true; try{ await at(`${TT}`,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); closeModal(); TASKS=null; updTaskBtn(); if(TAB==="tasks"){ loadTasks().then(()=>renderList()); } flashTop(`Added to ${to?to+"'s":"the Reverb"} list${needsOk?" (waiting for a manager's OK)":""}.`); }
   catch(err){ $("tNote").textContent=err.message; b.disabled=false; } }
 function flashTop(m){ let el=$("topflash"); if(!el){ el=document.createElement("div"); el.id="topflash"; el.className="note ok"; el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;max-width:90vw"; document.body.appendChild(el); } el.textContent=m; el.hidden=false; clearTimeout(el.__t); el.__t=setTimeout(()=>{ el.hidden=true; },4000); }
@@ -452,18 +455,25 @@ function taskCtx(row,what){ const who=row.kind==="offer"?(row.n.buyer_name||"the
   const web=row.kind==="order"?(row.o._links&&row.o._links.web&&row.o._links.web.href):row.kind==="offer"?`https://reverb.com/item/${row.L.id}`:"https://reverb.com/my/messages";
   const src=row.kind==="order"?`Reverb order #${row.o.order_number} · ${who}`:row.kind==="offer"?`Reverb offer · ${who}`:row.kind==="refund"?`Reverb refund request · ${who}`:`Reverb message · ${who}`;
   const task = what==="offer" ? `Follow up on the offer from ${who}` : what==="order" ? `Follow up with ${who} about their order` : what==="reply" ? `Follow up with ${who}` : "";
-  return {source:src, link:web, task, details:item?("Item: "+item):"", dept:"Reverb"}; }
+  const ref={t:"reverb-"+(row.kind==="msg"?"msg":row.kind),id:String(row.id),label:`${who}${item?" — "+item:""}`,url:`/t/reverb/#${row.kind}-${row.id}`};
+  return {source:src, link:web, task, details:item?("Item: "+item):"", dept:"Reverb", ref}; }
 // ---- Tasks tab: Reverb tasks + assigned desk items, with what's slipping and Ask on the right ----
 function taskItems(view){ const out=[]; const tasks=(TASKS||[]).filter(r=>tv(r,"dept")==="Reverb"||/^Reverb/.test(tv(r,"source")||""));
   tasks.forEach(r=>{ const st=tv(r,"status"); out.push({type:"task",r,who:tv(r,"to")||"",open:st!=="Done",due:tv(r,"due")||""}); });
   ["msg","offer","refund","order"].forEach(k=>S[k].rows.forEach(row=>{ const d=deskOf(row), to=dv(d,"to"); if(!to) return; const st=row.kind==="order"?row.stage:statusOf(row);
     const open=row.kind==="order"?!/Delivered|Received|Picked|Refunded|Cancelled/.test(st):!(st==="Done"||st==="Answered"); out.push({type:"item",row,who:to,open,st}); }));
+  if(view.indexOf("tp:")===0){ const nm=view.slice(3); return out.filter(x=>x.open&&(x.who||"")===nm); }
   if(view==="tmine") return out.filter(x=>x.open&&(x.who===WHO||(x.type==="task"&&!x.who)));
   if(view==="tdone") return out.filter(x=>x.type==="task"&&!x.open);
   return out.filter(x=>x.open); }
+function taskChips(){ if(!TASKS) return [["tall","Everyone",null],["tdone","Done this week",null]];
+  const open=taskItems("tall"), c={}; open.forEach(x=>{ const k=x.who||""; c[k]=(c[k]||0)+1; });
+  const ppl=Object.keys(c).filter(k=>k).sort((a,b)=>a===WHO?-1:b===WHO?1:a.localeCompare(b));
+  if(WHO&&!c[WHO]) ppl.unshift(WHO);
+  return [["tall","Everyone",open.length]].concat(ppl.map(p=>["tp:"+p,p===WHO?p+" (you)":p,c[p]||0]), c[""]?[["tp:","Anyone on Reverb",c[""]]]:[], [["tdone","Done this week",null]]); }
 var TLOADING=false;
 function renderTaskTab(){ renderTabs();
-  if(!TASKS){ $("list").innerHTML=`<div class="empty">Loading tasks…</div>`; if(!TLOADING){ TLOADING=true; loadTasks().then(()=>{ TLOADING=false; if(TAB==="tasks") renderList(); }).catch(e=>{ TLOADING=false; $("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; }); } }
+  if(!TASKS){ $("list").innerHTML=`<div class="empty">Loading tasks…</div>`; if(!TLOADING){ TLOADING=true; loadTasks().then(()=>{ TLOADING=false; if(TAB==="tasks"){ renderTabs(); renderList(); } }).catch(e=>{ TLOADING=false; $("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; }); } }
   else if(FILTER==="tmine"&&!WHO){ $("list").innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; }
   else { const xs=taskItems(FILTER); const groups={}; xs.forEach(x=>{ const k=x.who||"Anyone on Reverb"; (groups[k]=groups[k]||[]).push(x); });
     const keys=Object.keys(groups).sort((a,b)=>a==="Anyone on Reverb"?-1:b==="Anyone on Reverb"?1:a===WHO?-1:b===WHO?1:a.localeCompare(b)); const today=dayStr(0);
@@ -474,7 +484,7 @@ function renderTaskTab(){ renderTabs();
           ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
           ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
           ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }
-      const r=x.row; return `<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(KINDS[r.kind])}: ${esc(r.kind==="offer"?r.L.title:r.title)}</div><div class="s">${esc(r.kind==="offer"?(r.n.buyer_name||""):r.sub||"")}</div><div class="tags">${tagsFor(r)}</div></div>`; }).join("")).join(""):`<div class="empty">${FILTER==="tmine"?"Nothing on your list. Nice.":"Nothing here."}</div>`; }
+      const r=x.row; return `<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(KINDS[r.kind])}: ${esc(r.kind==="offer"?r.L.title:r.title)}</div><div class="s">${esc(r.kind==="offer"?(r.n.buyer_name||""):r.sub||"")}</div><div class="tags">${tagsFor(r)}</div></div>`; }).join("")).join(""):`<div class="empty">${FILTER==="tmine"||FILTER==="tp:"+WHO?"Nothing on your list. Nice.":"Nothing here."}</div>`; }
   $("more").innerHTML="";
   if(!SEL) $("detail").innerHTML=mgrPane(); }
 function mgrPane(){ const g=gaps();
