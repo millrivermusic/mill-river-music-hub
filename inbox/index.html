@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7A2E1F">
+<title>Customer Desk</title>
+<link rel="icon" href="/t/icon-192.png">
+<style>
+:root{--bg:#F5EFE4;--surface:#FFFBF4;--sunk:#FAF4EA;--ink:#2B211A;--muted:#7A6A5C;--line:#E6DCCB;--line2:#CDBFA8;--accent:#7A2E1F;--accent-ink:#FFF7EE;--accent-soft:#F3E2D9;--ok:#2F6B3A;--ok-soft:#E3EDD9;--warn:#9E2A1E;--warn-soft:#F6DED7;--info:#3D4C8A;--info-soft:#E2E5F1;--font:"Work Sans","Segoe UI",system-ui,sans-serif;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#3A3029;--surface:#463A31;--sunk:#40352D;--ink:#F6EDE0;--muted:#CBB9A5;--line:#5A4B3F;--line2:#766556;--accent:#C0533A;--accent-ink:#FFF7EE;--accent-soft:#5A3A2E;--ok:#A6DB9E;--ok-soft:#33452F;--warn:#FFA592;--warn-soft:#5A2E25;--info:#C1C9FA;--info-soft:#3B4060;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
+.bar{background:#7A2E1F;color:#FFF7EE;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.bar .in{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:18px;font-weight:600;flex:1}
+.bar a{color:inherit;font-weight:600}
+.bar select{font:inherit;font-size:14px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px;border-radius:3px}
+.bar select option{color:#2B211A}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--sunk)}
+.chip{border:1px solid var(--line2);background:var(--surface);color:var(--ink);padding:5px 11px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border-radius:3px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .n{margin-left:5px;opacity:.8}
+.wrap{display:grid;grid-template-columns:minmax(300px,400px) 1fr;min-height:calc(100vh - 110px)}
+#list{border-right:1px solid var(--line);overflow:auto;max-height:calc(100vh - 110px)}
+#detail{padding:16px max(16px,env(safe-area-inset-right,0px)) 40px 20px;min-width:0;overflow:auto;max-height:calc(100vh - 110px)}
+.item{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;min-width:0}
+.item:hover{background:var(--surface)}.item.on{background:var(--accent-soft)}
+.item .t{display:flex;gap:6px;align-items:baseline}.item .t b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .s{font-size:13.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item.new .t b::before{content:"● ";color:var(--accent)}
+.when{font-size:12px;color:var(--muted);white-space:nowrap}
+.tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:11.5px;font-weight:600;padding:1px 6px;border:1px solid var(--line2);border-radius:3px;color:var(--muted)}
+.tag.dept{border-color:var(--info);color:var(--info)}.tag.who{border-color:var(--ok);color:var(--ok)}.tag.ai{border-style:dashed}
+h2{margin:0 0 4px;font-size:20px}
+.meta{color:var(--muted);font-size:13.5px}
+.ctl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin:12px 0;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:4px}
+label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;font-weight:600;color:var(--muted)}
+select,input,textarea{font:inherit;font-size:14.5px;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:3px;padding:7px;min-width:0}
+textarea{width:100%;resize:vertical}
+.btn{border:1px solid var(--line2);background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:7px 12px;cursor:pointer;border-radius:3px}
+.btn.pr{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sel{background:var(--ok);border-color:var(--ok);color:#fff}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.msg{border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:10px 12px;margin:8px 0}
+.msg.us{background:var(--sunk);margin-left:28px}
+.msg .h{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.msg .b{white-space:pre-wrap;word-break:break-word}
+.note{padding:9px 12px;border-radius:4px;margin:8px 0;background:var(--info-soft);color:var(--info);font-weight:600;font-size:14px}
+.note.warn{background:var(--warn-soft);color:var(--warn)}.note.ok{background:var(--ok-soft);color:var(--ok)}
+.empty{padding:20px;color:var(--muted)}
+.confirm{border:1px solid var(--accent);background:var(--accent-soft);padding:10px 12px;border-radius:4px;margin-top:8px}
+.rchip{display:inline-block;font-size:12.5px;border:1px solid var(--line2);border-radius:3px;padding:2px 7px;margin:2px 4px 2px 0;color:var(--ink);text-decoration:none}
+#back{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:1fr}#list,#detail{max-height:none}body.det #list{display:none}body:not(.det) #detail{display:none}#back{display:inline-block;margin-bottom:8px}#detail{padding-left:max(16px,env(safe-area-inset-left,0px))}}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>Customer Desk <span style="font-size:12px;opacity:.85;font-weight:500">info@ · texts · voicemail · forms</span></h1><label style="flex-direction:row;align-items:center;gap:6px;color:inherit;font-size:14px">Who's working? <select id="who"></select></label><a href="/#cs">Hub</a></div></header>
+<div class="tabs" id="tabs"></div>
+<div class="wrap"><div id="list"><div class="empty">Loading…</div></div><div id="detail"><div class="empty">Pick a conversation on the left.</div></div></div>
+<script>
+const BASE="appZD2jJGbSlvofcV", TH="tblNAvbuQlJVB08Bt", MS="tblE6vFTrYbsRgQR9", UDB="tblGJnacXCV52gZdS";
+const DEPTS=["Sales","Customer Success","Repair","Intake & Used","Shipping","Vendor Relations","General"];
+const TYPES=["Sales lead","Special order","Order status","Repair question","Trade / consign","Warranty","Return","Rental / layaway","Vendor","General question","Not a customer"];
+const STATUSES=["New","Open","Waiting on customer","Done","Not a customer"];
+const ICON={Email:"✉",Text:"💬",Voicemail:"📞",["Missed call"]:"📵",Form:"📝",["Phone call"]:"☎"};
+const $=id=>document.getElementById(id), esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ls=k=>{ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, lss=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+const STAFF=(()=>{ try{ const c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(c&&c.length) return c; }catch(e){} return ["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; })();
+const SIDS=(()=>{ try{ return JSON.parse(localStorage.getItem("mrm-staff-ids")||"{}"); }catch(e){ return {}; } })();
+const SDEPTS=(()=>{ try{ return JSON.parse(localStorage.getItem("mrm-staff-depts")||"{}"); }catch(e){ return {}; } })();
+let WHO=ls("mrm-photos-who"), FILTER=ls("cd-filter")||"inbox", ROWS=[], SEL=null, MSGS=[], DRAFT={}, CONFIRM=null, BUSY=false, TAGGING=false;
+$("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${esc(n)}</option>`).join("");
+$("who").onchange=e=>{ WHO=e.target.value; lss("mrm-photos-who",WHO); renderTabs(); renderList(); };
+async function at(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${path}`,Object.assign({},opt||{},{headers:{"Content-Type":"application/json",Authorization:"Bearer via-hub"}})); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("Airtable "+r.status)); return j; }
+const f=(r,k)=>{ const v=(r.fields||{})[k]; return v&&typeof v==="object"&&!Array.isArray(v)&&v.name?v.name:v; };
+async function load(){ let out=[], off="";
+  const flt=encodeURIComponent("OR(AND({Status}!='Done',{Status}!='Not a customer'),IS_AFTER({Last Message At},DATEADD(TODAY(),-7,'days')))");
+  do{ const j=await at(`${TH}?pageSize=100&filterByFormula=${flt}&sort%5B0%5D%5Bfield%5D=Last%20Message%20At&sort%5B0%5D%5Bdirection%5D=desc${off?"&offset="+encodeURIComponent(off):""}`); out=out.concat(j.records||[]); off=j.offset||""; }while(off&&out.length<600);
+  ROWS=out; renderTabs(); renderList(); if(SEL){ const r=ROWS.find(x=>x.id===SEL); if(r) renderDetail(); } autoTag(); }
+const open=r=>!["Done","Not a customer"].includes(f(r,"Status")||"");
+function inView(r,k){ const st=f(r,"Status")||"New";
+  if(k==="inbox") return open(r); if(k==="unsorted") return open(r)&&!f(r,"Department");
+  if(k==="mine") return open(r)&&f(r,"Assigned To")===WHO; if(k==="waiting") return st==="Waiting on customer";
+  if(k==="done") return !open(r); if(k.startsWith("d:")) return open(r)&&f(r,"Department")===k.slice(2); return true; }
+function renderTabs(){ const n=k=>ROWS.filter(r=>inView(r,k)).length;
+  const myD=(SDEPTS[WHO]||[]).filter(d=>DEPTS.includes(d)); const depts=[...new Set([...myD,...DEPTS.filter(d=>n("d:"+d))])];
+  const tabs=[["inbox","Everything open"],["unsorted","Unsorted"],["mine",WHO?WHO+"'s":"Mine"],...depts.map(d=>["d:"+d,d]),["waiting","Waiting on customer"],["done","Done (7 days)"]];
+  $("tabs").innerHTML=tabs.map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${esc(k)}">${esc(l)}${k!=="done"?`<span class="n">${n(k)}</span>`:""}</button>`).join(""); }
+function ago(d){ if(!d) return ""; const t=new Date(d), m=(Date.now()-t)/6e4; if(m<60) return Math.max(1,Math.round(m))+"m"; if(m<1440) return Math.round(m/60)+"h"; return t.toLocaleDateString([], {month:"short",day:"numeric"}); }
+function renderList(){ const xs=ROWS.filter(r=>inView(r,FILTER));
+  $("list").innerHTML=xs.length?xs.map(r=>{ const ch=f(r,"Channel")||"Email", st=f(r,"Status")||"New", dept=f(r,"Department"), ty=f(r,"Type"), who=f(r,"Assigned To"), ai=f(r,"Tagged By")==="Claude";
+    return `<div class="item ${SEL===r.id?"on":""} ${st==="New"?"new":""}" data-id="${r.id}"><div class="t"><span aria-hidden="true">${ICON[ch]||"✉"}</span><b>${esc(f(r,"Contact Name")||f(r,"Contact Address")||"Unknown")}</b><span class="when">${ago(f(r,"Last Message At"))}</span></div>
+      <div class="s">${f(r,"Last From")==="Us"?"You: ":""}${esc(f(r,"Subject")||"")} — ${esc((f(r,"Snippet")||"").replace(/\s+/g," ").slice(0,140))}</div>
+      <div class="tags">${dept?`<span class="tag dept ${ai?"ai":""}">${esc(dept)}</span>`:`<span class="tag">Unsorted</span>`}${ty?`<span class="tag ${ai?"ai":""}">${esc(ty)}</span>`:""}${who?`<span class="tag who">${esc(who)}</span>`:""}${st==="Waiting on customer"?`<span class="tag">Waiting</span>`:""}</div></div>`; }).join(""):`<div class="empty">Nothing here.</div>`; }
+async function openRow(id){ SEL=id; CONFIRM=null; document.body.classList.add("det"); renderList(); renderDetail(); MSGS=null;
+  try{ MSGS=await loadMsgsByLink(id); }catch(e){ MSGS=[]; }
+  if(SEL===id) renderDetail();
+  const r=ROWS.find(x=>x.id===id); if(r&&f(r,"Status")==="New") setThread(r,{Status:"Open"}).catch(()=>{}); }
+async function loadMsgsByLink(id){ const r=ROWS.find(x=>x.id===id); const ids=(r&&r.fields["Inbox Messages"])||[]; if(!ids.length) return [];
+  let out=[]; for(let i=0;i<ids.length;i+=40){ const j=await at(`${MS}?pageSize=100&filterByFormula=${encodeURIComponent("OR("+ids.slice(i,i+40).map(x=>`RECORD_ID()='${x}'`).join(",")+")")}`); out=out.concat(j.records||[]); }
+  return out.sort((a,b)=>String(f(a,"Date")||a.createdTime).localeCompare(String(f(b,"Date")||b.createdTime))); }
+async function setThread(r,fields){ if(fields["Assigned To"]!==undefined){ const id=fields["Assigned To"]?SIDS[fields["Assigned To"]]:null; if(id) fields["Assigned (Staff)"]=[id]; else if(!fields["Assigned To"]) fields["Assigned (Staff)"]=[]; }
+  const j=await at(TH,{method:"PATCH",body:JSON.stringify({records:[{id:r.id,fields}],typecast:true})}); Object.assign(r.fields,j.records[0].fields); Object.keys(fields).forEach(k=>{ if(fields[k]===null||fields[k]==="") delete r.fields[k]; }); renderTabs(); renderList(); if(SEL===r.id) renderDetail(); }
+function refOf(r){ return {t:"inbox",id:r.id,label:`${f(r,"Contact Name")||f(r,"Contact Address")||"Customer"} — ${f(r,"Subject")||""}`.slice(0,90),url:`/t/inbox/#${r.id}`}; }
+function renderDetail(){ const r=ROWS.find(x=>x.id===SEL); if(!r){ $("detail").innerHTML=`<div class="empty">Pick a conversation on the left.</div>`; return; }
+  const ch=f(r,"Channel")||"Email", st=f(r,"Status")||"New", addr=f(r,"Contact Address")||"", cust=(r.fields.Customer||[])[0], ai=f(r,"Tagged By")==="Claude";
+  const canReply=["Email","Text","Form"].includes(ch)&&/@/.test(addr);
+  const opt=(list,v,blank)=>(blank!=null?`<option value="">${esc(blank)}</option>`:"")+list.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join("");
+  let h=`<button class="btn" id="back">← List</button><h2>${ICON[ch]||""} ${esc(f(r,"Contact Name")||addr||"Unknown")}</h2>
+   <div class="meta">${esc(ch)}${addr&&!/txt\.voice/.test(addr)?" · "+esc(addr):""} · ${esc(f(r,"Subject")||"")}${cust?` · <a href="/t/customers/#${cust}" target="_blank" rel="noopener">Customer record</a>`:` · not linked to a customer <button class="btn" id="linkCust" style="padding:2px 8px;font-size:12.5px">Link</button>`}</div>
+   <div id="custbox"></div>
+   <div class="ctl"><label>Department<select data-set="Department">${opt(DEPTS,f(r,"Department"),"Unsorted")}</select></label>
+    <label>Type<select data-set="Type">${opt(TYPES,f(r,"Type"),"—")}</select></label>
+    <label>Assigned to<select data-set="Assigned To">${opt(STAFF,f(r,"Assigned To"),"Anyone in the department")}</select></label>
+    <div style="grid-column:1/-1" class="row">${["Open","Waiting on customer","Done","Not a customer"].map(s=>`<button class="btn ${st===s?"sel":""}" data-status="${esc(s)}">${esc(s)}</button>`).join("")}<span style="flex:1"></span><button class="btn" id="mkTask">+ Task</button><button class="btn" id="mkMsg">💬 Message a teammate</button></div>
+    ${f(r,"Tagged By")?`<div class="meta" style="grid-column:1/-1">Tagged by ${esc(f(r,"Tagged By"))}${f(r,"Tag Reason")?": "+esc(f(r,"Tag Reason")):""}${ai?" — change it if it's wrong.":""}</div>`:""}</div>`;
+  h+=MSGS===null?`<div class="meta">Loading messages…</div>`:(MSGS.length?MSGS.map(m=>{ const us=f(m,"Direction")!=="Received", stt=f(m,"Send Status");
+    const att=(m.fields.Attachments||[]).map(a=>`<a class="rchip" href="${esc(a.url)}" target="_blank" rel="noopener">📎 ${esc(a.filename)}</a>`).join("");
+    return `<div class="msg ${us?"us":""}"><div class="h">${us?"Us":esc(f(m,"From")||"")} · ${esc(new Date(f(m,"Date")||m.createdTime).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}))}${stt&&stt!=="Sent"?` · <b>${esc(stt)}</b>${f(m,"Send Error")?": "+esc(f(m,"Send Error")):""}`:""}${f(m,"Sent By")?" · by "+esc(f(m,"Sent By")):""}</div><div class="b">${esc(f(m,"Body")||"")}</div>${att}</div>`; }).join(""):`<div class="meta">No messages copied in yet. They arrive within about 5 minutes.</div>`);
+  if(canReply){ h+=`<div style="margin-top:12px"><label>Reply ${ch==="Text"?"by text (keep it to one short paragraph; Google Voice may send only the first line)":"from info@"}<textarea id="reply" rows="${ch==="Text"?3:6}">${esc(DRAFT[r.id]||"")}</textarea></label>
+     <div class="row" style="margin-top:6px"><button class="btn pr" id="sendBtn">Send…</button><span class="meta">Goes out as a reply in this conversation.</span></div>
+     ${CONFIRM===r.id?`<div class="confirm"><b>Send this exact ${ch==="Text"?"text":"email"} to ${esc(f(r,"Contact Name")||addr)}?</b><div class="msg" style="margin:6px 0"><div class="b">${esc(DRAFT[r.id]||"")}</div></div><div class="row"><button class="btn pr" id="sendYes">Yes, send it</button><button class="btn" id="sendNo">Not yet</button></div></div>`:""}<div id="sendmsg"></div></div>`; }
+  else h+=`<div class="note">${ch==="Voicemail"||ch==="Missed call"?`Call or text back${addr?": "+esc(addr):""}. Then mark it Done or Waiting on customer.`:"There's no email or text address to reply to here."}</div>`;
+  $("detail").innerHTML=h; }
+document.addEventListener("click",async e=>{ const t=e.target;
+  const it=t.closest(".item"); if(it){ openRow(it.dataset.id); history.replaceState(null,"","#"+it.dataset.id); return; }
+  if(t.dataset.f){ FILTER=t.dataset.f; lss("cd-filter",FILTER); renderTabs(); renderList(); return; }
+  if(t.id==="back"){ document.body.classList.remove("det"); return; }
+  const r=ROWS.find(x=>x.id===SEL); if(!r) return;
+  if(t.dataset.status){ if(!WHO){ alertN("Pick your name at the top first."); return; } try{ await setThread(r,{Status:t.dataset.status}); if(t.dataset.status==="Done"&&window.mrmFollowUp) mrmFollowUp({what:"Marked done.",dept:f(r,"Department")||"Customer Success",ref:refOf(r)}); }catch(err){ alertN(err.message); } return; }
+  if(t.id==="mkTask"||t.id==="mkMsg"){ if(window.mrmFollowUp) mrmFollowUp({what:"About this conversation:",dept:f(r,"Department")||"Customer Success",ref:refOf(r)}); setTimeout(()=>{ const b=document.querySelector(`.mfu [data-mfu="${t.id==="mkTask"?"task":"msg"}"]`); if(b) b.click(); },50); return; }
+  if(t.id==="sendBtn"){ const v=($("reply").value||"").trim(); DRAFT[r.id]=v; if(!v){ alertN("Write the reply first."); return; } if(!WHO){ alertN("Pick your name at the top first."); return; } CONFIRM=r.id; renderDetail(); return; }
+  if(t.id==="sendNo"){ CONFIRM=null; renderDetail(); return; }
+  if(t.id==="sendYes"){ if(BUSY) return; BUSY=true; t.disabled=true; const body=DRAFT[r.id];
+    try{ await at(MS,{method:"POST",body:JSON.stringify({records:[{fields:{Summary:"Us: "+body.split("\n")[0].slice(0,110),Thread:[r.id],Direction:"Outbox","Send Status":"Queued",Body:body,["Sent By"]:WHO,Date:new Date().toISOString()}}],typecast:true})});
+      delete DRAFT[r.id]; CONFIRM=null; await setThread(r,{Status:"Waiting on customer",["Assigned To"]:f(r,"Assigned To")||WHO}); MSGS=await loadMsgsByLinkFresh(r); renderDetail();
+      $("sendmsg").innerHTML=`<div class="note ok">Queued. info@ sends it within a few seconds (or at the next 5-minute check).</div>`; if(window.mrmFollowUp) mrmFollowUp({what:"Reply sent.",dept:f(r,"Department")||"Customer Success",ref:refOf(r)}); }
+    catch(err){ $("sendmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; }
+    BUSY=false; return; }
+  if(t.id==="linkCust"){ $("custbox").innerHTML=`<div class="row" style="margin:8px 0"><input id="cq" placeholder="Search name or email" style="flex:1"><button class="btn" id="cgo">Search</button></div><div id="cres"></div>`; $("cq").focus(); return; }
+  if(t.id==="cgo"){ const q=$("cq").value.trim().toLowerCase().replace(/'/g,"\\'"); if(q.length<2) return; $("cres").innerHTML=`<div class="meta">Searching…</div>`;
+    const j=await at(`${UDB}?maxRecords=10&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&filterByFormula=${encodeURIComponent(`AND({LS Match}!='Duplicate (merged)',OR(FIND('${q}',LOWER({First Name}&' '&{Last Name})),FIND('${q}',LOWER({E-mail}))))`)}`).catch(err=>({records:[],err}));
+    $("cres").innerHTML=(j.records||[]).map(c=>`<div class="row" style="margin:4px 0"><button class="btn" data-pickcust="${c.id}">Link</button> ${esc((c.fields["First Name"]||"")+" "+(c.fields["Last Name"]||""))} <span class="meta">${esc(c.fields["E-mail"]||"")}</span></div>`).join("")||`<div class="meta">No match.</div>`; return; }
+  if(t.dataset.pickcust){ try{ await setThread(r,{Customer:[t.dataset.pickcust]}); }catch(err){ alertN(err.message); } return; }
+});
+document.addEventListener("change",async e=>{ const t=e.target; if(!t.dataset.set) return; const r=ROWS.find(x=>x.id===SEL); if(!r) return;
+  if(!WHO){ alertN("Pick your name at the top first."); renderDetail(); return; }
+  try{ await setThread(r,{[t.dataset.set]:t.value||null,["Tagged By"]:t.dataset.set==="Assigned To"?(f(r,"Tagged By")||null):"Person",["Tag Reason"]:t.dataset.set==="Assigned To"?(f(r,"Tag Reason")||null):`Set by ${WHO}`}); }catch(err){ alertN(err.message); } });
+document.addEventListener("input",e=>{ if(e.target.id==="reply"&&SEL) DRAFT[SEL]=e.target.value; });
+window.addEventListener("beforeunload",e=>{ if(Object.values(DRAFT).some(v=>v&&v.trim())){ e.preventDefault(); e.returnValue=""; } });
+async function loadMsgsByLinkFresh(r){ const j=await at(`${TH}/${r.id}`); r.fields=j.fields; return loadMsgsByLink(r.id); }
+function alertN(m){ const d=$("sendmsg")||$("detail"); const n=document.createElement("div"); n.className="note warn"; n.textContent=m; d.prepend(n); setTimeout(()=>n.remove(),4000); }
+/* Claude suggests a department and type for conversations no rule could sort. A person can change it with one tap. */
+async function autoTag(){ if(TAGGING) return; const todo=ROWS.filter(r=>open(r)&&!f(r,"Tagged By")&&!f(r,"Department")).slice(0,12); if(!todo.length) return; TAGGING=true;
+  try{ const items=todo.map(r=>({id:r.id,channel:f(r,"Channel"),from:f(r,"Contact Name")||"",subject:f(r,"Subject")||"",text:(f(r,"Snippet")||"").slice(0,500)}));
+    const sys=`You sort customer messages for Mill River Music, an independent guitar and music shop in Northampton, MA (sales, used gear buy/trade/consign, repairs by certified Martin and Taylor techs, shipping online orders). For each item pick ONE department from ${JSON.stringify(DEPTS)} and ONE type from ${JSON.stringify(TYPES)}. Use "Not a customer" for spam, ads, automated notices or staff. Reply with JSON only: [{"id":"...","dept":"...","type":"...","why":"under 8 words"}].`;
+    const r=await fetch("/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,max_tokens:2500,messages:[{role:"user",content:JSON.stringify(items)}]})});
+    const j=await r.json(); const txt=(j.content||[]).filter(c=>c.type==="text").map(c=>c.text).join(""); const arr=JSON.parse((txt.match(/\[[\s\S]*\]/)||["[]"])[0]);
+    const recs=arr.filter(a=>todo.some(t=>t.id===a.id)&&DEPTS.includes(a.dept)&&TYPES.includes(a.type)).map(a=>({id:a.id,fields:{Department:a.dept,Type:a.type,["Tagged By"]:"Claude",["Tag Reason"]:String(a.why||"").slice(0,80)}}));
+    for(let i=0;i<recs.length;i+=10){ const res=await at(TH,{method:"PATCH",body:JSON.stringify({records:recs.slice(i,i+10),typecast:true})}); (res.records||[]).forEach(x=>{ const row=ROWS.find(y=>y.id===x.id); if(row) Object.assign(row.fields,x.fields); }); }
+    renderTabs(); renderList(); if(SEL) renderDetail(); }catch(e){} TAGGING=false; }
+load().then(()=>{ const id=(location.hash||"").slice(1); if(/^rec\w{14}$/.test(id)) openRow(id); }).catch(e=>{ $("list").innerHTML=`<div class="empty">${esc(e.message)}</div>`; });
+setInterval(()=>{ if(document.visibilityState==="visible"&&!CONFIRM) load().catch(()=>{}); },120000);
+</script>
+<script src="/t/followup.js?v=2"></script>
+</body>
+</html>

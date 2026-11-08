@@ -277,6 +277,7 @@ const TILES=[
   {ic:"🔧", t:"Tech Bench", p:"Pick your queue, log work, mark ready.", where:"Phone or computer", href:"/t/tech/", counts:["tbd","needsGuitar","needsAmp","needsOther"]},
   {ic:"🛠️", t:"Martin & Taylor Warranty Desk", p:"Warranty cases: status, notes, Martin forms and emails to the factory.", where:"Phone or computer", href:"/t/warranty/", counts:["warrantyMail"]},
   {sec:"Customer Service · Ops Desk"},
+  {ic:"📥", t:"Customer Desk", p:"info@ email, texts, voicemails and website forms in one list: sorted by department, assigned, answered.", where:"Phone or computer", href:"/t/inbox/", counts:[]},
   {ic:"👤", t:"Customers", p:"Find a customer: contact info, Lightspeed status, deals, items, consignments, warranty, wants and returns.", where:"Phone or computer", href:"/t/customers/", counts:[]},
   {ic:"↩️", t:"Returns", p:"Log a return, track it, email the customer.", where:"Phone or computer", href:"/t/returns/", counts:["returnsMail","returnsOpen"]},
   {ic:"🧹", t:"Customer Cleanup", p:"Decide which Airtable customers are the same person; fix Lightspeed links.", where:"Computer", href:"/t/cleanup/", counts:[]},
@@ -381,7 +382,7 @@ loadTeamTasks().catch(e=>{ $("tbody").innerHTML=`<div class="small">Couldn't loa
 setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 
 // ---- References on messages: Reverb, gear items, customers (emails later) ----
-const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","return":"↩ Return","warranty":"🛠 Warranty","email":"✉ Email","task":"✅ Task"};
+const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","return":"↩ Return","warranty":"🛠 Warranty","inbox":"✉ Customer msg","email":"✉ Email","task":"✅ Task"};
 function refsOf(r){ try{ return JSON.parse((r.fields||{}).Refs||"[]"); }catch(e){ return []; } }
 function refChip(x,rm){ return `<a class="rchip" href="${esc(x.url||"#")}" ${/^https?:/.test(x.url||"")?'target="_blank" rel="noopener"':""}>${esc(RICON[x.t]||"🔗")}: ${esc(String(x.label||"").slice(0,60))}${rm!=null?`<button type="button" data-rmref="${rm}" aria-label="Remove">×</button>`:""}</a>`; }
 let RVCACHE=null;

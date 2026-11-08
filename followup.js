@@ -7,7 +7,7 @@
   var BASE="appZD2jJGbSlvofcV", TT="tblOwTXbybJC6K9Xn", TM="tbl6wGPOAx0AkJwSU";
   var DEPTS=["Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
   var MDEPT={"Reverb":"Reverb dept","Repair":"Repair dept","Shipping":"Shipping dept"};
-  var ICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","return":"↩ Return","warranty":"🛠 Warranty","task":"✅ Task"};
+  var ICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","return":"↩ Return","warranty":"🛠 Warranty","task":"✅ Task","inbox":"✉ Customer msg"};
   function ls(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
   function lsj(k,d){ try{ return JSON.parse(localStorage.getItem(k)||"null")||d; }catch(e){ return d; } }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
