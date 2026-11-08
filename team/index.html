@@ -380,7 +380,7 @@ loadTeamTasks().catch(e=>{ $("tbody").innerHTML=`<div class="small">Couldn't loa
 setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 
 // ---- References on messages: Reverb, gear items, customers (emails later) ----
-const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","email":"✉ Email","task":"✅ Task"};
+const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","return":"↩ Return","warranty":"🛠 Warranty","email":"✉ Email","task":"✅ Task"};
 function refsOf(r){ try{ return JSON.parse((r.fields||{}).Refs||"[]"); }catch(e){ return []; } }
 function refChip(x,rm){ return `<a class="rchip" href="${esc(x.url||"#")}" ${/^https?:/.test(x.url||"")?'target="_blank" rel="noopener"':""}>${esc(RICON[x.t]||"🔗")}: ${esc(String(x.label||"").slice(0,60))}${rm!=null?`<button type="button" data-rmref="${rm}" aria-label="Remove">×</button>`:""}</a>`; }
 let RVCACHE=null;
@@ -538,5 +538,6 @@ const _rT=renderTasks, _rM=renderMsgs; renderTasks=function(){ _rT(); if(PAGE===
 route(); loadAnn();
 hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
 </script>
+<script src="/t/followup.js?v=1"></script>
 </body>
 </html>

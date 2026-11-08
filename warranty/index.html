@@ -216,7 +216,7 @@ async function load(){ $("dmsg").innerHTML=`<div class="small muted">Loading cas
       const j=await at(UDB,"?returnFieldsByFieldId=true&pageSize=100&filterByFormula="+encodeURIComponent(f)+Object.values(U).map(x=>"&fields%5B%5D="+x).join(""));
       (j.records||[]).forEach(r=>{ CUST[r.id]=cu(r); }); }
     await loadUnseen();
-    $("dmsg").innerHTML=""; render(); if(CUR){ const c=CASES.find(x=>x.id===CUR.id); if(c) openCase(c.id,true); }
+    $("dmsg").innerHTML=""; render(); if(CUR){ const c=CASES.find(x=>x.id===CUR.id); if(c) openCase(c.id,true); } else if(/^#rec\w{14}$/.test(location.hash)&&CASES.some(x=>x.id===location.hash.slice(1))) openCase(location.hash.slice(1));
   }catch(e){ $("dmsg").innerHTML=`<div class="note warn">Couldn't load warranty cases: ${esc(e.message)}</div>`; } }
 async function loadUnseen(){ UNSEEN={}; UNMATCHED=[];
   try{ const f=`OR(AND({Direction}='Received',NOT({Seen})),{Match}='unmatched')`; const rs=await allF(EM.table,[EM.subject,EM.from,EM.date,EM.taylor,EM.martin,EM.match,EM.body,EM.dir,EM.seen,EM.thread],f);
@@ -461,7 +461,7 @@ function noteLine(txt){ return `[${shortD()} ${WHO||"?"}] ${txt}`; }
 async function setStatus(k,extraNote){ const c=CUR, B=BR[c.b]; const fields={[B.F.status]:B.S[k]};
   if(extraNote) fields[B.F.notes]=(c.notes?c.notes+"\n\n":"")+noteLine(extraNote);
   if(k==="emailed"&&!c.req) fields[B.F.req]=today();
-  await patch(c,fields); render(); openCase(c.id,true); }
+  await patch(c,fields); render(); openCase(c.id,true); if(window.mrmFollowUp) mrmFollowUp({what:"Status: "+(SLABEL[k]||k)+".",dept:"Repair",ref:{t:"warranty",id:c.id,label:[c.model,custName(c)].filter(Boolean).join(" · ")||"Warranty case",url:"/t/warranty/#"+c.id}}); }
 
 /* ---------- create ---------- */
 let NEW={b:"martin",cust:null};
@@ -599,5 +599,6 @@ $("who").onchange=e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); if(C
 function start(){ $("setup").hidden=!!TOKEN; if(!TOKEN){ show("none"); $("setup").hidden=false; return; } show("dash"); load(); }
 start();
 </script>
+<script src="/t/followup.js?v=1"></script>
 </body>
 </html>

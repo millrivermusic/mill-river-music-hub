@@ -245,7 +245,7 @@ async function saveFields(){ if(busy) return; const ch=collect(); if(!ch.length)
     fields[FX.notes]=(cur?cur+"\n":"")+`[${stamp} ${WHO}] Changed `+ch.map(c=>`${c.label} ${c.from} → ${c.to}`).join("; ");
     const out=await api(`/${REC.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,returnFieldsByFieldId:true})});
     REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; busy=false; EDITING=false;
-    renderItem(); $("emsg").innerHTML=`<div class="note ok">Saved: ${esc(ch.map(c=>`${c.label} → ${c.to}`).join("; "))}. Logged in Notes.</div>`; }
+    renderItem(); $("emsg").innerHTML=`<div class="note ok">Saved: ${esc(ch.map(c=>`${c.label} → ${c.to}`).join("; "))}. Logged in Notes.</div>`; if(window.mrmFollowUp){ const sk=(function(v){ return (v&&v.text)||v||""; })(REC.fields[FX.sku]), nm=REC.fields[FX.name]||""; mrmFollowUp({what:"Saved.",dept:"Repair",ref:{t:"item",id:REC.id,label:(sk?sk+" · ":"")+nm,url:sk?"/t/lookup/?sku="+encodeURIComponent(sk):"/t/lookup/"}}); } }
   catch(e){ busy=false; msg.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 
 /* ---------- scan ---------- */
@@ -282,5 +282,6 @@ function start(){ $("setup").hidden=!!TOKEN; $("queue").hidden=!TOKEN; if(!TOKEN
   const m=/[?&]sku=([^&#]+)/.exec(location.search); if(m) find(decodeURIComponent(m[1])); }
 start();
 </script>
+<script src="/t/followup.js?v=1"></script>
 </body>
 </html>

@@ -296,7 +296,7 @@ async function save(){ const ch=changes(); if(!ch.length||EDIT.busy) return; con
   EDIT.busy=true; EDIT.err=""; renderMain();
   try{ const out=await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})});
     CUR.fields={...CUR.fields,...(out.fields||{})}; ch.forEach(c=>{ if(c.to==="") delete CUR.fields[U[c.k]]; });
-    const toLS=ch.some(c=>LSKEYS.has(c.k)); MSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; EDIT=null; renderMain(); if(toLS) watchSync(); }
+    const toLS=ch.some(c=>LSKEYS.has(c.k)); MSG="Saved: "+ch.map(c=>c.l).join(", ")+"."; EDIT=null; renderMain(); if(toLS) watchSync(); if(window.mrmFollowUp){ const nm=((CUR.fields[U.first]||"")+" "+(CUR.fields[U.last]||"")).trim()||CUR.fields[U.name]||"Customer"; mrmFollowUp({what:"Customer saved.",dept:"Customer Success",ref:{t:"customer",id:CUR.id,label:nm,url:"/t/customers/#"+CUR.id}}); } }
   catch(e){ EDIT.busy=false; EDIT.err="Didn't save: "+e.message; renderMain(); } }
 async function syncNow(){ if(!CUR||(SYNC&&SYNC.busy)) return; SYNC={busy:true,msg:"Sending to Lightspeed…"}; renderMain();
   try{ await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:{[U.sync]:false}})}); await api(UT,`/${CUR.id}`,{method:"PATCH",body:JSON.stringify({fields:{[U.sync]:true}})}); CUR.fields[U.sync]=true; watchSync(); }
@@ -361,5 +361,6 @@ start();
 </script>
 <link rel="stylesheet" href="../warm.css?v=2">
 <script src="../mk.js?v=3"></script>
+<script src="/t/followup.js?v=1"></script>
 </body>
 </html>

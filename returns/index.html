@@ -154,7 +154,8 @@ async function loadMails(r){ MAILS=null; MAILERR=""; const ids=(r.fields[R.email
   catch(e){ MAILS=[]; MAILERR=e.message; } }
 async function loadAll(){ let out=[], offset="";
   do{ const j=await api(`?returnFieldsByFieldId=true&pageSize=100&sort%5B0%5D%5Bfield%5D=${R.date}&sort%5B0%5D%5Bdirection%5D=desc${offset?"&offset="+encodeURIComponent(offset):""}`); out=out.concat(j.records||[]); offset=j.offset||""; }while(offset&&out.length<2000);
-  ALL=out; }
+  ALL=out; if(/^#rec\w{14}$/.test(location.hash)&&!REC){ setTimeout(()=>{ try{ openRet(location.hash.slice(1)); }catch(e){} },0); } }
+function fu(what){ if(window.mrmFollowUp&&REC) mrmFollowUp({what:what,dept:"Customer Success",ref:{t:"return",id:REC.id,label:(REC.fields||{})[R.name]||"Return",url:"/t/returns/#"+REC.id}}); }
 async function patch(id,fields){ const j=await api(`/${id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})}); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
 async function create(fields){ const j=await api(`?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})}); ALL.unshift(j); return j; }
 async function getOne(id){ const j=await api(`/${id}?returnFieldsByFieldId=true`); const i=ALL.findIndex(x=>x.id===id); if(i>=0) ALL[i]=j; if(REC&&REC.id===id) REC=j; return j; }
@@ -279,7 +280,7 @@ async function sendMail(){ syncEmail(); const r=REC; const to=EMAIL.to.trim();
     const t0=Date.now(); let st="Queued", err="";
     while(Date.now()-t0<45000){ await new Promise(res=>setTimeout(res,3000)); try{ const x=await apiT(CE.table,`/${id}?returnFieldsByFieldId=true`); st=(x.fields[CE.status]&&x.fields[CE.status].name)||st; err=x.fields[CE.error]||""; if(st==="Sent"||st==="Failed") break; }catch(e){} }
     SENDING= st==="Sent"?{msg:"Sent from info@."}: st==="Failed"?{msg:"Didn't send: "+err,bad:true}:{msg:"Queued. It will go out shortly (the info@ script sends it).",bad:false};
-    if(st==="Sent"){ EMAIL=null; ATTACH={}; } await getOne(r.id).catch(()=>{}); await loadMails(REC); }
+    if(st==="Sent"){ EMAIL=null; ATTACH={}; fu("Email sent."); } await getOne(r.id).catch(()=>{}); await loadMails(REC); }
   catch(e){ SENDING={msg:"Couldn't queue the email: "+e.message,bad:true}; }
   show(); }
 
@@ -315,7 +316,7 @@ document.addEventListener("click", async e=>{
   if(a==="canceledit"){ EDIT=null; MODE="view"; MSG=""; show(); return; }
   if(a==="askstatus"){ if(b.dataset.v===v(REC,"status")) return; ASK=b.dataset.v; show(); return; }
   if(a==="nostatus"){ ASK=null; show(); return; }
-  if(a==="setstatus"){ if(needWho()) return; const to=ASK; ASK=null; try{ await patch(REC.id,{[R.status]:to,[R.notes]:appendNote(REC,`Status → ${to}`)}); MSG="Status changed to "+to+"."; EMAIL=null; }catch(err){ MSG="Couldn't save: "+err.message; } show(); return; }
+  if(a==="setstatus"){ if(needWho()) return; const to=ASK; ASK=null; try{ await patch(REC.id,{[R.status]:to,[R.notes]:appendNote(REC,`Status → ${to}`)}); MSG="Status changed to "+to+"."; EMAIL=null; fu("Status changed to "+to+"."); }catch(err){ MSG="Couldn't save: "+err.message; } show(); return; }
   if(a==="addnote"){ const t=$("newnote").value.trim(); if(!t) return; if(needWho()) return; try{ await patch(REC.id,{[R.notes]:appendNote(REC,t)}); MSG="Note saved."; }catch(err){ MSG="Couldn't save the note: "+err.message; } show(); return; }
   if(a==="saveedit"){ if(needWho()) return; BUSY=true; show(); try{ await patch(REC.id,fieldsFrom(EDIT)); MODE="view"; EDIT=null; MSG="Saved."; EMAIL=null; }catch(err){ MSG="Couldn't save: "+err.message; } BUSY=false; show(); return; }
   if(a==="savenew"){ if(needWho()) return; if(!EDIT.name.trim()&&!EDIT.cust.trim()){ MSG="Add the item or the customer's name."; show(); return; }
@@ -326,7 +327,7 @@ document.addEventListener("click", async e=>{
       for(const x of NEWQ.photos){ try{ await upload(rec.id,R.photos,x); }catch(err){ errs.push(err.message); } }
       for(const x of NEWQ.files){ try{ await upload(rec.id,R.files,x); }catch(err){ errs.push(err.message); } }
       if(NEWQ.photos.length||NEWQ.files.length) await getOne(rec.id).catch(()=>{});
-      NEWQ={photos:[],files:[]}; EDIT=null; BUSY=false; REC=ALL.find(x=>x.id===rec.id)||rec; MODE="view"; EMAIL=null; MSG=errs.length?"Saved, but some files didn't upload: "+errs.join("; "):"Return saved."; show(); window.scrollTo(0,0);
+      NEWQ={photos:[],files:[]}; EDIT=null; BUSY=false; REC=ALL.find(x=>x.id===rec.id)||rec; MODE="view"; EMAIL=null; MSG=errs.length?"Saved, but some files didn't upload: "+errs.join("; "):"Return saved."; show(); window.scrollTo(0,0); fu("Return saved.");
     }catch(err){ BUSY=false; MSG="Couldn't save: "+err.message; show(); }
     return; }
   if(a==="tpl"){ startEmail(b.dataset.k); show(); return; }
@@ -362,5 +363,6 @@ $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$(
   try{ await Promise.all([loadAll(),loadUnread()]); const m=/[?&]id=(rec\w+)/.exec(location.search); if(m&&ALL.some(x=>x.id===m[1])) openRet(m[1]); else show(); }
   catch(err){ MSG="Couldn't load returns: "+err.message; show(); } })();
 </script>
+<script src="/t/followup.js?v=1"></script>
 </body>
 </html>

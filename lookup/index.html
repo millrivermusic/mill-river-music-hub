@@ -302,7 +302,8 @@ async function commit(){ if(busy||!pending) return; busy=true; $("review").inner
     const parts=[]; if(pending.note) parts.push(pending.note); if(pending.changes.length) parts.push("Changed "+pending.changes.map(c=>`${c.label} ${c.from} → ${c.to}`).join("; "));
     fields[FX.notes]=(cur?cur+"\n":"")+`[${stamp} ${WHO}] ${parts.join(". ")}`;
     const out=await api(`/${REC.id}`,{method:"PATCH",body:JSON.stringify({fields,returnFieldsByFieldId:true})});
-    const what=pending.note&&!pending.changes.length?"Note saved.":"Saved: "+pending.changes.map(c=>`${esc(c.label)} ${esc(c.from)} → ${esc(c.to)}`).join("; ")+"."; REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; pending=null; editing=false; busy=false; renderItem(`<div class="note ok">${what} Logged in Notes.</div>`); }
+    const what=pending.note&&!pending.changes.length?"Note saved.":"Saved: "+pending.changes.map(c=>`${esc(c.label)} ${esc(c.from)} → ${esc(c.to)}`).join("; ")+"."; REC.fields={...REC.fields,...fresh.fields,...(out.fields||fields)}; pending=null; editing=false; busy=false; renderItem(`<div class="note ok">${what} Logged in Notes.</div>`);
+    if(window.mrmFollowUp){ const sk=(function(v){ return (v&&v.text)||v||""; })(REC.fields[FX.sku]), nm=REC.fields[FX.name]||""; mrmFollowUp({what:"Saved.",dept:"Intake & Used",ref:{t:"item",id:REC.id,label:(sk?sk+" · ":"")+nm,url:sk?"/t/lookup/?sku="+encodeURIComponent(sk):"/t/lookup/"}}); } }
   catch(e){ busy=false; $("review").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 
 /* ---------- scan ---------- */
@@ -339,7 +340,7 @@ async function cSave(){ const ch=cChanges(); if(!ch.length||CEDIT.busy) return;
   CEDIT.busy=true; CEDIT.err=""; renderCust();
   try{ const out=await apiT(UT,`/${CUST.id}`,{method:"PATCH",body:JSON.stringify({fields,typecast:true,returnFieldsByFieldId:true})});
     CUST.fields={...CUST.fields,...(out.fields||{})}; ch.forEach(c=>{ if(c.to==="") delete CUST.fields[c.fid]; });
-    CMSG="Saved: "+ch.map(c=>c.l).join(", ")+". Sending to Lightspeed."; CEDIT=null; }
+    CMSG="Saved: "+ch.map(c=>c.l).join(", ")+". Sending to Lightspeed."; CEDIT=null; if(window.mrmFollowUp) mrmFollowUp({what:"Customer saved.",dept:"Customer Success",ref:{t:"customer",id:CUST.id,label:"Customer",url:"/t/customers/#"+CUST.id}}); }
   catch(e){ CEDIT.busy=false; CEDIT.err="Didn't save: "+e.message; }
   renderCust(); }
 /* customers the Lightspeed sync couldn't sort out: warn whoever pulls them up */
@@ -488,5 +489,6 @@ function start(){ $("setup").hidden=!!TOKEN; $("browse").hidden=!TOKEN; $("seg")
   if(m){ $("q").value=decodeURIComponent(m[1]); find($("q").value); } else loadTab(); loadCounts(); }
 start();
 </script>
+<script src="/t/followup.js?v=1"></script>
 </body>
 </html>
