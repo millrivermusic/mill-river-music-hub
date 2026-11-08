@@ -225,6 +225,11 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
     <div id="tbody"><div class="small" style="color:var(--muted)">Loading tasks…</div></div>
   </section>
 
+  <section class="card" id="convsd" hidden>
+    <h2 style="margin:0 0 6px">Not yet assigned in your departments</h2>
+    <div id="cvdbody"></div>
+  </section>
+
   <section class="card" id="qlcard">
     <h2>Quick links</h2>
     <div class="links">
@@ -503,7 +508,7 @@ function annHTML(a,full){ const f=a.fields||{}; return `<div class="ann"><div cl
 renderTiles=function(){ renderSide(); const box=$("tiles"); const show=(id,on)=>{ const el=$(id); if(el) el.hidden=!on; };
   const pg=PAGES.find(p=>p.k===PAGE);
   $("hello").parentElement.hidden=PAGE!=="home"; $("sandbox").hidden=PAGE!=="home";
-  show("ann",PAGE==="board"); show("convs",PAGE==="me"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
+  show("ann",PAGE==="board"); show("convs",PAGE==="me"); show("convsd",PAGE==="me"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
   if(PAGE==="home"){ const pins=ANN.filter(a=>(a.fields||{}).Pinned);
     box.innerHTML=(pins.length?`<div class="annstrip">${pins.slice(0,3).map(a=>annHTML(a,false)).join("")}</div>`:"")+`<div class="pgrid">${PAGES.map(pg=>{ const fl=pageFlags(pg); return `<a class="ptile" href="${pg.href||"#"+pg.k}"><div class="pt"><span class="i" aria-hidden="true">${pg.ic}</span>${esc(pg.t)}</div><p>${esc(pg.p)}</p>${fl.length?`<div class="flags">${fl.map(([t,h])=>`<span class="flag ${h?"hot":""}">${esc(t)}</span>`).join("")}</div>`:""}</a>`; }).join("")}</div>`; return; }
   const head=`<div class="crumb"><a href="#home">← Home</a><h2>${esc(pg?pg.t:"")}</h2></div>`;
@@ -549,11 +554,11 @@ async function loadConvs(){ try{ let out=[], off=""; const f=encodeURIComponent(
     CONVS=out; }catch(e){ CONVS=[]; } renderConvs(); renderTiles(); }
 function convRow(c){ const ic={Email:"✉",Text:"💬",Voicemail:"📞",["Missed call"]:"📵",Form:"📝"}[cv(c,"Channel")]||"✉"; const t=cv(c,"Last Message At"); const when=t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
   return `<div class="titem"><span aria-hidden="true" style="width:17px;flex:none;text-align:center">${ic}</span><div style="min-width:0;flex:1"><div class="tt"><a href="/t/inbox/#${c.id}" style="color:inherit">${esc(cv(c,"Contact Name")||cv(c,"Contact Address")||"Customer")}</a> <span class="tm">· ${esc(cv(c,"Subject")||"")}</span></div><div class="tm">${esc(cv(c,"Status")||"New")}${cv(c,"Department")?" · "+esc(cv(c,"Department")):""}${cv(c,"Type")?" · "+esc(cv(c,"Type")):""}${cv(c,"Last From")==="Customer"?" · <b>customer wrote last</b>":""} · ${esc(when)}</div><div class="tm" style="color:var(--ink)">${esc(String(cv(c,"Snippet")||"").replace(/\s+/g," ").slice(0,140))}</div></div></div>`; }
-function renderConvs(){ const el=$("cvbody"); if(!el) return; if(!WHO){ el.innerHTML=`<div class="small">Pick a name to see their conversations.</div>`; return; }
+function renderConvs(){ const el=$("cvbody"); if(!el) return; if(!WHO){ el.innerHTML=`<div class="small">Pick a name to see their conversations.</div>`; if($("cvdbody")) $("cvdbody").innerHTML=""; return; }
   const mine=CONVS.filter(c=>cv(c,"Assigned To")===WHO), D=(typeof staffDepts==="function"?staffDepts()[WHO]:null)||[];
   const dept=CONVS.filter(c=>!cv(c,"Assigned To")&&D.includes(cv(c,"Department")));
-  el.innerHTML=`<h4 style="margin:6px 0">Assigned to ${esc(WHO)} <span class="tm">${mine.length}</span></h4>${mine.length?mine.map(convRow).join(""):`<div class="small" style="color:var(--muted)">Nothing assigned.</div>`}`+
-   (D.length?`<h4 style="margin:14px 0 6px">Not yet assigned in ${esc(D.join(", "))} <span class="tm">${dept.length}</span></h4>${dept.length?dept.map(convRow).join(""):`<div class="small" style="color:var(--muted)">All caught up.</div>`}`:""); }
+  el.innerHTML=`<h4 style="margin:6px 0">Assigned to ${esc(WHO)} <span class="tm">${mine.length}</span></h4>${mine.length?mine.map(convRow).join(""):`<div class="small" style="color:var(--muted)">Nothing assigned.</div>`}`;
+  const el2=$("cvdbody"); if(el2) el2.innerHTML=D.length?`<div class="tm" style="margin-bottom:6px">${esc(D.join(", "))} · ${dept.length}</div>${dept.length?dept.map(convRow).join(""):`<div class="small" style="color:var(--muted)">All caught up.</div>`}`:`<div class="small" style="color:var(--muted)">No departments ticked for ${esc(WHO)} in the Staff table.</div>`; }
 const _rT=renderTasks, _rM=renderMsgs; renderTasks=function(){ _rT(); if(PAGE==="home") renderTiles(); else renderSide(); }; renderMsgs=function(){ _rM(); if(PAGE==="home") renderTiles(); else renderSide(); };
 route(); loadAnn(); loadConvs(); setInterval(()=>{ if(document.visibilityState==="visible") loadConvs(); },180000);
 hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
