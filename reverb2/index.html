@@ -392,8 +392,8 @@ $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<opt
 const TT="tblOwTXbybJC6K9Xn", TF={task:"fldUmwZCpYmY4ydf4",to:"fldULoJtT1tjDewdy",dept:"fldI5KOzdrPwbar0s",status:"fldX2trA6QSciYsT4",due:"fldnzJlk5rWhduMoI",details:"fld4laJasSMdypGRQ",source:"fldZQT4sY9W9ZOusm",link:"fld6iLbLRVCke9OA0",madeBy:"fldlJbD6svflYUgEg",doneBy:"fldB5i9XgOsK4i2Zs"};
 const DEPTS=["Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
 function dayStr(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("en-CA"); }
-function closeModal(){ const m=$("mback"); if(m) m.remove(); }
-function taskPrompt(ctx){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
+function closeModal(){ const m=$("tmodal"); if(m) m.remove(); }
+function taskPrompt(ctx){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="tmodal";
   el.innerHTML=`<div class="mbox" role="dialog" aria-label="Add a task"><h3>${ctx.ask===false?"Add a task":"Put this on someone's list?"}</h3><div class="small muted" style="margin-bottom:10px">${esc(ctx.source||"")}</div>
    <label class="f">Task<input class="t" id="tTask" value="${esc(ctx.task||"")}"></label>
    <div class="grid2"><label class="f">For<select class="t" id="tTo"><option value="">Reverb department (anyone)</option>${STAFF.map(n=>`<option ${n===ctx.to?"selected":""}>${n}</option>`).join("")}</select></label>
@@ -405,7 +405,7 @@ function taskPrompt(ctx){ closeModal(); const el=document.createElement("div"); 
   document.body.appendChild(el); el.__ctx=ctx;
   const upd=()=>{ $("tNote").textContent= false ? "Julia's list needs an OK from Jon, Sam or Nina, so this will wait for one of them." : ""; };
   $("tTo").addEventListener("change",upd); upd(); setTimeout(()=>{ try{ $("tTask").focus(); $("tTask").select(); }catch(e){} },50); }
-async function addTask(){ const ctx=$("mback").__ctx, b=$("tAdd"); const task=$("tTask").value.trim(); if(!task){ $("tNote").textContent="Write what needs doing."; return; }
+async function addTask(){ const ctx=$("tmodal").__ctx, b=$("tAdd"); const task=$("tTask").value.trim(); if(!task){ $("tNote").textContent="Write what needs doing."; return; }
   if(!WHO){ $("tNote").textContent="Pick your name at the top first."; return; }
   const to=$("tTo").value, needsOk = false;
   const f={[TF.task]:task,[TF.dept]:$("tDept").value,[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:$("tDet").value.trim(),[TF.source]:ctx.source||"",[TF.madeBy]:WHO};
@@ -417,7 +417,7 @@ var TASKS=null, TVIEW="mine";
 async function loadTasks(){ const recs=[]; let off=""; do{ const j=await at(`${TT}?returnFieldsByFieldId=true&pageSize=100${off?"&offset="+off:""}&filterByFormula=${encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-7,'days')))")}`); recs.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=recs; return recs; }
 function tv(r,k){ const v=(r.fields||{})[TF[k]]; return v&&typeof v==="object"&&v.name?v.name:v; }
 async function updTaskBtn(){ const b=$("tasksBtn"); if(!b) return; try{ const t=TASKS||await loadTasks(); const mine=t.filter(r=>tv(r,"status")!=="Done"&&(tv(r,"to")===WHO||(!tv(r,"to")&&tv(r,"dept")==="Reverb"))).length; b.textContent=mine?`Tasks (${mine})`:"Tasks"; }catch(e){} }
-async function openTasks(){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
+async function openTasks(){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="tmodal";
   el.innerHTML=`<div class="mbox tpanel"><div class="row" style="justify-content:space-between"><h3>Reverb tasks</h3><button class="btn sec sm" id="tClose" type="button">Close</button></div>
    <div class="filters" style="margin:8px 0">${[["mine","Mine"],["reverb","Reverb department"],["all","Everyone"],["done","Done this week"]].map(([k,l])=>`<button class="chip ${TVIEW===k?"on":""}" data-tv="${k}" type="button">${l}</button>`).join("")}<button class="chip" id="tNew" type="button">+ New task</button></div>
    <div id="tList"><div class="muted">Loading…</div></div></div>`;
@@ -440,7 +440,7 @@ async function renderTasks(){ const box=$("tList"); if(!box) return; let t; try{
 async function setTask(id,fields){ await at(`${TT}`,{method:"PATCH",body:JSON.stringify({records:[{id,fields}],typecast:true})}); TASKS=null; if($("tList")) await renderTasks(); else await loadTasks(); updTaskBtn(); if(TAB==="tasks") renderList(); }
 document.addEventListener("click",async e=>{ const t=e.target;
   if(t.id==="tasksBtn"){ openTasks(); return; }
-  if(t.id==="tClose"||t.id==="tSkip"||(t.id==="mback")){ closeModal(); return; }
+  if(t.id==="tClose"||t.id==="tSkip"||(t.id==="tmodal")){ closeModal(); return; }
   if(t.id==="tAdd"){ addTask(); return; }
   if(t.id==="tNew"){ taskPrompt({ask:false,source:"Added from the Reverb Desk",dept:"Reverb"}); return; }
   if(t.dataset&&t.dataset.tv){ TVIEW=t.dataset.tv; document.querySelectorAll("[data-tv]").forEach(c=>c.classList.toggle("on",c.dataset.tv===TVIEW)); renderTasks(); return; }
@@ -508,7 +508,7 @@ function refFor(row){ const k=row.kind; if(k==="order") return {t:"reverb-order"
   if(k==="offer") return {t:"reverb-offer",id:row.id,label:`${row.n.buyer_name||"Buyer"} — ${row.L.title}`,url:`/t/reverb/#offer-${row.id}`};
   if(k==="refund") return {t:"reverb-refund",id:row.id,label:row.title,url:`/t/reverb/#refund-${row.id}`};
   return {t:"reverb-msg",id:row.id,label:`${row.title} — ${row.sub||"message"}`,url:`/t/reverb/#msg-${row.id}`}; }
-function msgPrompt(row){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback"; const ref=refFor(row);
+function msgPrompt(row){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="tmodal"; const ref=refFor(row);
   el.innerHTML=`<div class="mbox" role="dialog" aria-label="Message a teammate"><h3>Message a teammate</h3><div class="small muted" style="margin-bottom:8px">About: ${esc(ref.label)}</div>
    <label class="f">To<select class="t" id="tmTo"><option>Reverb dept</option><option>Everyone</option>${STAFF.map(n=>`<option>${n}</option>`).join("")}</select></label>
    <label class="f">Message<textarea class="t" id="tmText"></textarea></label><div class="small muted" id="tmNote"></div>
@@ -517,7 +517,7 @@ function msgPrompt(row){ closeModal(); const el=document.createElement("div"); e
 document.addEventListener("click",async e=>{ const t=e.target;
   if(t.id==="dMsg2"){ const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(row) msgPrompt(row); return; }
   if(t.id==="tmSend"){ const text=$("tmText").value.trim(); if(!WHO){ $("tmNote").textContent="Pick your name at the top first."; return; } if(!text){ $("tmNote").textContent="Write a message."; return; }
-    t.disabled=true; try{ await at(TMSG,{method:"POST",body:JSON.stringify({records:[{fields:{Message:text,From:WHO,To:$("tmTo").value,"Read By":[WHO],Refs:JSON.stringify([$("mback").__ref])}}],typecast:true})}); closeModal(); flashTop("Sent. It's in Team messages on the hub."); }catch(err){ $("tmNote").textContent=err.message; t.disabled=false; } return; }
+    t.disabled=true; try{ await at(TMSG,{method:"POST",body:JSON.stringify({records:[{fields:{Message:text,From:WHO,To:$("tmTo").value,"Read By":[WHO],Refs:JSON.stringify([$("tmodal").__ref])}}],typecast:true})}); closeModal(); flashTop("Sent. It's in Team messages on the hub."); }catch(err){ $("tmNote").textContent=err.message; t.disabled=false; } return; }
 });
 // open an item from a link like /t/reverb/#msg-123 , #offer-456 , #order-789
 async function openFromHash(){ const m=/^#(msg|offer|order|refund)-(\w+)$/.exec(location.hash||""); if(!m) return; const k=m[1], id=m[2];
@@ -559,7 +559,7 @@ function snapshot(){ const L=r=>{ const d=deskOf(r); return {kind:KINDS[r.kind],
 var ASK=[]; var ASKBUSY=false;
 function md(t){ return esc(t).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/^#+\s*(.+)$/gm,"<b>$1</b>"); }
 async function openMgr(){ closeModal(); try{ if(!TASKS) await loadTasks(); }catch(e){}
-  const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  const el=document.createElement("div"); el.className="mback"; el.id="tmodal";
   const g=gaps();
   el.innerHTML=`<div class="mbox mgr"><div class="row" style="justify-content:space-between"><h3>Manager view</h3><button class="btn sec sm" id="tClose" type="button">Close</button></div>
    <div class="small muted" style="margin-bottom:8px">Everything open on Reverb right now, what's happening, and a box to ask about it.</div>
