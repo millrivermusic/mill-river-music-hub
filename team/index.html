@@ -211,6 +211,10 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Customer conversations</h2><a class="btn sec sm" href="/t/inbox/" style="text-decoration:none">Open the Customer Desk</a></div>
     <div id="cvbody"><div class="small" style="color:var(--muted)">Loading…</div></div>
   </section>
+  <section class="card" id="deskw" hidden>
+    <h2 style="margin:0 0 6px">From the desks</h2>
+    <div id="dwbody"><div class="small" style="color:var(--muted)">Loading…</div></div>
+  </section>
   <section class="card" id="tmsgs">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team messages</h2><div style="display:flex;gap:6px"><button class="btn sec sm" id="mReadAll" type="button">Mark all read</button><button class="btn sm" id="mNew" type="button">+ New message</button></div></div>
     <div class="tbar" id="mbar"></div>
@@ -249,7 +253,7 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
 "use strict";
 const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
 const STAFF=(function(){ var fb=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; try{ var c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return fb; })();
-(function(){ try{ fetch("https://api.airtable.com/v0/appZD2jJGbSlvofcV/tbluogAt5hDWgzbgi?filterByFormula="+encodeURIComponent("{In Apps}")+"&fields%5B%5D=Name&fields%5B%5D=Can%20Approve&fields%5B%5D=Departments",{headers:{Authorization:"Bearer via-hub"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){ if(!j||!j.records||!j.records.length) return; var rs=j.records.filter(function(r){return r.fields&&r.fields.Name;}); var n=rs.map(function(r){return r.fields.Name;}); var ap=rs.filter(function(r){return r.fields["Can Approve"];}).map(function(r){return r.fields.Name;}); var ids={}; rs.forEach(function(r){ids[r.fields.Name]=r.id;}); var depts={}; rs.forEach(function(r){depts[r.fields.Name]=r.fields.Departments||[];});
+(function(){ try{ fetch("https://api.airtable.com/v0/appZD2jJGbSlvofcV/tbluogAt5hDWgzbgi?filterByFormula="+encodeURIComponent("{In Apps}")+"&fields%5B%5D=Name&fields%5B%5D=Can%20Approve&fields%5B%5D=Departments",{headers:{Authorization:"Bearer via-hub"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){ if(!j||!j.records||!j.records.length) return; var rs=j.records.filter(function(r){return r.fields&&r.fields.Name;}); if(!rs.length) return; var n=rs.map(function(r){return r.fields.Name;}); var ap=rs.filter(function(r){return r.fields["Can Approve"];}).map(function(r){return r.fields.Name;}); var ids={}; rs.forEach(function(r){ids[r.fields.Name]=r.id;}); var depts={}; rs.forEach(function(r){depts[r.fields.Name]=r.fields.Departments||[];});
   try{ localStorage.setItem("mrm-staff",JSON.stringify(n)); localStorage.setItem("mrm-approvers",JSON.stringify(ap)); localStorage.setItem("mrm-staff-ids",JSON.stringify(ids)); localStorage.setItem("mrm-staff-depts",JSON.stringify(depts)); }catch(e){}
   var changed=n.join("|")!==STAFF.join("|"); STAFF.splice.apply(STAFF,[0,STAFF.length].concat(n)); window.STAFF_IDS=ids; window.STAFF_DEPTS=depts; if(changed&&typeof window.onStaff==="function") window.onStaff(); }).catch(function(){}); }catch(e){} })();
 const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
@@ -496,7 +500,7 @@ const PAGES=[
 var PAGE="home", ANN=[], ACOMP=false, PREVV=null;
 function tilesOf(pg){ const out=[]; let cur=null; TILES.forEach(t=>{ if(t.sec){ cur=t.sec; return; } if(pg.secs&&pg.secs.includes(cur)) out.push(t); }); return out; }
 function hotN(k){ const v=VAL[k]; return typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert))?v:0; }
-function myOpen(){ return TASKS.filter(r=>tf(r,"Assigned To")===WHO&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===WHO).length+CONVS.filter(c=>cv(c,"Assigned To")===WHO).length; }
+function myOpen(){ return TASKS.filter(r=>tf(r,"Assigned To")===WHO&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===WHO).length+CONVS.filter(c=>cv(c,"Assigned To")===WHO).length+(typeof DW!=="undefined"?(()=>{ const w=deskWorkFor(WHO); return w.wa.length+w.re.length+w.rp.length; })():0); }
 function unreadN(){ return (MSGS||[]).filter(unread).length; }
 function pageFlags(pg){ const f=[];
   if(pg.k==="board"){ const u=unreadN(), o=TASKS.filter(r=>tf(r,"Status")!=="Done").length, a=ANN.length; if(u) f.push([u+" unread",1]); f.push([o+" open task"+(o===1?"":"s"),0]); if(a) f.push([a+" announcement"+(a>1?"s":""),0]); }
@@ -508,13 +512,13 @@ function annHTML(a,full){ const f=a.fields||{}; return `<div class="ann"><div cl
 renderTiles=function(){ renderSide(); const box=$("tiles"); const show=(id,on)=>{ const el=$(id); if(el) el.hidden=!on; };
   const pg=PAGES.find(p=>p.k===PAGE);
   $("hello").parentElement.hidden=PAGE!=="home"; $("sandbox").hidden=PAGE!=="home";
-  show("ann",PAGE==="board"); show("convs",PAGE==="me"); show("convsd",PAGE==="me"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
+  show("ann",PAGE==="board"); show("convs",PAGE==="me"); show("deskw",PAGE==="me"); show("convsd",PAGE==="me"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
   if(PAGE==="home"){ const pins=ANN.filter(a=>(a.fields||{}).Pinned);
     box.innerHTML=(pins.length?`<div class="annstrip">${pins.slice(0,3).map(a=>annHTML(a,false)).join("")}</div>`:"")+`<div class="pgrid">${PAGES.map(pg=>{ const fl=pageFlags(pg); return `<a class="ptile" href="${pg.href||"#"+pg.k}"><div class="pt"><span class="i" aria-hidden="true">${pg.ic}</span>${esc(pg.t)}</div><p>${esc(pg.p)}</p>${fl.length?`<div class="flags">${fl.map(([t,h])=>`<span class="flag ${h?"hot":""}">${esc(t)}</span>`).join("")}</div>`:""}</a>`; }).join("")}</div>`; return; }
   const head=`<div class="crumb"><a href="#home">← Home</a><h2>${esc(pg?pg.t:"")}</h2></div>`;
   if(PAGE==="board"){ box.innerHTML=head; return; }
-  if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length+CONVS.filter(c=>cv(c,"Assigned To")===n).length;
-    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s work: customer conversations, tasks, messages and Reverb items. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
+  if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length+CONVS.filter(c=>cv(c,"Assigned To")===n).length+(typeof DW!=="undefined"?(()=>{ const w=deskWorkFor(n); return w.wa.length+w.re.length+w.rp.length; })():0);
+    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s work: customer conversations, desk items, messages and tasks. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
   const ts=tilesOf(pg); box.innerHTML=head+`<div class="grid">${ts.map(tile).join("")}</div>`; };
 renderSide=function(){ const el=$("side"); if(!el) return; let h=`<div class="sgrp"><a class="l1 ${PAGE==="home"?"on":""}" href="#home"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a></div>`; let g=null;
   PAGES.forEach(pg=>{ if(pg.g!==g){ if(g!==null) h+=`</div>`; g=pg.g; h+=`<div class="sgrp"><div class="sh">${esc(g)}</div>`; }
@@ -541,10 +545,10 @@ document.addEventListener("click",async e=>{ const t=e.target;
     const f={Title:title,Body:$("aB").value.trim(),From:WHO,Department:$("aD").value,Pinned:$("aP").checked}; if($("aU").value) f["Show Until"]=$("aU").value; const sid=(window.STAFF_IDS||{})[WHO]; if(sid) f["From (Staff)"]=[sid];
     t.disabled=true; try{ await atT("tblRAMJZ2nXXQM9QU",{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); ACOMP=false; await loadAnn(); }catch(err){ $("aMsg").textContent=err.message; t.disabled=false; } return; }
   if(t.dataset&&t.dataset.adown){ e.preventDefault(); const y=new Date(Date.now()-864e5).toISOString().slice(0,10); try{ await atT("tblRAMJZ2nXXQM9QU",{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.adown,fields:{"Show Until":y,Pinned:false}}]})}); await loadAnn(); }catch(err){ alert(err.message); } } });
-$("who").addEventListener("change",()=>{ renderTiles(); renderConvs(); });
+$("who").addEventListener("change",()=>{ renderTiles(); renderConvs(); renderDeskWork(); });
 window.onStaff=function(){ try{ $("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join(""); renderTasks(); }catch(_){} };
 function forMeAs(r,n){ const o=WHO; WHO=n; try{ return forMe(r); } finally{ WHO=o; } }
-document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; WHO=b.dataset.pickwho; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} renderTiles(); renderConvs(); try{ renderTasks(); renderMsgs(); }catch(_){} });
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; WHO=b.dataset.pickwho; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} renderTiles(); renderConvs(); renderDeskWork(); try{ renderTasks(); renderMsgs(); }catch(_){} });
 
 // ---- Customer conversations (Customer Desk) for My Work ----
 var CONVS=[];
@@ -559,8 +563,36 @@ function renderConvs(){ const el=$("cvbody"); if(!el) return; if(!WHO){ el.inner
   const dept=CONVS.filter(c=>!cv(c,"Assigned To")&&D.includes(cv(c,"Department")));
   el.innerHTML=`<h4 style="margin:6px 0">Assigned to ${esc(WHO)} <span class="tm">${mine.length}</span></h4>${mine.length?mine.map(convRow).join(""):`<div class="small" style="color:var(--muted)">Nothing assigned.</div>`}`;
   const el2=$("cvdbody"); if(el2) el2.innerHTML=D.length?`<div class="tm" style="margin-bottom:6px">${esc(D.join(", "))} · ${dept.length}</div>${dept.length?dept.map(convRow).join(""):`<div class="small" style="color:var(--muted)">All caught up.</div>`}`:`<div class="small" style="color:var(--muted)">No departments ticked for ${esc(WHO)} in the Staff table.</div>`; }
-const _rT=renderTasks, _rM=renderMsgs; renderTasks=function(){ _rT(); if(PAGE==="home") renderTiles(); else renderSide(); }; renderMsgs=function(){ _rM(); if(PAGE==="home") renderTiles(); else renderSide(); };
-route(); loadAnn(); loadConvs(); setInterval(()=>{ if(document.visibilityState==="visible") loadConvs(); },180000);
+
+// ---- My Work: items assigned in the other desks (Reverb, warranty, returns, repairs) ----
+var DW={warr:[],rets:[],reps:[],emp:{},loaded:false};
+async function allAT(path){ let out=[], off=""; do{ const j=await atT(path+(path.includes("?")?"&":"?")+"pageSize=100"+(off?"&offset="+encodeURIComponent(off):"")); out=out.concat(j.records||[]); off=j.offset||""; }while(off&&out.length<1000); return out; }
+async function loadDeskWork(){ try{
+    const staff=await allAT("tbluogAt5hDWgzbgi?returnFieldsByFieldId=true&fields%5B%5D=fldpn0wTfw3tvXHqq&fields%5B%5D=fldFYgiqOVgIsrxLj");
+    const emp={}; staff.forEach(r=>{ (r.fields.fldFYgiqOVgIsrxLj||[]).forEach(e=>emp[e]=r.fields.fldpn0wTfw3tvXHqq); }); DW.emp=emp;
+    const shut="NOT(OR({Status}='Payout Complete',{Status}='Customer Passed',FIND('Rejected',{Status})))";
+    const tay=await allAT(`tblUR6Y7rfCLBSllO?returnFieldsByFieldId=true&fields%5B%5D=fldyjazpXcJlkRKTp&fields%5B%5D=fldAgQWqOARycTlWc&fields%5B%5D=fld2McIGsJW9un93M&filterByFormula=${encodeURIComponent(shut)}`).catch(()=>[]);
+    const mar=await allAT(`tblqbwCvWxNz1REQt?returnFieldsByFieldId=true&fields%5B%5D=fld4DAdNsuU9KQ3o4&fields%5B%5D=fld6AgAOjS2mCSErR&fields%5B%5D=fldy6Cm4X17XUmsyr&filterByFormula=${encodeURIComponent(shut)}`).catch(()=>[]);
+    const nm=v=>v&&v.name?v.name:(v||"");
+    DW.warr=tay.map(r=>({id:r.id,brand:"Taylor",who:emp[(r.fields.fldyjazpXcJlkRKTp||[])[0]]||"",status:nm(r.fields.fldAgQWqOARycTlWc),serial:r.fields.fld2McIGsJW9un93M||""}))
+      .concat(mar.map(r=>({id:r.id,brand:"Martin",who:emp[(r.fields.fld4DAdNsuU9KQ3o4||[])[0]]||"",status:nm(r.fields.fld6AgAOjS2mCSErR),serial:r.fields.fldy6Cm4X17XUmsyr||""})));
+    const rets=await allAT(`tblkWYK4EudB8tW7G?returnFieldsByFieldId=true&fields%5B%5D=fldpZxZ3SRaW6ehDr&fields%5B%5D=fldUrDMkm0nO96hXc&fields%5B%5D=fldVim5LDQ89b8qAd&filterByFormula=${encodeURIComponent("NOT(OR({Status}='Closed',{Status}='Done'))")}`).catch(()=>[]);
+    DW.rets=rets.map(r=>({id:r.id,who:String((r.fields.fldpZxZ3SRaW6ehDr||{}).name||"").trim().split(/\s+/)[0],status:nm(r.fields.fldUrDMkm0nO96hXc),name:r.fields.fldVim5LDQ89b8qAd||"Return"}));
+    const reps=await allAT(`tbleYgUhKCIepPtFR?returnFieldsByFieldId=true&fields%5B%5D=fld9hJXSmpyL6ZPTy&fields%5B%5D=fldM1ajllQvTvdKwI&fields%5B%5D=flde17o9HEpKPdMlS&fields%5B%5D=fldfKGlajXOBkUQ92&filterByFormula=${encodeURIComponent("AND({Assigned To}!='',FIND('Needs Work',{Physical Status}&''))")}`).catch(()=>[]);
+    DW.reps=reps.map(r=>({id:r.id,who:(r.fields.fld9hJXSmpyL6ZPTy||[]).map(nm),status:nm(r.fields.fldM1ajllQvTvdKwI),name:r.fields.flde17o9HEpKPdMlS||"",sku:(r.fields.fldfKGlajXOBkUQ92&&r.fields.fldfKGlajXOBkUQ92.text)||r.fields.fldfKGlajXOBkUQ92||""}));
+  }catch(e){} DW.loaded=true; renderDeskWork(); renderTiles(); }
+function dwRow(ic,title,sub,href){ return `<div class="titem"><span aria-hidden="true" style="width:17px;flex:none;text-align:center">${ic}</span><div style="min-width:0;flex:1"><div class="tt"><a href="${href}" style="color:inherit">${esc(title)}</a></div><div class="tm">${esc(sub)}</div></div></div>`; }
+function deskWorkFor(n){ return {rv:DESKA.filter(d=>d.to===n), wa:DW.warr.filter(w=>w.who===n), re:DW.rets.filter(r=>r.who===n), rp:DW.reps.filter(r=>r.who.includes(n))}; }
+function renderDeskWork(){ const el=$("dwbody"); if(!el) return; if(!WHO){ el.innerHTML=`<div class="small">Pick a name.</div>`; return; } if(!DW.loaded){ el.innerHTML=`<div class="small" style="color:var(--muted)">Loading…</div>`; return; }
+  const w=deskWorkFor(WHO), parts=[];
+  const sec=(t,rows)=>`<h4 style="margin:10px 0 4px">${t} <span class="tm">${rows.length}</span></h4>${rows.join("")}`;
+  if(w.rv.length) parts.push(sec("Reverb",w.rv.map(d=>dwRow("🎸",`Reverb ${String(d.kind).toLowerCase()}: ${d.title}`,`${d.status||"Open"}${d.by?" · assigned by "+d.by:""}`,`/t/reverb/${deskHash(d)}`))));
+  if(w.wa.length) parts.push(sec("Martin & Taylor warranty",w.wa.map(c=>dwRow("🛠",`${c.brand} warranty${c.serial?" · serial "+c.serial:""}`,c.status||"Open",`/t/warranty/#${c.id}`))));
+  if(w.re.length) parts.push(sec("Returns",w.re.map(r=>dwRow("↩️",r.name,r.status||"Open",`/t/returns/#${r.id}`))));
+  if(w.rp.length) parts.push(sec("Repairs on the Tech Bench",w.rp.map(r=>dwRow("🔧",`${r.sku?r.sku+" · ":""}${r.name}`,r.status||"",r.sku?`/t/lookup/?sku=${encodeURIComponent(r.sku)}`:"/t/tech/"))));
+  el.innerHTML=parts.length?parts.join(""):`<div class="small" style="color:var(--muted)">Nothing assigned to ${esc(WHO)} in the Reverb, Warranty, Returns or Tech desks.</div>`; }
+const _rT=renderTasks, _rM=renderMsgs; renderTasks=function(){ _rT(); try{ renderDeskWork(); }catch(_){} if(PAGE==="home") renderTiles(); else renderSide(); }; renderMsgs=function(){ _rM(); if(PAGE==="home") renderTiles(); else renderSide(); };
+route(); loadAnn(); loadConvs(); loadDeskWork(); setInterval(()=>{ if(document.visibilityState==="visible") loadConvs(); },180000);
 hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
 </script>
 <script src="/t/followup.js?v=1"></script>
