@@ -207,6 +207,10 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
     <div id="abody"><div class="small" style="color:var(--muted)">Loading…</div></div>
   </section>
 
+  <section class="card" id="convs" hidden>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Customer conversations</h2><a class="btn sec sm" href="/t/inbox/" style="text-decoration:none">Open the Customer Desk</a></div>
+    <div id="cvbody"><div class="small" style="color:var(--muted)">Loading…</div></div>
+  </section>
   <section class="card" id="tmsgs">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team messages</h2><div style="display:flex;gap:6px"><button class="btn sec sm" id="mReadAll" type="button">Mark all read</button><button class="btn sm" id="mNew" type="button">+ New message</button></div></div>
     <div class="tbar" id="mbar"></div>
@@ -476,7 +480,7 @@ fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.jso
 // ---- Pages (11/7): home is a set of tiles; each opens its own page ----
 const PAGES=[
  {k:"board",g:"Team",ic:"💬",t:"Team Board",p:"Messages, tasks and announcements for the whole team."},
- {k:"me",g:"Team",ic:"🙋",t:"My Messages & Tasks",p:"Pick a person: their messages, their tasks and the Reverb items assigned to them."},
+ {k:"me",g:"Team",ic:"🙋",t:"My Work",p:"Pick a person: their customer conversations, tasks, messages and Reverb items in one place."},
  {k:"reverb",g:"Desks",ic:"🎸",t:"Reverb Desk",p:"Reverb messages, offers, orders and the Reverb task list.",href:"/t/reverb/"},
  {k:"intake",g:"Desks",ic:"🤝",t:"Intake & Inventory",p:"Buy, trade and consign; photos, listings and lookup.",secs:["Used Intake, Inventory & Listing"]},
  {k:"cs",g:"Desks",ic:"👤",t:"Customer Service",p:"Customers, returns, lookup and notes.",secs:["Customer Service · Ops Desk"]},
@@ -487,7 +491,7 @@ const PAGES=[
 var PAGE="home", ANN=[], ACOMP=false, PREVV=null;
 function tilesOf(pg){ const out=[]; let cur=null; TILES.forEach(t=>{ if(t.sec){ cur=t.sec; return; } if(pg.secs&&pg.secs.includes(cur)) out.push(t); }); return out; }
 function hotN(k){ const v=VAL[k]; return typeof v==="number"&&v>0&&(k==="posWait"||k==="needsPhotos"||(COUNTS[k]&&COUNTS[k].alert))?v:0; }
-function myOpen(){ return TASKS.filter(r=>tf(r,"Assigned To")===WHO&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===WHO).length; }
+function myOpen(){ return TASKS.filter(r=>tf(r,"Assigned To")===WHO&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===WHO).length+CONVS.filter(c=>cv(c,"Assigned To")===WHO).length; }
 function unreadN(){ return (MSGS||[]).filter(unread).length; }
 function pageFlags(pg){ const f=[];
   if(pg.k==="board"){ const u=unreadN(), o=TASKS.filter(r=>tf(r,"Status")!=="Done").length, a=ANN.length; if(u) f.push([u+" unread",1]); f.push([o+" open task"+(o===1?"":"s"),0]); if(a) f.push([a+" announcement"+(a>1?"s":""),0]); }
@@ -499,13 +503,13 @@ function annHTML(a,full){ const f=a.fields||{}; return `<div class="ann"><div cl
 renderTiles=function(){ renderSide(); const box=$("tiles"); const show=(id,on)=>{ const el=$(id); if(el) el.hidden=!on; };
   const pg=PAGES.find(p=>p.k===PAGE);
   $("hello").parentElement.hidden=PAGE!=="home"; $("sandbox").hidden=PAGE!=="home";
-  show("ann",PAGE==="board"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
+  show("ann",PAGE==="board"); show("convs",PAGE==="me"); show("tmsgs",PAGE==="board"||PAGE==="me"); show("tasks",PAGE==="board"||PAGE==="me"); show("qlcard",PAGE==="home"||PAGE==="util");
   if(PAGE==="home"){ const pins=ANN.filter(a=>(a.fields||{}).Pinned);
     box.innerHTML=(pins.length?`<div class="annstrip">${pins.slice(0,3).map(a=>annHTML(a,false)).join("")}</div>`:"")+`<div class="pgrid">${PAGES.map(pg=>{ const fl=pageFlags(pg); return `<a class="ptile" href="${pg.href||"#"+pg.k}"><div class="pt"><span class="i" aria-hidden="true">${pg.ic}</span>${esc(pg.t)}</div><p>${esc(pg.p)}</p>${fl.length?`<div class="flags">${fl.map(([t,h])=>`<span class="flag ${h?"hot":""}">${esc(t)}</span>`).join("")}</div>`:""}</a>`; }).join("")}</div>`; return; }
   const head=`<div class="crumb"><a href="#home">← Home</a><h2>${esc(pg?pg.t:"")}</h2></div>`;
   if(PAGE==="board"){ box.innerHTML=head; return; }
-  if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length;
-    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s messages and tasks. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
+  if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length+CONVS.filter(c=>cv(c,"Assigned To")===n).length;
+    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s work: customer conversations, tasks, messages and Reverb items. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
   const ts=tilesOf(pg); box.innerHTML=head+`<div class="grid">${ts.map(tile).join("")}</div>`; };
 renderSide=function(){ const el=$("side"); if(!el) return; let h=`<div class="sgrp"><a class="l1 ${PAGE==="home"?"on":""}" href="#home"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a></div>`; let g=null;
   PAGES.forEach(pg=>{ if(pg.g!==g){ if(g!==null) h+=`</div>`; g=pg.g; h+=`<div class="sgrp"><div class="sh">${esc(g)}</div>`; }
@@ -532,12 +536,26 @@ document.addEventListener("click",async e=>{ const t=e.target;
     const f={Title:title,Body:$("aB").value.trim(),From:WHO,Department:$("aD").value,Pinned:$("aP").checked}; if($("aU").value) f["Show Until"]=$("aU").value; const sid=(window.STAFF_IDS||{})[WHO]; if(sid) f["From (Staff)"]=[sid];
     t.disabled=true; try{ await atT("tblRAMJZ2nXXQM9QU",{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); ACOMP=false; await loadAnn(); }catch(err){ $("aMsg").textContent=err.message; t.disabled=false; } return; }
   if(t.dataset&&t.dataset.adown){ e.preventDefault(); const y=new Date(Date.now()-864e5).toISOString().slice(0,10); try{ await atT("tblRAMJZ2nXXQM9QU",{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.adown,fields:{"Show Until":y,Pinned:false}}]})}); await loadAnn(); }catch(err){ alert(err.message); } } });
-$("who").addEventListener("change",()=>{ renderTiles(); });
+$("who").addEventListener("change",()=>{ renderTiles(); renderConvs(); });
 window.onStaff=function(){ try{ $("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join(""); renderTasks(); }catch(_){} };
 function forMeAs(r,n){ const o=WHO; WHO=n; try{ return forMe(r); } finally{ WHO=o; } }
-document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; WHO=b.dataset.pickwho; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} renderTiles(); try{ renderTasks(); renderMsgs(); }catch(_){} });
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; WHO=b.dataset.pickwho; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} renderTiles(); renderConvs(); try{ renderTasks(); renderMsgs(); }catch(_){} });
+
+// ---- Customer conversations (Customer Desk) for My Work ----
+var CONVS=[];
+function cv(r,k){ const v=(r.fields||{})[k]; return v&&typeof v==="object"&&!Array.isArray(v)&&v.name?v.name:v; }
+async function loadConvs(){ try{ let out=[], off=""; const f=encodeURIComponent("AND({Status}!='Done',{Status}!='Not a customer')");
+    do{ const j=await atT(`tblNAvbuQlJVB08Bt?pageSize=100&filterByFormula=${f}&sort%5B0%5D%5Bfield%5D=Last%20Message%20At&sort%5B0%5D%5Bdirection%5D=desc${off?"&offset="+encodeURIComponent(off):""}`); out=out.concat(j.records||[]); off=j.offset||""; }while(off&&out.length<500);
+    CONVS=out; }catch(e){ CONVS=[]; } renderConvs(); renderTiles(); }
+function convRow(c){ const ic={Email:"✉",Text:"💬",Voicemail:"📞",["Missed call"]:"📵",Form:"📝"}[cv(c,"Channel")]||"✉"; const t=cv(c,"Last Message At"); const when=t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+  return `<div class="titem"><span aria-hidden="true" style="width:17px;flex:none;text-align:center">${ic}</span><div style="min-width:0;flex:1"><div class="tt"><a href="/t/inbox/#${c.id}" style="color:inherit">${esc(cv(c,"Contact Name")||cv(c,"Contact Address")||"Customer")}</a> <span class="tm">· ${esc(cv(c,"Subject")||"")}</span></div><div class="tm">${esc(cv(c,"Status")||"New")}${cv(c,"Department")?" · "+esc(cv(c,"Department")):""}${cv(c,"Type")?" · "+esc(cv(c,"Type")):""}${cv(c,"Last From")==="Customer"?" · <b>customer wrote last</b>":""} · ${esc(when)}</div><div class="tm" style="color:var(--ink)">${esc(String(cv(c,"Snippet")||"").replace(/\s+/g," ").slice(0,140))}</div></div></div>`; }
+function renderConvs(){ const el=$("cvbody"); if(!el) return; if(!WHO){ el.innerHTML=`<div class="small">Pick a name to see their conversations.</div>`; return; }
+  const mine=CONVS.filter(c=>cv(c,"Assigned To")===WHO), D=(typeof staffDepts==="function"?staffDepts()[WHO]:null)||[];
+  const dept=CONVS.filter(c=>!cv(c,"Assigned To")&&D.includes(cv(c,"Department")));
+  el.innerHTML=`<h4 style="margin:6px 0">Assigned to ${esc(WHO)} <span class="tm">${mine.length}</span></h4>${mine.length?mine.map(convRow).join(""):`<div class="small" style="color:var(--muted)">Nothing assigned.</div>`}`+
+   (D.length?`<h4 style="margin:14px 0 6px">Not yet assigned in ${esc(D.join(", "))} <span class="tm">${dept.length}</span></h4>${dept.length?dept.map(convRow).join(""):`<div class="small" style="color:var(--muted)">All caught up.</div>`}`:""); }
 const _rT=renderTasks, _rM=renderMsgs; renderTasks=function(){ _rT(); if(PAGE==="home") renderTiles(); else renderSide(); }; renderMsgs=function(){ _rM(); if(PAGE==="home") renderTiles(); else renderSide(); };
-route(); loadAnn();
+route(); loadAnn(); loadConvs(); setInterval(()=>{ if(document.visibilityState==="visible") loadConvs(); },180000);
 hello(); refresh(); setInterval(()=>{ if(TOKEN&&document.visibilityState==="visible") refresh(); },5*60*1000);
 </script>
 <script src="/t/followup.js?v=1"></script>
