@@ -442,6 +442,11 @@ document.addEventListener("click",async e=>{ const t=e.target;
   if(t.id==="tasksBtn"){ openTasks(); return; }
   if(t.id==="tClose"||t.id==="tSkip"||(t.id==="tmodal")){ closeModal(); return; }
   if(t.id==="tAdd"){ addTask(); return; }
+  if(t.dataset&&t.dataset.treas){ REAS=REAS===t.dataset.treas?null:t.dataset.treas; renderList(); return; }
+  if(t.dataset&&t.dataset.treasno){ REAS=null; renderList(); return; }
+  if(t.dataset&&t.dataset.treasok){ if(!WHO){ $("ra-msg").textContent="Pick your name at the top first."; return; } const to=$("ra-to").value, dept=$("ra-dept").value; let ids={}; try{ ids=JSON.parse(localStorage.getItem("mrm-staff-ids")||"{}"); }catch(_){}
+    const f={[TF.to]:to||null,[TF.dept]:dept}; f.fldGFnlo1RHGWpa3t=to&&ids[to]?[ids[to]]:[]; t.disabled=true;
+    try{ await setTask(t.dataset.treasok,f); REAS=null; renderList(); }catch(err){ t.disabled=false; $("ra-msg").textContent="Couldn't move it: "+err.message; } return; }
   if(t.id==="tNew"){ taskPrompt({ask:false,source:"Added from the Reverb Desk",dept:"Reverb"}); return; }
   if(t.dataset&&t.dataset.tv){ TVIEW=t.dataset.tv; document.querySelectorAll("[data-tv]").forEach(c=>c.classList.toggle("on",c.dataset.tv===TVIEW)); renderTasks(); return; }
   if(t.dataset&&t.dataset.tok){ t.disabled=true; await setTask(t.dataset.tok,{[TF.status]:"To do",[TF.details]:undefined}); return; }
@@ -470,19 +475,20 @@ function taskChips(){ if(!TASKS) return [["tall","Everyone",null],["tdone","Done
   const ppl=Object.keys(c).filter(k=>k).sort((a,b)=>a===WHO?-1:b===WHO?1:a.localeCompare(b));
   if(WHO&&!c[WHO]) ppl.unshift(WHO);
   return [["tall","Everyone",open.length]].concat(ppl.map(p=>["tp:"+p,p===WHO?p+" (you)":p,c[p]||0]), c[""]?[["tp:","Anyone on Reverb",c[""]]]:[], [["tdone","Done this week",null]]); }
-var TLOADING=false;
+var TLOADING=false, REAS=null;
 function renderTaskTab(){ renderTabs();
   if(!TASKS){ $("list").innerHTML=`<div class="empty">Loading tasks…</div>`; if(!TLOADING){ TLOADING=true; loadTasks().then(()=>{ TLOADING=false; if(TAB==="tasks"){ renderTabs(); renderList(); } }).catch(e=>{ TLOADING=false; $("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; }); } }
   else if(FILTER==="tmine"&&!WHO){ $("list").innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; }
   else { const xs=taskItems(FILTER); const groups={}; xs.forEach(x=>{ const k=x.who||"Anyone on Reverb"; (groups[k]=groups[k]||[]).push(x); });
     const keys=Object.keys(groups).sort((a,b)=>a==="Anyone on Reverb"?-1:b==="Anyone on Reverb"?1:a===WHO?-1:b===WHO?1:a.localeCompare(b)); const today=dayStr(0);
-    $("list").innerHTML=keys.length?keys.map(k=>`<div class="tgrp">${esc(k)} <span class="small muted">${groups[k].length}</span></div>`+groups[k].sort((a,b)=>String(a.due||"9").localeCompare(String(b.due||"9"))).map(x=>{
+    $("list").innerHTML=keys.length?keys.map(k=>`<div class="tgrp">${esc(k)} <span class="small muted">${groups[k].length}</span></div>`+groups[k].sort((a,b)=>new Date(b.type==="task"?b.r.createdTime:(b.row&&b.row.at)||0)-new Date(a.type==="task"?a.r.createdTime:(a.row&&a.row.at)||0)).map(x=>{
       if(x.type==="task"){ const r=x.r, st=tv(r,"status"), due=x.due, late=due&&due<today&&st!=="Done";
         return `<div class="titem ${st==="Done"?"done":""}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0;flex:1"><div class="tt">${esc(tv(r,"task")||"")}</div>
           <div class="small muted">${due?`<span style="${late?"color:var(--warn);font-weight:700":""}">Due ${esc(due)}</span> · `:""}Task${tv(r,"source")?" · "+esc(tv(r,"source")):""}${tv(r,"madeBy")?" · from "+esc(tv(r,"madeBy")):""}${st==="Done"&&tv(r,"doneBy")?" · done by "+esc(tv(r,"doneBy")):""}</div>
           ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
           ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
-          ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }
+          ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}${st!=="Done"?` <button class="btn link" style="font-size:12.5px" data-treas="${r.id}" type="button">Reassign</button>`:""}
+          ${REAS===r.id?`<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><select class="t" id="ra-to" style="width:auto;flex:1 1 140px"><option value="">Anyone in the department</option>${STAFF.map(n=>`<option ${n===tv(r,"to")?"selected":""}>${esc(n)}</option>`).join("")}</select><select class="t" id="ra-dept" style="width:auto;flex:1 1 140px">${DEPTS.map(d=>`<option ${d===(tv(r,"dept")||"Reverb")?"selected":""}>${esc(d)}</option>`).join("")}</select><button class="btn sm" data-treasok="${r.id}" type="button">Move it</button><button class="btn sec sm" data-treasno="1" type="button">Cancel</button><span class="small muted" id="ra-msg"></span></div>`:""}</div></div>`; }
       const r=x.row; return `<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(KINDS[r.kind])}: ${esc(r.kind==="offer"?r.L.title:r.title)}</div><div class="s">${esc(r.kind==="offer"?(r.n.buyer_name||""):r.sub||"")}</div><div class="tags">${tagsFor(r)}</div></div>`; }).join("")).join(""):`<div class="empty">${FILTER==="tmine"||FILTER==="tp:"+WHO?"Nothing on your list. Nice.":"Nothing here."}</div>`; }
   $("more").innerHTML="";
   if(!SEL) $("detail").innerHTML=mgrPane(); }
