@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7A2E1F">
+<title>Customer Cleanup</title>
+<link rel="icon" href="/t/icon-192.png">
+<style>
+:root{--bg:#F5EFE4;--surface:#FFFBF4;--sunk:#FAF4EA;--ink:#2B211A;--muted:#7A6A5C;--line:#E6DCCB;--line2:#CDBFA8;--accent:#7A2E1F;--accent-ink:#FFF7EE;--accent-soft:#F3E2D9;--ok:#2F6B3A;--ok-soft:#E3EDD9;--warn:#9E2A1E;--font:"Work Sans","Segoe UI",system-ui,sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15.5px;line-height:1.45}
+.bar{background:var(--accent);color:var(--accent-ink);padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px))}
+.bar .in{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:19px;font-weight:600;flex:1}
+.bar a{color:inherit;font-weight:600}
+.bar select{font:inherit;font-size:14px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#2B211A}
+main{max-width:980px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px))}
+.intro{color:var(--muted);margin:0 0 12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.chip{border:1px solid var(--line2);background:var(--surface);color:var(--ink);padding:6px 12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;border-radius:3px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.grp{background:var(--surface);border:1px solid var(--line2);border-radius:4px;padding:12px 14px;margin:0 0 10px}
+.grp.done{opacity:.75;border-style:dashed}
+.gh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.gh b{font-size:14px}.sug{font-size:13.5px;color:var(--muted)}.sug.same{color:var(--ok)}.sug.diff{color:var(--warn)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}
+td{border-top:1px solid var(--line);padding:6px 6px 6px 0;vertical-align:top}
+td.n{font-weight:600}td.m{color:var(--muted)}
+a{color:var(--accent)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line2);background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:7px 12px;cursor:pointer;border-radius:3px}
+.btn.pr{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sel{background:var(--ok);border-color:var(--ok);color:#fff}
+.note{padding:10px 12px;background:var(--accent-soft);border-radius:4px;margin:0 0 12px;font-weight:600}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>Customer Cleanup</h1><label>Who's working? <select id="who"></select></label><a href="/#cs">Back to the Hub</a></div></header>
+<main>
+<p class="intro">These Airtable customers might be the same person, or they point at an archived Lightspeed customer. Pick what's true for each group. Nothing changes until Claude applies your decisions, and no records are ever deleted.</p>
+<div id="msg"></div>
+<div class="tabs" id="tabs"></div>
+<div id="list">Loading…</div>
+</main>
+<script>
+const BASE="appZD2jJGbSlvofcV", UT="tblGJnacXCV52gZdS";
+const F=["First Name","Last Name","E-mail","Mobile","Phone","Lightspeed Customer ID","Cleanup Group","Cleanup Suggestion","Cleanup Decision","Purchase Log 11/2018 -","Deals","Consignments 11/18 -"];
+const $=id=>document.getElementById(id), esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ls=k=>{ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } };
+let WHO=ls("mrm-photos-who"), RECS=[], VIEW="todo";
+const STAFF=(()=>{ try{ const c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(c&&c.length) return c; }catch(e){} return ["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; })();
+$("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${esc(n)}</option>`).join("");
+$("who").onchange=e=>{ WHO=e.target.value; try{ localStorage.setItem("mrm-photos-who",WHO); }catch(_){} };
+async function at(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${path}`,Object.assign({},opt||{},{headers:{"Content-Type":"application/json",Authorization:"Bearer via-hub"}})); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("Airtable "+r.status)); return j; }
+async function load(){ let out=[], off="";
+  do{ const q=`${UT}?pageSize=100&filterByFormula=${encodeURIComponent("NOT({Cleanup Group}='')")}${F.map(f=>"&fields%5B%5D="+encodeURIComponent(f)).join("")}${off?"&offset="+encodeURIComponent(off):""}`; const j=await at(q); out=out.concat(j.records||[]); off=j.offset||""; }while(off);
+  RECS=out; render(); }
+function groups(){ const g={}; RECS.forEach(r=>{ const k=r.fields["Cleanup Group"]; (g[k]=g[k]||[]).push(r); }); return Object.entries(g).sort((a,b)=>kind(a[0]).localeCompare(kind(b[0]))||a[0].localeCompare(b[0])); }
+function kind(k){ return /^Same email/.test(k)?"1":/^Shared/.test(k)?"2":"3"; }
+function dec(rs){ return rs[0].fields["Cleanup Decision"]||""; }
+function render(){ const gs=groups(), todo=gs.filter(([,rs])=>!dec(rs)), done=gs.filter(([,rs])=>dec(rs));
+  $("tabs").innerHTML=[["todo","To decide",todo.length],["done","Decided",done.length]].map(([k,l,n])=>`<button class="chip ${VIEW===k?"on":""}" data-view="${k}">${l} ${n}</button>`).join("")+(todo.some(([k,rs])=>kind(k)==="1")?`<button class="btn" id="acceptAll" style="margin-left:auto">Accept the suggestions for every same-email group</button>`:"");
+  const show=VIEW==="todo"?todo:done;
+  $("list").innerHTML=show.length?show.map(([k,rs])=>card(k,rs)).join(""):`<p class="intro">${VIEW==="todo"?"All decided. Tell Claude to apply them.":"Nothing decided yet."}</p>`; }
+function card(k,rs){ const s=(rs[0].fields["Cleanup Suggestion"]||""), sug=s.split("|")[0], cand=s.split("|")[1]||"", d=dec(rs), ar=kind(k)==="3";
+  const cls=/same person/i.test(sug)?"same":/different|family|test/i.test(sug)?"diff":"";
+  const rows=rs.map(r=>{ const f=r.fields, n=((f["First Name"]||"")+" "+(f["Last Name"]||"")).trim()||"(no name)", links=(f["Purchase Log 11/2018 -"]||[]).length, deals=(f.Deals||[]).length, cons=(f["Consignments 11/18 -"]||[]).length;
+    return `<tr><td class="n"><a href="/t/customers/#${r.id}" target="_blank" rel="noopener">${esc(n)}</a></td><td>${esc(f["E-mail"]||"")}</td><td class="m">${esc(f.Mobile||f.Phone||"")}</td><td class="m">${f["Lightspeed Customer ID"]?"LS #"+esc(f["Lightspeed Customer ID"]):"no LS link"}</td><td class="m">${links} items · ${deals} deals${cons?" · "+cons+" consign.":""}</td></tr>`; }).join("");
+  const opts=ar?[...(cand?[["Use suggested Lightspeed ID","Use #"+cand]]:[]),["Leave as is","Leave as is"]]:[["Same person - merge","Same person, merge"],["Different people","Different people"],["Leave as is","Not sure, leave it"]];
+  return `<div class="grp ${d?"done":""}"><div class="gh"><b>${esc(k)}</b><span class="sug ${cls}">Suggestion: ${esc(sug)}</span></div><div class="scroll"><table>${rows}</table></div>
+   <div class="btns">${opts.map(([v,l])=>`<button class="btn ${d===v?"sel":""}" data-g="${esc(k)}" data-d="${esc(v)}">${esc(l)}</button>`).join("")}${d?`<button class="btn" data-g="${esc(k)}" data-d="">Undo</button>`:""}</div></div>`; }
+async function decide(k,v){ if(!WHO){ $("msg").innerHTML=`<div class="note">Pick your name at the top first.</div>`; return; } $("msg").innerHTML="";
+  const rs=RECS.filter(r=>r.fields["Cleanup Group"]===k);
+  for(let i=0;i<rs.length;i+=10){ await at(UT,{method:"PATCH",body:JSON.stringify({records:rs.slice(i,i+10).map(r=>({id:r.id,fields:{"Cleanup Decision":v||null}})),typecast:true})}); }
+  rs.forEach(r=>{ if(v) r.fields["Cleanup Decision"]=v; else delete r.fields["Cleanup Decision"]; }); render(); }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.dataset.view){ VIEW=t.dataset.view; render(); return; }
+  if(t.dataset.g!=null&&t.dataset.d!=null){ t.disabled=true; try{ await decide(t.dataset.g,t.dataset.d); }catch(err){ $("msg").innerHTML=`<div class="note">${esc(err.message)}</div>`; t.disabled=false; } return; }
+  if(t.id==="acceptAll"){ if(!WHO){ $("msg").innerHTML=`<div class="note">Pick your name at the top first.</div>`; return; } t.disabled=true; t.textContent="Saving…";
+    for(const [k,rs] of groups()){ if(dec(rs)||kind(k)!=="1") continue; const sug=(rs[0].fields["Cleanup Suggestion"]||""); const v=/same person/i.test(sug)?"Same person - merge":/test/i.test(sug)?"Leave as is":"Different people"; try{ await decide(k,v); }catch(err){ $("msg").innerHTML=`<div class="note">${esc(err.message)}</div>`; break; } }
+    render(); } });
+load().catch(e=>{ $("list").innerHTML=`<div class="note">${esc(e.message)}</div>`; });
+</script>
+<script src="/t/followup.js?v=1"></script>
+</body>
+</html>
