@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Reverb Desk</title>
+<link rel="icon" href="../icon-192.png">
+<style>
+/* Reverb Desk (Team Hub, preview): Reverb messages, offers and refund requests in one place.
+   Reverb is read live through the hub (/rv/); who has it, status and manager OK live in Airtable "Reverb Desk". */
+:root{
+  --bg:#F5EFE4; --surface:#FFFBF4; --sunk:#FAF4EA; --ink:#2B211A; --muted:#7A6A5C; --line:#E6DCCB; --line2:#CDBFA8;
+  --accent:#7A2E1F; --accent-ink:#FFF7EE; --accent-soft:#F3E2D9; --accent-text:#7A2E1F;
+  --ok:#2F6B3A; --ok-soft:#E3EDD9; --warn:#9E2A1E; --warn-soft:#F6DED7; --info:#3D4C8A; --info-soft:#E2E5F1; --sugg:#9A5B13; --sugg-soft:#F4E3C8;
+  --font:"Work Sans","Segoe UI",system-ui,sans-serif; --display:"Fraunces",Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#3A3029; --surface:#463A31; --sunk:#40352D; --ink:#F6EDE0; --muted:#CBB9A5; --line:#5A4B3F; --line2:#766556;
+  --accent:#C0533A; --accent-ink:#FFF7EE; --accent-soft:#5A3A2E; --accent-text:#F4AE96;
+  --ok:#A6DB9E; --ok-soft:#33452F; --warn:#FFA592; --warn-soft:#5A2E25; --info:#C1C9FA; --info-soft:#3B4060; --sugg:#F2C27A; --sugg-soft:#55402A; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent-text)}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:600}
+.bar h1 small{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-left:8px;border:1px solid rgba(255,255,255,.45);border-radius:4px;padding:1px 6px;vertical-align:3px}
+.bar select{font-size:14px;border-radius:6px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#2B211A}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wrap{max-width:1400px;margin:0 auto;padding-block:14px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tab{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer}
+.tab.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab .n{font-size:12px;opacity:.8;margin-left:6px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:5px 12px;font-size:13.5px;cursor:pointer}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text);font-weight:600}
+.cols{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}
+  /* phones: list OR the open item, not both stacked */
+  body:not(.mdet) #detail,body:not(.mdet) #mback{display:none}
+  body.mdet .cols>div:first-child{display:none}
+  #mback{display:block;margin:0 0 8px}}
+@media (min-width:901px){#mback{display:none}}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;min-width:0}
+.item:hover{border-color:var(--line2)}
+.item.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.item .it{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .s{color:var(--muted);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.tag{font-size:11.5px;font-weight:600;border-radius:4px;padding:1px 7px;background:var(--sunk);border:1px solid var(--line);color:var(--muted)}
+.tag.hot{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.tag.info{background:var(--info-soft);color:var(--info);border-color:transparent}
+.tag.sugg{background:var(--sugg-soft);color:var(--sugg);border-color:transparent}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.card h2{margin:0 0 4px;font-size:18px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.msgs{display:flex;flex-direction:column;gap:8px;margin:14px 0;max-height:52vh;overflow:auto;padding-right:4px}
+.msg{max-width:85%;border-radius:10px;padding:8px 12px;background:var(--sunk);border:1px solid var(--line);white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--accent-soft);border-color:transparent}
+.msg .w{font-size:12px;color:var(--muted);margin-bottom:2px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+.t{border:1px solid var(--line2);background:var(--surface);border-radius:6px;padding:8px 10px;font-size:15px;width:100%;min-width:0;color:var(--ink)}
+textarea.t{min-height:80px;resize:vertical}
+.btn{border:1px solid var(--accent);border-radius:6px;padding:8px 14px;font-weight:600;background:var(--accent);color:var(--accent-ink);cursor:pointer;min-height:38px}
+.btn.sec{background:transparent;color:var(--ink);border-color:var(--line2)}
+.btn:disabled{background:var(--sunk);color:var(--muted);border-color:var(--line);cursor:not-allowed}
+.note{border-radius:8px;padding:9px 12px;font-size:14px;background:var(--info-soft);color:var(--info);margin:8px 0}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.ok{background:var(--ok-soft);color:var(--ok)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:14px;margin:10px 0}
+.kv b{color:var(--muted);font-weight:600}
+.sect{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.more{margin-top:8px}
+.empty{color:var(--muted);padding:20px;text-align:center}
+table.ht{width:100%;border-collapse:collapse;font-size:13.5px}
+table.ht th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line2);padding:5px 8px;white-space:nowrap}
+table.ht td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+table.ht tr.cur td{background:var(--accent-soft)}
+
+.mback{position:fixed;inset:0;background:rgba(30,20,12,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:6vh max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));overflow:auto}
+.mbox{background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:10px;max-width:520px;width:100%;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.mbox h3{margin:0 0 4px;font-size:18px}
+.tpanel{max-width:760px}
+.tgrp{margin:14px 0 6px;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}
+.titem{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--sunk)}
+.mgr{max-width:900px}.gap{border-left:4px solid var(--warn);padding:6px 10px;margin:6px 0;background:var(--sunk);border-radius:6px}.gap.ok{border-left-color:var(--ok)}.gap .small{margin-top:2px}.askout{white-space:pre-wrap;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;max-height:45vh;overflow:auto}
+@media (max-width:900px){ body.tasksTab:not(.mdet) #detail{display:block} body.tasksTab:not(.mdet) .cols>div:first-child{display:block} }
+.mphotos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.mphotos img{width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+.titem.done{opacity:.55}.titem .tt{font-weight:600}.titem input{margin-top:3px;width:18px;height:18px;flex:none}
+</style>
+<link rel="stylesheet" href="../warm.css?v=2"><link rel="stylesheet" href="../calm.css?v=2">
+</head>
+<body>
+<header class="bar"><div class="in"><h1>Reverb Desk<small>Preview</small></h1>
+  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+<main class="wrap">
+  <div class="note" id="banner" hidden></div>
+  <div class="tabs tabs-calm" id="tabs"></div>
+  <div class="filters" id="filters"></div>
+  <div class="cols">
+    <div><div class="list" id="list"><div class="empty">Loading…</div></div><div class="more" id="more"></div></div>
+    <div><button class="btn sec" id="mback" type="button">← Back to list</button><div id="detail" class="card"><div class="muted">Pick something on the left.</div></div></div>
+  </div>
+</main>
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", DESK="tblNByB9aK4puxKFb", PL="tbleYgUhKCIepPtFR";
+const DF={title:"fldubrj1IcLaHQXBg",kind:"fldZuZSoY93Kmc1lX",rid:"fldnFibA16LGVMiUb",buyer:"fldUBADwX1RjHUcVD",listing:"fldfwFchAUggByudP",status:"fldhuIlW95NqgANw0",to:"fldn65XAPP9sf8kOz",by:"fldv35IO74arRPOjc",needs:"fldHrKUHh3JrdYRQb",okBy:"fld1KLfYCjgWkFA0D",notes:"fldAdcTvhCOJaMvFD",lastBy:"fldtDszwTfUo6gDIW",last:"fldjkHo5cvNmIhT7v",lid:"fldj5Dl4XWNvv2vwr",sku:"fld4nknkxxMe4bTBZ",offer:"fldhzYYWNYXEp1QNy",resp:"fldWvPbCMSEnXm79Y",counter:"fldlu7xPqr9y4KSM7",result:"fld5Podo2PfhkNBz6"};
+const STAFF=(function(){ var fb=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; try{ var c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return fb; })();
+(function(){ try{ fetch("https://api.airtable.com/v0/appZD2jJGbSlvofcV/tbluogAt5hDWgzbgi?filterByFormula="+encodeURIComponent("{In Apps}")+"&fields%5B%5D=Name&fields%5B%5D=Can%20Approve&fields%5B%5D=Departments",{headers:{Authorization:"Bearer via-hub"}}).then(function(r){return r.ok?r.json():null;}).then(function(j){ if(!j||!j.records||!j.records.length) return; var rs=j.records.filter(function(r){return r.fields&&r.fields.Name;}); if(!rs.length) return; var n=rs.map(function(r){return r.fields.Name;}); var ap=rs.filter(function(r){return r.fields["Can Approve"];}).map(function(r){return r.fields.Name;}); var ids={}; rs.forEach(function(r){ids[r.fields.Name]=r.id;}); var depts={}; rs.forEach(function(r){depts[r.fields.Name]=r.fields.Departments||[];});
+  try{ localStorage.setItem("mrm-staff",JSON.stringify(n)); localStorage.setItem("mrm-approvers",JSON.stringify(ap)); localStorage.setItem("mrm-staff-ids",JSON.stringify(ids)); localStorage.setItem("mrm-staff-depts",JSON.stringify(depts)); }catch(e){}
+  var changed=n.join("|")!==STAFF.join("|"); STAFF.splice.apply(STAFF,[0,STAFF.length].concat(n)); window.STAFF_IDS=ids; window.STAFF_DEPTS=depts; if(changed&&typeof window.onStaff==="function") window.onStaff(); }).catch(function(){}); }catch(e){} })();
+const MANAGERS=(function(){ try{ var c=JSON.parse(localStorage.getItem("mrm-approvers")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return ["Jon","Sam","Nina"]; })();
+var DRAFTS_R={};
+const MGR_OK=false; // manager approval switched off for now (Jon, 11/7)
+const OLD_CUTOFF=Date.parse("2026-10-31T16:00:00Z"); // 11/7: Jon cleared everything older than a week; anything after this is tracked
+const STATUSES=["New","Assigned",...(MGR_OK?["Waiting on manager"]:[]),"Answered","Done"];
+const KINDS={msg:"Message",offer:"Offer",refund:"Refund request",order:"Order"};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let WHO=store.get("mrm-photos-who"), TAB="tasks", FILTER="tall", SEL=null;
+const S={msg:{rows:[],page:0,pages:1},offer:{rows:[]},refund:{rows:[]},order:{rows:[],page:0,pages:1}};
+let DESKROWS={}; // key kind:id -> airtable record
+const ago=d=>{ if(!d) return ""; const s=(Date.now()-new Date(d))/1000; if(s<3600) return Math.max(1,Math.round(s/60))+"m ago"; if(s<86400) return Math.round(s/3600)+"h ago"; return Math.round(s/86400)+"d ago"; };
+const when=d=>d?new Date(d).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
+
+/* ---------- data ---------- */
+async function rv(path,opt){ const r=await fetch("/rv/"+path.replace(/^https?:\/\/[^/]+\/api\//,""),opt); const t=await r.text(); let j={}; try{j=JSON.parse(t)}catch(e){} if(!r.ok){ throw new Error(r.status===423?"Sending to Reverb is switched off during the preview.":(j.message||j.error||t.slice(0,140)||("Reverb said "+r.status))); } return j; }
+async function at(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${path}`,{...opt,headers:{"Content-Type":"application/json"}}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("Airtable "+r.status)); return j; }
+async function loadDesk(){ DESKROWS={}; let off=""; do{ const j=await at(`${DESK}?pageSize=100&returnFieldsByFieldId=true${off?"&offset="+off:""}`); (j.records||[]).forEach(r=>{ const f=r.fields, k=(Object.entries(KINDS).find(([a,b])=>b===(f[DF.kind]&&f[DF.kind].name||f[DF.kind]))||["msg"])[0]+":"+f[DF.rid]; DESKROWS[k]=r; }); off=j.offset||""; }while(off); }
+const dv=(r,k)=>{ const v=r&&r.fields&&r.fields[DF[k]]; return v&&typeof v==="object"&&!Array.isArray(v)?v.name:v; };
+async function loadMsgs(more){ const st=S.msg; if(!more){ st.rows=[]; st.page=0; } if(st.page>=st.pages&&more) return; const j=await rv(`my/conversations?per_page=50&page=${st.page+1}`); st.page=j.current_page||st.page+1; st.pages=j.total_pages||1; st.total=j.total;
+  (j.conversations||[]).forEach(c=>{ const id=(c._links.self.href.match(/conversations\/(\d+)/)||[])[1]; st.rows.push({kind:"msg",id,title:c.other_party&&c.other_party.name||"Buyer",sub:(c.listing&&c.listing.title)||"",last:c.last_message,read:c.read,replied:c.replied,at:c.last_message&&c.last_message.created_at,raw:c}); }); }
+async function loadOffers(){ const st=S.offer; st.rows=[]; let p=1,pages=1; do{ const j=await rv(`my/listings/negotiations?per_page=50&page=${p}`); pages=j.total_pages||1; (j.listings||[]).forEach(L=>(L.negotiations||[]).forEach(n=>st.rows.push({kind:"offer",id:String(n.id),title:L.title,sub:(n.buyer_name||n.other_party_name||"Buyer")+(n.you_last_initiated?" · waiting on them":" · offered "+(n.last_offered_price&&n.last_offered_price.display&&n.last_offered_price.display.display||"")),at:n.updated_at||n.created_at,n,L}))); p++; }while(p<=pages&&p<6); }
+function offerAmt(n){ const x=n&&n.last_offered_price; return x&&x.original&&+x.original.amount||x&&x.display&&+String(x.display.display||"").replace(/[^0-9.]/g,"")||0; }
+async function syncOffers(){ // keep our own offer history: Reverb only reports open offers
+  const now=new Set(S.offer.rows.map(r=>r.id)), creates=[], patches=[];
+  S.offer.rows.forEach(r=>{ const d=deskOf(r), amt=offerAmt(r.n);
+    if(!d) creates.push({fields:{[DF.title]:r.L.title+" — "+(r.n.buyer_name||""),[DF.kind]:"Offer",[DF.rid]:r.id,[DF.buyer]:r.n.buyer_name||"",[DF.listing]:r.L.title,[DF.lid]:String(r.L.id),[DF.sku]:r.L.sku||"",[DF.offer]:amt||null,[DF.status]:r.n.actionable?"New":"Answered",...(r.n.you_last_initiated&&r.n.offers_count>1?{[DF.resp]:"Countered"}:{}),[DF.result]:"Open",[DF.last]:r.at||null}});
+    else { const fx={}; if(amt&&+dv(d,"offer")!==amt){ fx[DF.offer]=amt; fx[DF.last]=r.at||null; }
+      if(!r.n.actionable&&dv(d,"status")==="New") fx[DF.status]="Answered";
+      if(r.n.actionable&&(dv(d,"status")==="Answered"||dv(d,"status")==="Done")) fx[DF.status]="New"; // buyer answered back
+      if(Object.keys(fx).length) patches.push({id:d.id,fields:fx}); } });
+  Object.entries(DESKROWS).forEach(([k,d])=>{ if(!k.startsWith("offer:")) return; const id=k.slice(6); if(now.has(id)) return; const res=dv(d,"result");
+    if(!res||res==="Open") patches.push({id:d.id,fields:{[DF.result]:dv(d,"resp")==="Accepted"?"Sold":"Expired / closed",...(dv(d,"resp")?{}:{[DF.resp]:"No response"}),...(dv(d,"status")==="Done"?{}:{[DF.status]:"Done"})}}); });
+  for(let i=0;i<creates.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({records:creates.slice(i,i+10),typecast:true,returnFieldsByFieldId:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); }
+  for(let i=0;i<patches.length;i+=10){ const j=await at(`${DESK}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({records:patches.slice(i,i+10),typecast:true,returnFieldsByFieldId:true})}); (j.records||[]).forEach(r=>{ DESKROWS["offer:"+r.fields[DF.rid]]=r; }); } }
+function historyTable(row){ const L=row.L, rows=Object.entries(DESKROWS).filter(([k,d])=>k.startsWith("offer:")&&(String(dv(d,"lid")||"")===String(L.id)||(!dv(d,"lid")&&dv(d,"listing")===L.title))).map(([k,d])=>d)
+    .sort((a,b)=>String(dv(b,"last")||b.createdTime||"").localeCompare(String(dv(a,"last")||a.createdTime||"")));
+  if(!rows.length) return "";
+  const m=v=>v||v===0?"$"+Number(v).toLocaleString("en-US"):"–";
+  return `<h3 style="margin:12px 0 6px;font-size:15px">All offers on this listing <span class="small muted" style="font-weight:500">(${rows.length})</span></h3>
+  <div style="overflow-x:auto"><table class="ht"><thead><tr><th>Date</th><th>Buyer</th><th>Offer</th><th>Our response</th><th>Result</th><th>Handled by</th><th>Assigned</th></tr></thead><tbody>
+  ${rows.map(d=>{ const cur=String(dv(d,"rid"))===String(row.id); const resp=dv(d,"resp")||(cur?(row.n.you_last_initiated?(row.n.offers_count<=1?"Our offer to watcher":"Waiting on buyer"):"Waiting on us"):"–"); return `<tr class="${cur?"cur":""}"><td>${esc(dv(d,"last")?new Date(dv(d,"last")).toLocaleDateString([], {month:"short",day:"numeric",year:"2-digit"}):"–")}</td><td>${esc(dv(d,"buyer")||"")}${cur?' <span class="tag info">this one</span>':""}</td><td>${m(dv(d,"offer"))}</td><td>${esc(resp)}${dv(d,"counter")?" at "+m(dv(d,"counter")):""}</td><td>${esc(dv(d,"result")||"Open")}</td><td>${esc((dv(d,"lastBy")||"–").replace(" (no reply needed)",""))}</td><td>${esc(dv(d,"to")||"–")}</td></tr>`; }).join("")}
+  </tbody></table></div><div class="small muted">History starts 11/7/2026. Reverb only reports open offers, so the hub keeps its own record from here on.</div>`; }
+function stageOf(o){ const st=o.status, sh=o.shipment_status;
+  if(st==="unpaid"||st==="pending_review"||st==="payment_pending") return "Waiting for payment";
+  if(st==="paid"||st==="partially_paid") return o.local_pickup?"Paid · local pickup":"Paid · needs shipping";
+  if(st==="shipped"){ if(sh==="delivered") return "Delivered"; if(sh==="out_for_delivery") return "Out for delivery"; return "Shipped · in transit"; }
+  if(st==="received") return "Received"; if(st==="picked_up") return "Picked up"; if(st==="refunded") return "Refunded"; if(st==="cancelled") return "Cancelled";
+  return (st||"").replace(/_/g," "); }
+async function loadOrders(more){ const st=S.order; if(!more){ st.rows=[]; st.page=0; } const j=await rv(`my/orders/selling/all?per_page=50&page=${st.page+1}`); st.page=j.current_page||st.page+1; st.pages=j.total_pages||1; st.total=j.total;
+  (j.orders||[]).forEach(o=>st.rows.push({kind:"order",id:String(o.order_number),title:o.title||("Order "+o.order_number),sub:(o.buyer_name||"")+" · "+(o.total&&o.total.display||""),at:o.paid_at||o.created_at,o,stage:stageOf(o)})); }
+async function loadRefunds(){ const st=S.refund; st.rows=[]; const j=await rv(`my/refund_requests/selling?per_page=50`); (j.refund_requests||[]).forEach(r=>st.rows.push({kind:"refund",id:String(r.id),title:(r.order&&(r.order.title||r.order.order_number&&("Order "+r.order.order_number)))||("Refund request "+r.id),sub:(r.requested_amount&&r.requested_amount.display||"")+" · "+(r.reason||"").replace(/_/g," "),at:r.updated_at||r.created_at,r})); }
+
+/* ---------- status / filters ---------- */
+function deskOf(row){ return DESKROWS[row.kind+":"+row.id]; }
+function statusOf(row){ const d=deskOf(row), s=dv(d,"status");
+  if(row.kind==="offer"){ if(row.n.actionable) return s==="Assigned"||s==="Waiting on manager"?s:"New"; return s==="Done"?"Done":"Waiting on buyer"; } // offer status follows whose turn it is on Reverb
+  if(s) return s; if(row.kind==="msg"){ if((row.last&&row.last.authored)||row.replied) return "Answered"; if(row.at&&Date.parse(row.at)<OLD_CUTOFF) return "Done"; return "New"; } if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
+const FILTERS=[["open","Needs reply"],["mine","Mine"],["new","Not assigned"],["buyer","Waiting on buyer"],["done","Done"],["all","All"]];
+const OFILTERS=[["oship","To ship"],["mine","Mine"],["otransit","In transit"],["ounpaid","Unpaid"],["odeliv","Delivered"],["all","All"]];
+function passOrder(row){ const g=row.stage; switch(FILTER){ case "oship": return /Paid/.test(g); case "ounpaid": return /Waiting for payment/.test(g); case "otransit": return /transit|Out for delivery/.test(g); case "odeliv": return /Delivered|Received|Picked up/.test(g); case "orefund": return /Refunded|Cancelled/.test(g); case "mine": return WHO&&dv(deskOf(row),"to")===WHO; default: return true; } }
+function pass(row){ if(row.kind==="order") return passOrder(row); const st=statusOf(row), d=deskOf(row), to=dv(d,"to");
+  switch(FILTER){ case "open": return st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer"; case "buyer": return st==="Waiting on buyer"; case "new": return !to&&st!=="Done"&&st!=="Waiting on buyer"; case "mine": return WHO&&to===WHO; case "assigned": return !!to; case "mgr": return st==="Waiting on manager"||(d&&dv(d,"needs")&&!dv(d,"okBy")); case "answered": return st==="Answered"; case "done": return st==="Done"; default: return true; } }
+function tagsFor(row){ const d=deskOf(row), st=statusOf(row), to=dv(d,"to"), bits=[];
+  if(row.kind==="order"){ const g=row.stage, hot=/needs shipping|Waiting|pickup/.test(g); bits.push(hot?`<span class="hot">${esc(g)}</span>`:esc(g)); bits.push("#"+esc(row.id));
+    if(row.o&&row.o.order_notes&&[].concat(row.o.order_notes).length) bits.push(`<span class="hot">buyer note</span>`); if(d&&dv(d,"notes")) bits.push("our note");
+    bits.push(to?`<b>${esc(to)}</b>`:"unassigned"); return bits.join(" · "); }
+  const open=st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer";
+  if(row.kind==="offer"&&row.n.expires_at&&row.n.actionable) bits.push(`<span class="hot">expires ${esc(when(row.n.expires_at))}</span>`);
+  if(row.kind==="offer"&&row.n.you_last_initiated) bits.push((row.n.offers_count<=1?"our offer ":"our counter ")+esc(row.n.last_offered_price&&row.n.last_offered_price.display&&row.n.last_offered_price.display.display||""));
+  if(!open) bits.push(esc(st==="Waiting on buyer"?"waiting on buyer":st.toLowerCase()));
+  bits.push(to?`<b>${esc(to)}</b>`:(open?"unassigned":""));
+  return bits.filter(Boolean).join(" · "); }
+function isUnread(r){ const st=statusOf(r); return r.kind==="msg"?(r.read===false&&st!=="Done"):(r.kind==="offer"?(r.n&&r.n.actionable&&!r.n.you_last_initiated&&st!=="Done"):(r.kind==="order"?/needs shipping/.test(r.stage):false)); }
+
+/* ---------- render ---------- */
+function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); return st!=="Done"&&st!=="Answered"&&st!=="Waiting on buyer"; }).length;
+  const nOrd=S.order.rows.filter(r=>/needs shipping/.test(r.stage)).length;
+  const nTasks=taskItems("tmine").filter(x=>x.open).length;
+  $("tabs").innerHTML=`<button class="tab ${TAB==="tasks"?"on":""}" data-tab="tasks">Tasks${nTasks?`<span class="n hot">${nTasks}</span>`:""}</button>`+[["msg","Messages"],["offer","Offers"],["order","Orders"],["refund","Refunds"]].map(([k,l])=>{ const c=k==="order"?nOrd:(S[k].rows.length?n(k):0); return `<button class="tab ${TAB===k?"on":""}" data-tab="${k}">${l}${c?`<span class="n hot">${c}</span>`:""}</button>`; }).join("");
+  $("filters").innerHTML=TAB==="tasks"?taskChips().map(([k,l,n])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${esc(k)}">${esc(l)}${n!=null?` <span class="small">${n}</span>`:""}</button>`).join("")+`<button class="chip" id="tNew" type="button">+ New task</button>`:(TAB==="order"?OFILTERS:FILTERS).map(([k,l])=>`<button class="chip ${FILTER===k?"on":""}" data-f="${k}">${l}</button>`).join(""); }
+let LASTVIS=[];
+function flash(m){ const box=$("detail"); if(box) box.insertAdjacentHTML("afterbegin",`<div class="note ok" id="flash">${esc(m)}</div>`); setTimeout(()=>{ const f=$("flash"); if(f) f.remove(); },4000); }
+function renderList(){ document.body.classList.toggle("tasksTab",TAB==="tasks"); if(TAB==="tasks"){ renderTaskTab(); return; } renderTabs(); const rows=S[TAB].rows.filter(pass); LASTVIS=rows.slice();
+  $("list").innerHTML=rows.length?rows.map(r=>`<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""} ${isUnread(r)?"unread":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="row-calm"><span class="nm">${isUnread(r)?'<span class="dot" aria-label="Needs you"></span>':""}${esc(r.title)}</span><span class="tm">${r.at?esc(ago(r.at)):""}</span></div><div class="s">${esc(r.sub)}${r.kind==="msg"&&r.last?" — "+esc((r.last.authored?"You: ":"")+r.last.body):""}</div><div class="meta">${tagsFor(r)}</div></div>`).join(""):`<div class="empty">Nothing here.</div>`;
+  $("more").innerHTML=(TAB==="msg"||TAB==="order")&&S[TAB].page<S[TAB].pages?`<button class="btn sec" id="loadmore">Load older ${TAB==="msg"?"messages":"orders"}</button> <span class="muted small">${S[TAB].rows.length} of ${S[TAB].total||"?"} loaded</span>`:""; }
+
+function deskPanel(row){ const d=deskOf(row), to=dv(d,"to")||"", st=statusOf(row), needs=!!dv(d,"needs"), ok=dv(d,"okBy")||"";
+  return `<div class="sect"><div class="grid2">
+    <label class="f">Assigned to<select class="t" id="dTo"><option value="">Not assigned</option>${STAFF.map(n=>`<option ${n===to?"selected":""}>${n}</option>`).join("")}</select></label>
+    <label class="f">Status<select class="t" id="dSt">${STATUSES.map(s=>`<option ${s===st?"selected":""}>${s}</option>`).join("")}</select></label>
+    ${MGR_OK?`<label class="f">Manager OK<span class="row" style="min-height:38px"><label class="row small" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="dNeeds" ${needs?"checked":""}> Needs manager OK</label></span></label>`:""}
+  </div>
+  ${MGR_OK&&needs?`<div class="note ${ok?"ok":"warn"}">${ok?"Approved by "+esc(ok)+".":"Waiting for Jon, Sam or Nina to approve before anything is sent."} ${!ok&&MANAGERS.includes(WHO)?`<button class="btn sm" id="dApprove" style="margin-left:8px">Approve as ${esc(WHO)}</button>`:""}</div>`:""}
+  <details class="calm" ${dv(d,"notes")?"open":""}><summary>${row.kind==="order"?"Employee notes":"Team notes"}${dv(d,"notes")?"":` <span class="small muted" style="font-weight:400">(none yet)</span>`}</summary><textarea class="t" id="dNotes" placeholder="${row.kind==="order"?"Only us, never sent to the buyer":"Anything the next person should know"}">${esc(dv(d,"notes")||"")}</textarea></details>
+  <div class="row" style="margin-top:10px;gap:14px"><button class="btn sec" id="dSave">Save</button><button class="btn link" id="dTask" type="button">Add a task</button><button class="btn link" id="dMsg2" type="button">Message a teammate</button><span class="small muted" id="dMsg">${d&&dv(d,"by")?"Assigned by "+esc(dv(d,"by")):""}</span></div></div>`; }
+function locked(row){ if(!MGR_OK) return false; const d=deskOf(row); return !!(d&&dv(d,"needs")&&!dv(d,"okBy")); }
+
+async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!row) return; SEL={kind,id}; renderList(); const box=$("detail"); document.body.classList.add("mdet"); if(matchMedia("(max-width:900px)").matches) window.scrollTo(0,Math.max(0,$("mback").getBoundingClientRect().top+scrollY-70));
+  if(kind==="msg"){ box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${esc(row.sub)}</div><div class="msgs"><div class="muted">Loading conversation…</div></div>`;
+    try{ const c=await rv(`my/conversations/${id}`); row.detail=c; const L=c.listing||row.raw.listing; const sku=L&&L.sku;
+      box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${L?`About: <a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">${esc(L.title)}</a>`:"General question"}</div>
+      <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}${(m.photos||[]).length?`<div class="mphotos">${m.photos.map(ph=>{ const L=ph._links||{}, th=(L.thumbnail||L.small_crop||L.full||{}).href, full=(L.full||L.large_crop||L.thumbnail||{}).href; return th?`<a href="${esc(full)}" target="_blank" rel="noopener"><img src="${esc(th)}" alt="Photo from the buyer" loading="lazy"></a>`:""; }).join("")}</div>`:""}</div>`).join("")}</div>
+      <div class="sect"><label class="f">Reply to ${esc(row.title)}<div id="gpBox"></div><textarea class="t" id="rBody" data-rid="${esc(row.id)}" placeholder="Type a reply…">${esc(DRAFTS_R[row.id]||"")}</textarea></label>
+      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button><button class="btn link" id="gpLink" type="button">Add Google Photos link</button><a class="btn link" href="https://reverb.com/my/messages/${esc(row.id)}" target="_blank" rel="noopener" title="Reverb only lets photos be attached on its own site">Attach photos on Reverb</a>${statusOf(row)!=="Done"?`<button class="btn link" id="mNoReply">No reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
+      <div id="plinfo"></div>
+      ${deskPanel(row)}`;
+      const ms=$("msgs"); ms.scrollTop=ms.scrollHeight;
+      if(L&&L.id){ $("plinfo").innerHTML=`<div class="note">Pulling up the history on this item…</div>`;
+        rv(`listings/${L.id}`).then(full=>{ if(SEL&&SEL.id===id) offerBrief({kind:"msg",id:null,L:Object.assign({},L,full),n:null}); }).catch(()=>{ if(SEL&&SEL.id===id) offerBrief({kind:"msg",id:null,L,n:null}); }); }
+    }catch(e){ box.innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+  if(kind==="offer"){ const n=row.n, L=row.L, P=x=>x&&x.display&&x.display.display||"";
+    box.innerHTML=`<h2>${esc(L.title)}</h2><div class="muted small"><a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">See on Reverb</a>${L.sku?" · SKU "+esc(L.sku):""}</div>
+    <div class="kv"><b>Buyer</b><span>${esc(n.buyer_name||n.other_party_name||"")}</span><b>Ships to</b><span id="oLoc">${esc(n.buyer_shipping_region_code||"Checking…")}</span>
+    <b>Listed at</b><span>${esc(L.price&&L.price.display||"")}</span>
+    <b>${n.you_last_initiated?"Our last counter":"Their offer"}</b><span><strong>${esc(P(n.last_offered_price))}</strong> + ${esc(P(n.last_offered_shipping)||"$0")} shipping = ${esc(P(n.last_offered_total))}</span>
+    <b>Offers so far</b><span>${esc(n.offers_count)}</span><b>Status</b><span>${esc(n.state)}${n.actionable?"":" (waiting on the buyer)"}</span>
+    <b>Expires</b><span>${esc(when(n.expires_at))}</span></div>
+    <div id="plinfo"></div>
+    <div class="sect"><div class="grid2"><label class="f">Counter price (item)<input class="t" id="oPrice" inputmode="decimal" placeholder="e.g. 450"></label><label class="f">Shipping on the counter<input class="t" id="oShip" inputmode="decimal" value="${esc(String(amtX(n.last_offered_shipping)||""))}" placeholder="e.g. 35"></label></div><div class="small muted" id="oShipNote">Shipping starts at what their offer had. Change it if this buyer is far away or the box is big.</div>
+    <label class="f">Note to the buyer (optional)<textarea class="t" id="oMsg"></textarea></label>
+    <div class="row" style="margin-top:8px">${["accept","counter","decline"].map(a=>`<button class="btn ${a==="accept"?"":"sec"}" data-oact="${a}" ${!n.actionable||locked(row)?"disabled":""}>${a[0].toUpperCase()+a.slice(1)}</button>`).join("")}<span class="small muted" id="oRes">${locked(row)?"Needs a manager's OK first.":!n.actionable?"Waiting on the buyer.":""}</span></div></div>
+    ${deskPanel(row)}`;
+    offerBrief(row); }
+  if(kind==="order"){ const o=row.o, A=x=>x&&x.display||"–", ad=o.shipping_address||{}, web=o._links&&o._links.web&&o._links.web.href, lst=o._links&&o._links.web_listing&&o._links.web_listing.href;
+    box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">Order #${esc(o.order_number)}${web?` · <a href="${esc(web)}" target="_blank" rel="noopener">Open on Reverb</a>`:""}${lst?` · <a href="${esc(lst)}" target="_blank" rel="noopener">Listing</a>`:""}${o.sku?" · SKU "+esc(o.sku):""}</div>
+    <div class="tags" style="margin:8px 0">${tagsFor(row)}</div>
+    ${(()=>{ const bn=o.order_notes&&[].concat(o.order_notes).map(x=>x&&x.body||x).filter(Boolean).join("\n"); const d=deskOf(row), en=dv(d,"notes")||"";
+      return `<div class="note ${bn?"warn":""}" style="margin:8px 0"><b>Customer note (from Reverb checkout):</b> ${bn?`<span style="white-space:pre-wrap">${esc(bn)}</span>`:`<span class="muted">none</span>`}</div>
+      <div class="note" style="margin:8px 0;background:var(--sunk);color:var(--ink)"><b>Employee notes (only us):</b> ${en?`<div style="white-space:pre-wrap;margin-top:4px">${esc(en)}</div>`:`<span class="muted">none yet. Add one in the box below.</span>`}</div>`; })()}
+    <div class="kv"><b>Buyer</b><span>${esc(o.buyer_name||"")}</span>
+    <b>Ship to</b><span>${o.local_pickup?"Local pickup":esc([ad.locality,ad.region,ad.country_code].filter(Boolean).join(", "))}</span>
+    <b>Ordered</b><span>${esc(when(o.created_at))}</span><b>Paid</b><span>${o.paid_at?esc(when(o.paid_at)):"Not yet"}</span>
+    <b>Item</b><span>${esc(A(o.amount_product))}${o.quantity>1?" × "+esc(o.quantity):""}</span><b>Shipping</b><span>${esc(A(o.shipping))}</span><b>Tax</b><span>${esc(A(o.amount_tax))}</span>
+    <b>Total</b><span><strong>${esc(A(o.total))}</strong></span><b>Reverb fees</b><span>${esc(A(o.selling_fee))}${o.direct_checkout_fee?" + "+esc(A(o.direct_checkout_fee))+" processing":""}</span>
+    <b>Payout</b><span>${esc(A(o.direct_checkout_payout))}</span></div>
+    <div id="plinfo"></div>
+    <div class="sect"><label class="f">Message ${esc(o.buyer_name||"the buyer")}<textarea class="t" id="oMsgBuyer" placeholder="Write to the buyer about this order"></textarea></label>
+    <div class="row" style="margin-top:8px"><button class="btn" id="oSendMsg" type="button">Send to buyer</button><span class="small muted" id="oMsgRes">Goes into your Reverb conversation with this buyer.</span></div></div>
+    <div class="note">Shipping labels and tracking are still done the usual way. This shows where each order stands.</div>
+    ${deskPanel(row)}`;
+    plInfo(row.title,o.sku); }
+  if(kind==="refund"){ const r=row.r, A=x=>x&&x.display||"";
+    box.innerHTML=`<h2>${esc(row.title)}</h2><div class="kv"><b>Status</b><span>${esc((r.state||"").replace(/_/g," "))}</span><b>Asked for</b><span>${esc(A(r.requested_amount))} (${esc((r.refund_type||"").replace(/_/g," "))})</span>
+    <b>Reason</b><span>${esc((r.reason||"").replace(/_/g," "))}</span><b>Started by</b><span>${esc(r.initiated_by||"")}</span><b>Requested</b><span>${esc(when(r.created_at))}</span>
+    ${r.note_to_seller?`<b>Buyer's note</b><span>${esc(r.note_to_seller)}</span>`:""}${r.note_to_buyer?`<b>Our note</b><span>${esc(r.note_to_buyer)}</span>`:""}</div>
+    <div class="note">Refunds are handled on Reverb for now${r.order&&r.order.order_number?` — <a href="https://reverb.com/my/selling/orders/${esc(r.order.order_number)}" target="_blank" rel="noopener">open the order on Reverb</a>`:""}. Assign it here so someone owns it.</div>
+    ${deskPanel(row)}`; }
+}
+const PLF={sku:"fldfKGlajXOBkUQ92",name:"flde17o9HEpKPdMlS",exp:"fldkODnsYDRYqeOOm",cost:"fldg6j6emzCkDiGaI",repair:"fldQdlwr3NdLnkNxW",pos:"fld0ESkFoFMOhfR0g",online:"fldd9UhO7Ld2Io9f0",newp:"fld6COeapNgbSjGQX",dateIn:"fldf0h1eW3dxrlufr",data:"fldQNSoYTvTVEIgwG",phys:"fldM1ajllQvTvdKwI",loc:"fldZICzZjZ7MEwPs3",notes:"fldW0Sgi7TVduheu1",cons:"fldkPqD1C5CLxqeAT",consPay:"fld4VnuOzwtOvkuff",cond:"fldYuGbUJO4a0bNvu"};
+const OPS="tblVb2IExVzomB6w6", OLF={entry:"fldf7qQXfPT0ouQbR",date:"fldGRwiXEj6hKDQdG",type:"fldgCh5XKvhAqO5ib",status:"fldgMFKU1xdPxcwAB",by:"fldlvcnYrs9MTl2vj",sku:"fldxv1kU8VGiiIijs",details:"fldgHoKCMyfEouhfv",ifthen:"fldInMUSUAkk2FkHe",until:"fldJM1CB8QtKg3nli"};
+const $$=n=>n==null||n===""?"–":"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
+const pct=(a,b)=>a&&b?Math.round(a/b*100)+"%":"–";
+const nm=v=>v&&typeof v==="object"&&!Array.isArray(v)?v.name:Array.isArray(v)?v.map(x=>x&&x.name||x).join(", "):v;
+function amtX(x){ return x&&x.original&&+x.original.amount||x&&x.amount&&+x.amount||x&&x.display&&+String(x.display.display||x.display||"").replace(/[^0-9.]/g,"")||0; }
+function locBits(o,out=[],path="",depth=0){ if(!o||typeof o!=="object"||depth>3) return out; for(const [k,v] of Object.entries(o)){ if(k==="_links"||k==="photos"||k==="description") continue; const kp=path?path+"."+k:k;
+    if(v&&typeof v==="object") locBits(v,out,kp,depth+1); else if(v!=null&&v!==""&&/postal|zip|region|country|state_code|^state$|city|location|locality/i.test(k)&&!/^state$/.test(kp)&&!/offers\.\d+\.state|negotiation.*state$/.test(kp)) out.push([kp,String(v)]); } return out; }
+function showLoc(n,d){ const el=$("oLoc"); if(!el) return; const seen=new Set(), bits=[]; for(const [k,v] of [...locBits(n),...locBits(d||{})]){ if(/^(state)$/.test(k)||/(^|\.)state$/.test(k)) continue; if(seen.has(v)) continue; seen.add(v); bits.push(v); }
+  const zip=bits.find(v=>/^\d{5}(-\d{4})?$/.test(v)); el.innerHTML=(zip?`<strong>${esc(zip)}</strong> · `:"")+esc(bits.filter(v=>v!==zip).join(" · ")||"Reverb didn't say")+(zip?"":` <span class="small muted">(Reverb only gives the region before a sale; full address comes with the order)</span>`); }
+async function offerBrief(row){ const el=$("plinfo"); if(!el) return; const L=row.L, n=row.n||{}; el.innerHTML=`<div class="note">Pulling up the history on this item…</div>`;
+  const amt=x=>x&&x.original&&+x.original.amount||x&&x.display&&+String(x.display.display||"").replace(/[^0-9.]/g,"")||0;
+  let hist=[], pl=null, ops=[];
+  await Promise.all([
+    n.id?rv(`my/negotiations/${n.id}`).then(d=>{ hist=d.offers||[]; showLoc(n,d); }).catch(()=>showLoc(n,null)):Promise.resolve(),
+    (async()=>{ const f=L.sku?`{SKU}='${String(L.sku).replace(/'/g,"\\'")}'`:`FIND(LOWER('${String(L.title).slice(0,35).replace(/'/g,"\\'")}'),LOWER({Name}))`;
+      const j=await at(`${PL}?maxRecords=1&returnFieldsByFieldId=true&filterByFormula=${encodeURIComponent(f)}&${Object.values(PLF).map(x=>"fields%5B%5D="+x).join("&")}`); pl=(j.records||[])[0]||null; })().catch(()=>{}),
+    (async()=>{ if(!L.sku) return; const j=await at(`${OPS}?maxRecords=20&returnFieldsByFieldId=true&filterByFormula=${encodeURIComponent(`{SKU}='${String(L.sku).replace(/'/g,"\\'")}'`)}&sort%5B0%5D%5Bfield%5D=Date&sort%5B0%5D%5Bdirection%5D=desc`); ops=j.records||[]; })().catch(()=>{})
+  ]);
+  const F=pl?pl.fields:{}, offer=amt(n.last_offered_price), ship=amt(n.last_offered_shipping), list=L.price?+L.price.amount||+String(L.price.display||"").replace(/[^0-9.]/g,""):0;
+  { const rates=(L.shipping&&L.shipping.rates)||[], reg=n.buyer_shipping_region_code||"", r=rates.find(x=>x.region_code===reg)||rates.find(x=>reg&&reg.startsWith(x.region_code))||rates.find(x=>/US_CON|^US$/.test(x.region_code));
+    const note=$("oShipNote"); if(note&&row.kind==="offer") note.innerHTML=`Their offer has <b>${$$(ship)}</b> shipping.`+(rates.length?` Our listing charges ${rates.map(x=>esc((x.region_name||x.region_code)+": "+((x.rate&&x.rate.display)||""))).join(", ")}.`:"")+` Change the shipping box if this buyer is far away or the box is big.`;
+    const sf=$("oShip"); if(sf&&!sf.value&&r&&r.rate) sf.value=amtX(r.rate)||""; }
+  const exp=F[PLF.exp], cost=F[PLF.cost], rep=F[PLF.repair]||0, isCons=!!(F[PLF.cons]&&F[PLF.cons].length), consPay=F[PLF.consPay];
+  const days=F[PLF.dateIn]?Math.round((Date.now()-new Date(F[PLF.dateIn]))/864e5):null;
+  const fees=offer?Math.round((offer+ship)*0.0819+0.49):0; // Reverb ~5% selling + 3.19% + $0.49 processing (approx.)
+  const net=offer?offer+ship-fees-ship:0; // shipping charged roughly covers label
+  const margin=cost!=null&&offer?net-cost-rep:null;
+  const flags=[];
+  if(margin!=null&&margin<0) flags.push(`<span class="tag hot">Below what we have in it</span>`);
+  else if(margin!=null&&cost) flags.push(`<span class="tag ok">About ${$$(Math.round(margin))} over cost after fees</span>`);
+  if(exp&&offer&&offer<exp*0.85) flags.push(`<span class="tag sugg">More than 15% under expected</span>`);
+  if(days!=null&&days>90) flags.push(`<span class="tag info">In stock ${days} days</span>`);
+  if(n.buyer_shipping_region_code&&!/^US/.test(n.buyer_shipping_region_code)) flags.push(`<span class="tag sugg">International (${esc(n.buyer_shipping_region_code)}): check a ShipStation quote</span>`);
+  if(isCons) flags.push(`<span class="tag info">Consignment</span>`);
+  const today=new Date().toISOString().slice(0,10), rules=ops.filter(o=>o.fields[OLF.until]&&o.fields[OLF.until]>=today);
+  el.innerHTML=`<div class="sect"><h3 style="margin:0 0 6px;font-size:15px">About this item</h3>
+    ${flags.length?`<div class="tags" style="margin-bottom:8px">${flags.join("")}</div>`:""}
+    ${rules.length?rules.map(o=>`<div class="note ok"><b>Standing rule until ${esc(o.fields[OLF.until])}:</b> ${esc(o.fields[OLF.ifthen]||o.fields[OLF.entry]||"")}</div>`).join(""):""}
+    ${pl?`<div class="kv"><b>SKU</b><span>${esc(F[PLF.sku]||L.sku||"–")} · ${esc(nm(F[PLF.data])||"")}${F[PLF.phys]?" · "+esc(nm(F[PLF.phys])):""}${F[PLF.loc]?" · "+esc(nm(F[PLF.loc])):""}</span>
+      <b>In stock</b><span>${F[PLF.dateIn]?esc(F[PLF.dateIn])+" ("+days+" days)":"–"}</span>
+      <b>${isCons?"Consigner payout (online)":"We paid"}</b><span>${isCons?$$(consPay):$$(cost)}${rep?" + "+$$(rep)+" repair":""}</span>
+      <b>Expected sale</b><span>${$$(exp)}${F[PLF.newp]?" · new "+$$(F[PLF.newp]):""}</span>
+      <b>Listed</b><span>${$$(list)} on Reverb${F[PLF.pos]?" · "+$$(F[PLF.pos])+" in store":""}</span>
+      ${offer?`<b>This offer</b><span><strong>${$$(offer)}</strong> = ${pct(offer,list)} of list, ${pct(offer,exp)} of expected</span>
+      <b>After Reverb fees</b><span>about ${$$(net)} to us (fees ≈ ${$$(fees)})${margin!=null?` · ${margin>=0?"":"−"}${$$(Math.abs(Math.round(margin)))} vs. what we have in it`:""}</span>`:list&&cost!=null?`<b>At list price</b><span>about ${$$(Math.round(list-list*0.0819-0.49-cost-rep))} over what we have in it, after fees</span>`:""}
+      ${F[PLF.notes]?`<b>Notes</b><span style="white-space:pre-wrap">${esc(F[PLF.notes])}</span>`:""}</div>`:`<div class="note">Couldn't find this item in the Purchase Log${L.sku?" (SKU "+esc(L.sku)+")":""}, so there's no cost or history to show.</div>`}
+    ${historyTable(row)}
+    ${hist.length?`<h3 style="margin:12px 0 6px;font-size:15px">Back-and-forth with ${esc(n.buyer_name||"this buyer")}</h3><div class="msgs" style="max-height:none;margin:0">${hist.slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(o=>`<div class="msg ${o.initiated_by_me?"me":""}"><div class="w">${esc(o.initiated_by_me?"Mill River Music":(o.initiated_by_name||"Buyer"))} · ${esc(when(o.created_at))}</div><strong>${esc(o.price&&o.price.display&&o.price.display.display||"")}</strong> + ${esc(o.shipping_price&&o.shipping_price.display&&o.shipping_price.display.display||"$0")} shipping${o.message?"\n"+esc(o.message):""}</div>`).join("")}</div>`:""}
+    ${ops.length?`<h3 style="margin:12px 0 6px;font-size:15px">Ops Log</h3>${ops.map(o=>{ const g=o.fields; return `<div class="note" style="background:var(--sunk);color:var(--ink)"><div class="small muted">${esc(g[OLF.date]||"")} · ${esc(nm(g[OLF.type])||"")}${g[OLF.by]?" · decided by "+esc(nm(g[OLF.by])):""}${g[OLF.status]?" · "+esc(nm(g[OLF.status])):""}</div><b>${esc(g[OLF.entry]||"")}</b>${g[OLF.details]?`<div style="white-space:pre-wrap">${esc(g[OLF.details])}</div>`:""}${g[OLF.ifthen]?`<div class="small"><b>If/then:</b> ${esc(g[OLF.ifthen])}</div>`:""}</div>`; }).join("")}`:""}
+    ${offer?"":`<div class="small muted" style="margin-top:6px"><a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">See the listing on Reverb</a></div>`}
+    <div class="small muted" style="margin-top:6px">Fees are an estimate (about 5% selling + 3.19% + $0.49 processing).</div></div>`; }
+async function plInfo(title,sku){ const el=$("plinfo"); if(!el) return; try{
+  const f=sku?`{SKU}='${String(sku).replace(/'/g,"\\'")}'`:`FIND('${String(title).slice(0,40).replace(/'/g,"\\'")}',{Name})`;
+  const j=await at(`${PL}?maxRecords=1&filterByFormula=${encodeURIComponent(f)}&fields%5B%5D=Name&fields%5B%5D=SKU&fields%5B%5D=Expected%20Sale%20Price&fields%5B%5D=Date%20In&fields%5B%5D=Data%20Status`);
+  const r=(j.records||[])[0]; if(!r){ el.innerHTML=""; return; } const f2=r.fields;
+  el.innerHTML=`<div class="note">In our records: SKU ${esc(f2.SKU||"–")} · expected sale ${f2["Expected Sale Price"]?"$"+esc(f2["Expected Sale Price"]):"–"} · in ${esc(f2["Date In"]||"–")} · ${esc(f2["Data Status"]&&f2["Data Status"].name||f2["Data Status"]||"")}</div>`;
+  }catch(e){ el.innerHTML=""; } }
+
+async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the top first."); return null; } const d=deskOf(row), to=$("dTo")?$("dTo").value:"", st=$("dSt")?$("dSt").value:"New";
+  const f={[DF.title]:row.kind==="offer"?row.L.title+" — "+(row.n.buyer_name||""):row.title+(row.sub?" — "+row.sub:""),[DF.kind]:KINDS[row.kind],[DF.rid]:row.id,[DF.status]:st,[DF.to]:to||null,[DF.needs]:$("dNeeds")?$("dNeeds").checked:!!dv(deskOf(row),"needs"),[DF.notes]:$("dNotes")?$("dNotes").value:"",[DF.last]:row.at||null,
+    [DF.buyer]:row.kind==="offer"?(row.n.buyer_name||""):row.kind==="msg"?row.title:"",[DF.listing]:row.kind==="offer"?row.L.title:row.sub||""};
+  if(row.kind==="offer"){ f[DF.lid]=String(row.L.id); f[DF.sku]=row.L.sku||""; f[DF.offer]=offerAmt(row.n)||null; if(!d) f[DF.result]="Open"; }
+  if(to&&to!==(dv(d,"to")||"")) f[DF.by]=WHO; Object.assign(f,extra||{});
+  const j=d?await at(`${DESK}/${d.id}?returnFieldsByFieldId=true`,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true,returnFieldsByFieldId:true})}):await at(`${DESK}?returnFieldsByFieldId=true`,{method:"POST",body:JSON.stringify({fields:f,typecast:true,returnFieldsByFieldId:true})});
+  DESKROWS[row.kind+":"+row.id]=j; return j; }
+function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
+
+/* ---------- actions ---------- */
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
+  if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":TAB==="tasks"?"tall":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
+  if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
+  if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
+  if(t.id==="mback"){ document.body.classList.remove("mdet"); const on=document.querySelector("#list .on"); if(on) on.scrollIntoView({block:"center"}); return; }
+  if(t.id==="oSendMsg"){ const row=S.order.rows.find(r=>SEL&&r.id===SEL.id); if(!row) return; const o=row.o, body=$("oMsgBuyer").value.trim(), res=$("oMsgRes");
+    if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Write the message first."); return; }
+    if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+(o.buyer_name||"buyer")+"?"; res.textContent="Click again to send. This goes straight to the buyer on Reverb."; res.style.color=""; return; }
+    t.disabled=true; res.textContent="Finding your conversation with this buyer…";
+    try{ const lid=String(o.product_id||""), bn=String(o.buyer_name||"").trim().toLowerCase();
+      const match=c=>c&&c.listing&&String(c.listing.id)===lid&&(!bn||String(c.other_party&&c.other_party.name||"").trim().toLowerCase()===bn);
+      let conv=(S.msg.rows.find(r=>match(r.raw))||{}).raw;
+      for(let p=1;!conv&&p<=4;p++){ const j=await rv(`my/conversations?per_page=50&page=${p}`); conv=(j.conversations||[]).find(match); if(p>=(j.total_pages||1)) break; }
+      if(!conv){ const web=o._links&&o._links.web&&o._links.web.href; res.innerHTML=`No Reverb conversation with this buyer yet, so nothing was sent. Start it with Message Buyer on <a href="${esc(web||"https://reverb.com/my/selling/orders")}" target="_blank" rel="noopener">the order on Reverb</a>; after that you can write from here.`; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; return; }
+      const cid=(conv._links.self.href.match(/conversations\/(\d+)/)||[])[1];
+      await rv(`my/conversations/${cid}/messages`,{method:"POST",body:JSON.stringify({body})});
+      await saveDesk(row,{[DF.lastBy]:WHO}).catch(()=>{}); $("oMsgBuyer").value=""; res.textContent="Sent to "+(o.buyer_name||"the buyer")+"."; taskPrompt(taskCtx(row,"order")); res.style.color="var(--ok)"; t.textContent="Send to buyer"; delete t.dataset.sure; t.disabled=false; }
+    catch(err){ res.textContent=err.message; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; } return; }
+  if(t.id==="loadmore"){ t.disabled=true; try{ await (TAB==="order"?loadOrders(true):loadMsgs(true)); }catch(err){} renderList(); return; }
+  const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
+  if(t.id==="dSave"){ const rb=$("rBody"); if(rb&&rb.value.trim()&&!t.dataset.sure2){ t.dataset.sure2="1"; alertBox("Your reply to the buyer has NOT been sent yet. It stays in the box. Press Save again to save the assignment, then press Send reply."); return; } t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
+  if(t.id==="dApprove"){ if(!MANAGERS.includes(WHO)) return; t.disabled=true; try{ await saveDesk(row,{[DF.okBy]:WHO+" "+new Date().toLocaleString()}); await openRow(row.kind,row.id); renderList(); }catch(err){ alertBox(err.message); } return; }
+  if(t.id==="mNoReply"){ if(!WHO){ alertBox("Pick your name at the top first."); return; } t.disabled=true;
+    try{ rv(`my/conversations/${row.id}`,{method:"PUT",body:JSON.stringify({read:true})}).then(()=>{ row.read=true; }).catch(()=>{});
+      const d=deskOf(row), prev=dv(d,"notes")||""; await saveDesk(row,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`});
+      const vis=S[row.kind].rows.filter(pass), idx=Math.max(0,LASTVIS.findIndex(r=>r.id===row.id)), next=vis.find(r=>LASTVIS.indexOf(r)>idx)||vis[0];
+      SEL=null; renderList(); if(next){ await openRow(next.kind,next.id); flash(`Marked read: ${row.title}. Showing the next one.`); } else { $("detail").innerHTML=`<div class="note ok">Marked read: ${esc(row.title)}. Nothing else needs attention here.</div>`; } }
+    catch(err){ alertBox(err.message); t.disabled=false; } return; }
+  if(t.id==="rSend"){ const body=$("rBody").value.trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Type a reply first."); return; }
+    if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+row.title+"?"; $("rMsg").textContent="Click again to send. This goes straight to the buyer on Reverb."; $("rMsg").style.color=""; return; }
+    t.disabled=true; try{ const href=row.detail&&row.detail._links&&row.detail._links.reply&&row.detail._links.reply.href||`my/conversations/${row.id}/messages`;
+      await rv(href,{method:"POST",body:JSON.stringify({body})}); delete DRAFTS_R[row.id]; await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO}); await loadMsgs(); renderList(); await openRow(row.kind,row.id); taskPrompt(taskCtx(row,"reply")); }
+    catch(err){ $("rMsg").textContent=err.message; $("rMsg").style.color="var(--warn)"; t.disabled=false; t.textContent="Send reply"; delete t.dataset.sure; } return; }
+  if(t.dataset.oact){ const a=t.dataset.oact, msg=$("oMsg").value.trim(), price=$("oPrice").value.replace(/[$,]/g,"").trim(), shipv=($("oShip")?$("oShip").value:"").replace(/[$,]/g,"").trim(); if(!WHO){ alertBox("Pick your name at the top first."); return; }
+    if(a==="counter"&&!(+price>0)){ alertBox("Enter a counter price."); return; }
+    if(a==="counter"&&!(shipv!==""&&+shipv>=0&&!isNaN(+shipv))){ alertBox("Enter the shipping for this counter (use 0 only if you mean free shipping)."); return; }
+    if(!t.dataset.sure){ document.querySelectorAll("[data-oact]").forEach(b=>{ delete b.dataset.sure; b.textContent=b.dataset.oact[0].toUpperCase()+b.dataset.oact.slice(1); }); t.dataset.sure="1"; t.textContent=a==="counter"?`Counter at $${price}${shipv!==""?" + $"+shipv+" shipping":""}?`:a[0].toUpperCase()+a.slice(1)+"?"; $("oRes").textContent="Click again to confirm. This goes straight to the buyer on Reverb."; $("oRes").style.color=""; return; }
+    t.disabled=true; try{ const body=a==="counter"?{price:{amount:price,currency:"USD"},shipping_price:{amount:shipv,currency:"USD"},message:msg||undefined}:{message:msg||undefined};
+      await rv(row.n._links[a].href,{method:"POST",body:JSON.stringify(body)}); await saveDesk(row,{[DF.status]:a==="counter"?"Answered":"Done",[DF.lastBy]:WHO,[DF.resp]:{accept:"Accepted",counter:"Countered",decline:"Declined"}[a],[DF.result]:{accept:"Sold",counter:"Open",decline:"We declined"}[a],...(a==="counter"?{[DF.counter]:+price}:{})}); let warn=""; if(a==="counter"){ try{ const chk=await rv(`my/negotiations/${row.n.id}`); const got=amtX(chk.last_offered_shipping||(chk.offers&&chk.offers.length&&chk.offers[chk.offers.length-1].shipping_price)); if(Math.abs(got-(+shipv))>0.009) warn=`<div class="note warn"><b>Check this on Reverb now:</b> we sent $${esc(shipv)} shipping but Reverb shows $${got}. Fix or withdraw the counter on Reverb.</div>`; }catch(e){ warn=`<div class="note warn">Couldn't double-check the shipping on Reverb. Please look at this counter on Reverb.</div>`; } }
+      await loadOffers(); renderList(); setTimeout(()=>taskPrompt(taskCtx(row,"offer")),300); $("detail").innerHTML=`<div class="note ok">Done: ${esc(a)} sent${a==="counter"?` ($${esc(price)} + $${esc(shipv)} shipping)`:""}.</div>`+warn; }
+    catch(err){ $("oRes").textContent=err.message; $("oRes").style.color="var(--warn)"; t.disabled=false; } return; }
+});
+document.addEventListener("change",e=>{ if(e.target.id==="who"){ WHO=e.target.value; store.set("mrm-photos-who",WHO); renderList(); if(SEL) openRow(SEL.kind,SEL.id); } });
+$("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join("");
+
+(async()=>{ renderTabs(); try{ await loadDesk(); }catch(e){ $("banner").className="note warn"; $("banner").textContent="Couldn't load assignments: "+e.message; }
+  await Promise.all([loadMsgs().catch(e=>{$("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`}),loadOffers().catch(()=>{}),loadRefunds().catch(()=>{}),loadOrders().catch(()=>{})]); renderList();
+  try{ await syncOffers(); renderList(); }catch(e){ console.warn("offer log",e); } })();
+// ---- Team Tasks (Airtable "Team Tasks"; Google Tasks copy comes later) ----
+const TT="tblOwTXbybJC6K9Xn", TF={task:"fldUmwZCpYmY4ydf4",to:"fldULoJtT1tjDewdy",dept:"fldI5KOzdrPwbar0s",status:"fldX2trA6QSciYsT4",due:"fldnzJlk5rWhduMoI",details:"fld4laJasSMdypGRQ",source:"fldZQT4sY9W9ZOusm",link:"fld6iLbLRVCke9OA0",madeBy:"fldlJbD6svflYUgEg",doneBy:"fldB5i9XgOsK4i2Zs"};
+const DEPTS=["Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
+function dayStr(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toLocaleDateString("en-CA"); }
+function closeModal(){ const m=$("mback"); if(m) m.remove(); }
+function taskPrompt(ctx){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  el.innerHTML=`<div class="mbox" role="dialog" aria-label="Add a task"><h3>${ctx.ask===false?"Add a task":"Put this on someone's list?"}</h3><div class="small muted" style="margin-bottom:10px">${esc(ctx.source||"")}</div>
+   <label class="f">Task<input class="t" id="tTask" value="${esc(ctx.task||"")}"></label>
+   <div class="grid2"><label class="f">For<select class="t" id="tTo"><option value="">Reverb department (anyone)</option>${STAFF.map(n=>`<option ${n===ctx.to?"selected":""}>${n}</option>`).join("")}</select></label>
+   <label class="f">Department<select class="t" id="tDept">${DEPTS.map(d=>`<option ${d===(ctx.dept||"Reverb")?"selected":""}>${d}</option>`).join("")}</select></label>
+   <label class="f">Due<input class="t" type="date" id="tDue" value="${dayStr(1)}"></label></div>
+   <label class="f">Details<textarea class="t" id="tDet">${esc(ctx.details||"")}</textarea></label>
+   <div class="small muted" id="tNote" style="margin:6px 0"></div>
+   <div class="row" style="margin-top:6px"><button class="btn" id="tAdd" type="button">Add to the list</button><button class="btn sec" id="tSkip" type="button">${ctx.ask===false?"Cancel":"No thanks"}</button></div></div>`;
+  document.body.appendChild(el); el.__ctx=ctx;
+  const upd=()=>{ $("tNote").textContent= false ? "Julia's list needs an OK from Jon, Sam or Nina, so this will wait for one of them." : ""; };
+  $("tTo").addEventListener("change",upd); upd(); setTimeout(()=>{ try{ $("tTask").focus(); $("tTask").select(); }catch(e){} },50); }
+async function addTask(){ const ctx=$("mback").__ctx, b=$("tAdd"); const task=$("tTask").value.trim(); if(!task){ $("tNote").textContent="Write what needs doing."; return; }
+  if(!WHO){ $("tNote").textContent="Pick your name at the top first."; return; }
+  const to=$("tTo").value, needsOk = false;
+  const f={[TF.task]:task,[TF.dept]:$("tDept").value,[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:$("tDet").value.trim(),[TF.source]:ctx.source||"",[TF.madeBy]:WHO};
+  if(to) f[TF.to]=to; if($("tDue").value) f[TF.due]=$("tDue").value; if(ctx.link) f[TF.link]=ctx.link; if(ctx.ref) f["fldZLryzmga9mRkFa"]=JSON.stringify([ctx.ref]);
+  b.disabled=true; try{ await at(`${TT}`,{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); closeModal(); TASKS=null; updTaskBtn(); if(TAB==="tasks"){ loadTasks().then(()=>renderList()); } flashTop(`Added to ${to?to+"'s":"the Reverb"} list${needsOk?" (waiting for a manager's OK)":""}.`); }
+  catch(err){ $("tNote").textContent=err.message; b.disabled=false; } }
+function flashTop(m){ let el=$("topflash"); if(!el){ el=document.createElement("div"); el.id="topflash"; el.className="note ok"; el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;max-width:90vw"; document.body.appendChild(el); } el.textContent=m; el.hidden=false; clearTimeout(el.__t); el.__t=setTimeout(()=>{ el.hidden=true; },4000); }
+var TASKS=null, TVIEW="mine";
+async function loadTasks(){ const recs=[]; let off=""; do{ const j=await at(`${TT}?returnFieldsByFieldId=true&pageSize=100${off?"&offset="+off:""}&filterByFormula=${encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-7,'days')))")}`); recs.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=recs; return recs; }
+function tv(r,k){ const v=(r.fields||{})[TF[k]]; return v&&typeof v==="object"&&v.name?v.name:v; }
+async function updTaskBtn(){ const b=$("tasksBtn"); if(!b) return; try{ const t=TASKS||await loadTasks(); const mine=t.filter(r=>tv(r,"status")!=="Done"&&(tv(r,"to")===WHO||(!tv(r,"to")&&tv(r,"dept")==="Reverb"))).length; b.textContent=mine?`Tasks (${mine})`:"Tasks"; }catch(e){} }
+async function openTasks(){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  el.innerHTML=`<div class="mbox tpanel"><div class="row" style="justify-content:space-between"><h3>Reverb tasks</h3><button class="btn sec sm" id="tClose" type="button">Close</button></div>
+   <div class="filters" style="margin:8px 0">${[["mine","Mine"],["reverb","Reverb department"],["all","Everyone"],["done","Done this week"]].map(([k,l])=>`<button class="chip ${TVIEW===k?"on":""}" data-tv="${k}" type="button">${l}</button>`).join("")}<button class="chip" id="tNew" type="button">+ New task</button></div>
+   <div id="tList"><div class="muted">Loading…</div></div></div>`;
+  document.body.appendChild(el); renderTasks(); }
+async function renderTasks(){ const box=$("tList"); if(!box) return; let t; try{ t=TASKS||await loadTasks(); }catch(err){ box.innerHTML=`<div class="note warn">${esc(err.message)}</div>`; return; }
+  const open=r=>tv(r,"status")!=="Done";
+  let rows = TVIEW==="mine" ? t.filter(r=>open(r)&&(tv(r,"to")===WHO||(!tv(r,"to")&&tv(r,"dept")==="Reverb")))
+    : TVIEW==="reverb" ? t.filter(r=>open(r)&&tv(r,"dept")==="Reverb")
+    : TVIEW==="done" ? t.filter(r=>!open(r)) : t.filter(open);
+  if(TVIEW==="mine"&&!WHO){ box.innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; return; }
+  if(!rows.length){ box.innerHTML=`<div class="empty">Nothing here.</div>`; return; }
+  const groups={}; rows.forEach(r=>{ const k=tv(r,"to")||((tv(r,"dept")||"General")+" department (anyone)"); (groups[k]=groups[k]||[]).push(r); });
+  const today=dayStr(0);
+  box.innerHTML=Object.keys(groups).sort().map(k=>`<div class="tgrp">${esc(k)} <span class="small muted">${groups[k].length}</span></div>`+groups[k].sort((a,b)=>String(tv(a,"due")||"9").localeCompare(String(tv(b,"due")||"9"))).map(r=>{ const due=tv(r,"due"), st=tv(r,"status"), late=due&&due<today&&st!=="Done";
+    return `<div class="titem ${st==="Done"?"done":""}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0;flex:1"><div class="tt">${esc(tv(r,"task")||"")}</div>
+     <div class="small muted">${due?`<span style="${late?"color:var(--warn);font-weight:700":""}">Due ${esc(due)}</span> · `:""}${esc(tv(r,"dept")||"")}${tv(r,"source")?" · "+esc(tv(r,"source")):""}${tv(r,"madeBy")?" · from "+esc(tv(r,"madeBy")):""}${st==="Done"&&tv(r,"doneBy")?" · done by "+esc(tv(r,"doneBy")):""}</div>
+     ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
+     ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
+     ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }).join("")).join(""); }
+async function setTask(id,fields){ await at(`${TT}`,{method:"PATCH",body:JSON.stringify({records:[{id,fields}],typecast:true})}); TASKS=null; if($("tList")) await renderTasks(); else await loadTasks(); updTaskBtn(); if(TAB==="tasks") renderList(); }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.id==="tasksBtn"){ openTasks(); return; }
+  if(t.id==="tClose"||t.id==="tSkip"||(t.id==="mback")){ closeModal(); return; }
+  if(t.id==="tAdd"){ addTask(); return; }
+  if(t.id==="tNew"){ taskPrompt({ask:false,source:"Added from the Reverb Desk",dept:"Reverb"}); return; }
+  if(t.dataset&&t.dataset.tv){ TVIEW=t.dataset.tv; document.querySelectorAll("[data-tv]").forEach(c=>c.classList.toggle("on",c.dataset.tv===TVIEW)); renderTasks(); return; }
+  if(t.dataset&&t.dataset.tok){ t.disabled=true; await setTask(t.dataset.tok,{[TF.status]:"To do",[TF.details]:undefined}); return; }
+  if(t.id==="dTask"){ const row=S[SEL.kind].rows.find(r=>r.id===SEL.id); if(row) taskPrompt(Object.assign(taskCtx(row,"manual"),{ask:false})); return; }
+});
+document.addEventListener("change",async e=>{ const t=e.target; if(t.dataset&&t.dataset.tdone){ if(!WHO){ t.checked=!t.checked; flashTop("Pick your name at the top first."); return; } t.disabled=true; await setTask(t.dataset.tdone,t.checked?{[TF.status]:"Done",[TF.doneBy]:WHO}:{[TF.status]:"To do",[TF.doneBy]:""}); } });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+function taskCtx(row,what){ const who=row.kind==="offer"?(row.n.buyer_name||"the buyer"):row.kind==="order"?(row.o.buyer_name||"the buyer"):row.title;
+  const item=row.kind==="offer"?row.L.title:row.kind==="order"?row.title:(row.sub||"");
+  const web=row.kind==="order"?(row.o._links&&row.o._links.web&&row.o._links.web.href):row.kind==="offer"?`https://reverb.com/item/${row.L.id}`:"https://reverb.com/my/messages";
+  const src=row.kind==="order"?`Reverb order #${row.o.order_number} · ${who}`:row.kind==="offer"?`Reverb offer · ${who}`:row.kind==="refund"?`Reverb refund request · ${who}`:`Reverb message · ${who}`;
+  const task = what==="offer" ? `Follow up on the offer from ${who}` : what==="order" ? `Follow up with ${who} about their order` : what==="reply" ? `Follow up with ${who}` : "";
+  const ref={t:"reverb-"+(row.kind==="msg"?"msg":row.kind),id:String(row.id),label:`${who}${item?" — "+item:""}`,url:`/t/reverb/#${row.kind}-${row.id}`};
+  return {source:src, link:web, task, details:item?("Item: "+item):"", dept:"Reverb", ref}; }
+// ---- Tasks tab: Reverb tasks + assigned desk items, with what's slipping and Ask on the right ----
+function taskItems(view){ const out=[]; const tasks=(TASKS||[]).filter(r=>tv(r,"dept")==="Reverb"||/^Reverb/.test(tv(r,"source")||""));
+  tasks.forEach(r=>{ const st=tv(r,"status"); out.push({type:"task",r,who:tv(r,"to")||"",open:st!=="Done",due:tv(r,"due")||""}); });
+  ["msg","offer","refund","order"].forEach(k=>S[k].rows.forEach(row=>{ const d=deskOf(row), to=dv(d,"to"); if(!to) return; const st=row.kind==="order"?row.stage:statusOf(row);
+    const open=row.kind==="order"?!/Delivered|Received|Picked|Refunded|Cancelled/.test(st):!(st==="Done"||st==="Answered"); out.push({type:"item",row,who:to,open,st}); }));
+  if(view.indexOf("tp:")===0){ const nm=view.slice(3); return out.filter(x=>x.open&&(x.who||"")===nm); }
+  if(view==="tmine") return out.filter(x=>x.open&&(x.who===WHO||(x.type==="task"&&!x.who)));
+  if(view==="tdone") return out.filter(x=>x.type==="task"&&!x.open);
+  return out.filter(x=>x.open); }
+function taskChips(){ if(!TASKS) return [["tall","Everyone",null],["tdone","Done this week",null]];
+  const open=taskItems("tall"), c={}; open.forEach(x=>{ const k=x.who||""; c[k]=(c[k]||0)+1; });
+  const ppl=Object.keys(c).filter(k=>k).sort((a,b)=>a===WHO?-1:b===WHO?1:a.localeCompare(b));
+  if(WHO&&!c[WHO]) ppl.unshift(WHO);
+  return [["tall","Everyone",open.length]].concat(ppl.map(p=>["tp:"+p,p===WHO?p+" (you)":p,c[p]||0]), c[""]?[["tp:","Anyone on Reverb",c[""]]]:[], [["tdone","Done this week",null]]); }
+var TLOADING=false;
+function renderTaskTab(){ renderTabs();
+  if(!TASKS){ $("list").innerHTML=`<div class="empty">Loading tasks…</div>`; if(!TLOADING){ TLOADING=true; loadTasks().then(()=>{ TLOADING=false; if(TAB==="tasks"){ renderTabs(); renderList(); } }).catch(e=>{ TLOADING=false; $("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; }); } }
+  else if(FILTER==="tmine"&&!WHO){ $("list").innerHTML=`<div class="note">Pick your name at the top to see your tasks.</div>`; }
+  else { const xs=taskItems(FILTER); const groups={}; xs.forEach(x=>{ const k=x.who||"Anyone on Reverb"; (groups[k]=groups[k]||[]).push(x); });
+    const keys=Object.keys(groups).sort((a,b)=>a==="Anyone on Reverb"?-1:b==="Anyone on Reverb"?1:a===WHO?-1:b===WHO?1:a.localeCompare(b)); const today=dayStr(0);
+    $("list").innerHTML=keys.length?keys.map(k=>`<div class="tgrp">${esc(k)} <span class="small muted">${groups[k].length}</span></div>`+groups[k].sort((a,b)=>String(a.due||"9").localeCompare(String(b.due||"9"))).map(x=>{
+      if(x.type==="task"){ const r=x.r, st=tv(r,"status"), due=x.due, late=due&&due<today&&st!=="Done";
+        return `<div class="titem ${st==="Done"?"done":""}"><input type="checkbox" data-tdone="${r.id}" ${st==="Done"?"checked":""} ${st==="Needs OK"?"disabled":""} aria-label="Done"><div style="min-width:0;flex:1"><div class="tt">${esc(tv(r,"task")||"")}</div>
+          <div class="small muted">${due?`<span style="${late?"color:var(--warn);font-weight:700":""}">Due ${esc(due)}</span> · `:""}Task${tv(r,"source")?" · "+esc(tv(r,"source")):""}${tv(r,"madeBy")?" · from "+esc(tv(r,"madeBy")):""}${st==="Done"&&tv(r,"doneBy")?" · done by "+esc(tv(r,"doneBy")):""}</div>
+          ${tv(r,"details")?`<div class="small" style="white-space:pre-wrap;margin-top:3px">${esc(tv(r,"details"))}</div>`:""}
+          ${st==="Needs OK"?`<div class="small" style="margin-top:4px">Waiting for Jon, Sam or Nina. ${MANAGERS.includes(WHO)?`<button class="btn sm" data-tok="${r.id}" type="button">OK it</button>`:""}</div>`:""}
+          ${tv(r,"link")?`<a class="small" href="${esc(tv(r,"link"))}" target="_blank" rel="noopener">Open on Reverb</a>`:""}</div></div>`; }
+      const r=x.row; return `<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="it">${esc(KINDS[r.kind])}: ${esc(r.kind==="offer"?r.L.title:r.title)}</div><div class="s">${esc(r.kind==="offer"?(r.n.buyer_name||""):r.sub||"")}</div><div class="tags">${tagsFor(r)}</div></div>`; }).join("")).join(""):`<div class="empty">${FILTER==="tmine"||FILTER==="tp:"+WHO?"Nothing on your list. Nice.":"Nothing here."}</div>`; }
+  $("more").innerHTML="";
+  if(!SEL) $("detail").innerHTML=mgrPane(); }
+function mgrPane(){ const g=gaps();
+  return `   <h2 style="margin-top:0">Ask</h2>
+   <div class="row"><input class="t" id="askIn" placeholder="e.g. What's happening? Who has the most open? Give the Martin offers to Sam." style="flex:1;min-width:0"><button class="btn" id="askGo" type="button">Ask</button></div>
+   <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${md(ASK[ASK.length-1].content.replace(/TASKS_JSON:[\s\S]*$/,""))}</div>`:""}</div>
+   <div id="askAct"></div>
+   <h2 style="margin-top:22px">What's happening</h2>
+   ${g.length?g.map(x=>`<details class="calm gapc"><summary>${esc(x.title)} <span class="small" style="${x.sev>1?"color:var(--muted)":"color:var(--accent-text)"}">${x.items.length}</span>${x.hint?` <span class="small muted" style="font-weight:400">· ${esc(x.hint)}</span>`:""}</summary>
+      <div class="small" style="padding:0 0 8px 16px">${x.items.slice(0,6).map(it=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="btn link" style="font-size:12px;padding:0 4px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">add task</button>`:""}</div>`).join("")}${x.items.length>6?`<div class="muted">…and ${x.items.length-6} more</div>`:""}</div></details>`).join(""):`<div class="gap ok">Nothing needs attention right now.</div>`}
+`; }
+
+document.addEventListener("click",e=>{ const t=e.target;
+  if(t.id==="gpLink"){ const b=$("gpBox"); if(!b) return; b.innerHTML=`<div class="row" style="margin:4px 0 8px"><input class="t" id="gpUrl" placeholder="Paste the Google Photos share link (photos.app.goo.gl/...)" style="flex:1;min-width:0"><button class="btn sm" id="gpAdd" type="button">Add to reply</button></div><div class="small muted" style="margin:-4px 0 8px">In Google Photos: select the photos, tap Share, then Create link, and paste it here.</div>`; setTimeout(()=>{ try{ $("gpUrl").focus(); }catch(_){} },30); return; }
+  if(t.id==="gpAdd"){ const u=($("gpUrl").value||"").trim(); if(!/^https:\/\/(photos\.app\.goo\.gl|photos\.google\.com|goo\.gl\/photos)\//.test(u)){ $("gpUrl").style.borderColor="var(--warn)"; return; } const rb=$("rBody"); rb.value=(rb.value.trim()?rb.value.trim()+"\n\n":"")+"Photos: "+u; rb.dispatchEvent(new Event("input",{bubbles:true})); $("gpBox").innerHTML=""; rb.focus(); return; }
+});
+document.addEventListener("input",e=>{ if(e.target.id==="rBody"&&e.target.dataset.rid) DRAFTS_R[e.target.dataset.rid]=e.target.value; });
+window.addEventListener("beforeunload",e=>{ if(Object.values(DRAFTS_R).some(v=>v&&v.trim())){ e.preventDefault(); e.returnValue=""; } });
+// ---- Message a teammate about this item (hub Team Messages) ----
+const TMSG="tbl6wGPOAx0AkJwSU";
+function refFor(row){ const k=row.kind; if(k==="order") return {t:"reverb-order",id:String(row.o.order_number),label:`#${row.o.order_number} ${row.o.buyer_name||""} — ${row.title}`,url:`/t/reverb/#order-${row.o.order_number}`};
+  if(k==="offer") return {t:"reverb-offer",id:row.id,label:`${row.n.buyer_name||"Buyer"} — ${row.L.title}`,url:`/t/reverb/#offer-${row.id}`};
+  if(k==="refund") return {t:"reverb-refund",id:row.id,label:row.title,url:`/t/reverb/#refund-${row.id}`};
+  return {t:"reverb-msg",id:row.id,label:`${row.title} — ${row.sub||"message"}`,url:`/t/reverb/#msg-${row.id}`}; }
+function msgPrompt(row){ closeModal(); const el=document.createElement("div"); el.className="mback"; el.id="mback"; const ref=refFor(row);
+  el.innerHTML=`<div class="mbox" role="dialog" aria-label="Message a teammate"><h3>Message a teammate</h3><div class="small muted" style="margin-bottom:8px">About: ${esc(ref.label)}</div>
+   <label class="f">To<select class="t" id="tmTo"><option>Reverb dept</option><option>Everyone</option>${STAFF.map(n=>`<option>${n}</option>`).join("")}</select></label>
+   <label class="f">Message<textarea class="t" id="tmText"></textarea></label><div class="small muted" id="tmNote"></div>
+   <div class="row" style="margin-top:6px"><button class="btn" id="tmSend" type="button">Send</button><button class="btn sec" id="tSkip" type="button">Cancel</button></div></div>`;
+  document.body.appendChild(el); el.__ref=ref; setTimeout(()=>{ try{ $("tmText").focus(); }catch(e){} },50); }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.id==="dMsg2"){ const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(row) msgPrompt(row); return; }
+  if(t.id==="tmSend"){ const text=$("tmText").value.trim(); if(!WHO){ $("tmNote").textContent="Pick your name at the top first."; return; } if(!text){ $("tmNote").textContent="Write a message."; return; }
+    t.disabled=true; try{ await at(TMSG,{method:"POST",body:JSON.stringify({records:[{fields:{Message:text,From:WHO,To:$("tmTo").value,"Read By":[WHO],Refs:JSON.stringify([$("mback").__ref])}}],typecast:true})}); closeModal(); flashTop("Sent. It's in Team messages on the hub."); }catch(err){ $("tmNote").textContent=err.message; t.disabled=false; } return; }
+});
+// open an item from a link like /t/reverb/#msg-123 , #offer-456 , #order-789
+async function openFromHash(){ const m=/^#(msg|offer|order|refund)-(\w+)$/.exec(location.hash||""); if(!m) return; const k=m[1], id=m[2];
+  let row=S[k].rows.find(r=>r.id===id||(k==="order"&&String(r.o&&r.o.order_number)===id)); if(!row) return; TAB=k; FILTER="all"; renderList(); await openRow(k,row.id); }
+window.addEventListener("hashchange",()=>{ openFromHash(); });
+setTimeout(function waitLoad(){ if(S.msg.rows.length||S.order.rows.length) openFromHash(); else setTimeout(waitLoad,800); },1500);
+
+setTimeout(updTaskBtn,1500);
+// ---- Manager view: everything open on Reverb, what's missing, and an Ask box (Claude via the hub's /ai) ----
+const HRS=ms=>Math.round((Date.now()-ms)/36e5);
+function gaps(){ const out=[]; const add=(sev,title,items,hint)=>{ if(items.length) out.push({sev,title,items,hint}); };
+  const nm=r=>r.kind==="offer"?`${r.L.title} · ${r.n.buyer_name||""}`:r.kind==="order"?`${r.title} · ${r.o.buyer_name||""}`:`${r.title}${r.sub?" · "+r.sub:""}`;
+  const msgs=S.msg.rows.filter(r=>statusOf(r)==="New");
+  add(1,"Messages nobody has answered",msgs.map(r=>({r,t:nm(r),x:r.at?ago(r.at):""})),"Reply, mark read, or assign.");
+  const offers=S.offer.rows.filter(r=>r.n.actionable);
+  add(1,"Offers waiting on us",offers.map(r=>({r,t:nm(r)+" · offered "+(r.n.last_offered_price&&r.n.last_offered_price.display&&r.n.last_offered_price.display.display||""),x:r.n.expires_at?"expires "+when(r.n.expires_at):""})),"Answer before they expire.");
+  const soon=offers.filter(r=>r.n.expires_at&&Date.parse(r.n.expires_at)-Date.now()<12*36e5);
+  add(0,"Offers expiring within 12 hours",soon.map(r=>({r,t:nm(r),x:"expires "+when(r.n.expires_at)})),"These go away on their own soon.");
+  const ship=S.order.rows.filter(r=>/needs shipping/.test(r.stage));
+  add(1,"Paid orders not shipped yet",ship.map(r=>({r,t:nm(r),x:r.o.paid_at?"paid "+ago(r.o.paid_at):""})),"Ship within 3 business days of payment.");
+  const unpaid=S.order.rows.filter(r=>/Unpaid|Waiting/i.test(r.stage));
+  add(2,"Orders not paid yet",unpaid.map(r=>({r,t:nm(r),x:r.at?ago(r.at):""})),"Nudge the buyer if it's been a while.");
+  const refunds=S.refund.rows.filter(r=>statusOf(r)!=="Done");
+  add(1,"Refund requests open",refunds.map(r=>({r,t:nm(r),x:""})),"Decide and respond.");
+  const mgrOk=[...S.msg.rows,...S.offer.rows,...S.refund.rows].filter(r=>{ const d=deskOf(r); return d&&dv(d,"needs")&&!dv(d,"okBy"); });
+  if(MGR_OK) add(0,"Waiting for a manager's OK",mgrOk.map(r=>({r,t:nm(r),x:""})),"Jon, Sam or Nina.");
+  const unassigned=[...msgs,...offers,...refunds].filter(r=>!dv(deskOf(r),"to"));
+  add(2,"Open items not assigned to anyone",unassigned.map(r=>({r,t:nm(r),x:KINDS[r.kind]})),"Assign or make a task.");
+  const tk=(TASKS||[]).filter(r=>tv(r,"status")!=="Done"); const today=dayStr(0);
+  add(1,"Overdue tasks",tk.filter(r=>tv(r,"due")&&tv(r,"due")<today).map(r=>({t:(tv(r,"task")||"")+" · "+(tv(r,"to")||"Reverb dept"),x:"due "+tv(r,"due")})),"");
+  add(2,"Department tasks nobody has picked up",tk.filter(r=>!tv(r,"to")).map(r=>({t:tv(r,"task")||"",x:tv(r,"due")?"due "+tv(r,"due"):""})),"");
+  return out.sort((a,b)=>a.sev-b.sev); }
+function snapshot(){ const L=r=>{ const d=deskOf(r); return {kind:KINDS[r.kind],id:r.id,title:r.kind==="offer"?r.L.title:r.title,who:r.kind==="offer"?r.n.buyer_name:r.kind==="order"?r.o.buyer_name:r.title,status:r.kind==="order"?r.stage:statusOf(r),assigned:dv(d,"to")||"",needsOk:!!(d&&dv(d,"needs")&&!dv(d,"okBy")),notes:(dv(d,"notes")||"").slice(0,200),when:r.at||"",
+   offer:r.kind==="offer"?{offered:r.n.last_offered_price&&r.n.last_offered_price.display&&r.n.last_offered_price.display.display,listed:r.L.price&&r.L.price.display,ship:r.n.last_offered_shipping&&r.n.last_offered_shipping.display&&r.n.last_offered_shipping.display.display,expires:r.n.expires_at,waitingOnUs:!!r.n.actionable,count:r.n.offers_count}:undefined,
+   order:r.kind==="order"?{number:r.o.order_number,total:r.o.total&&r.o.total.display,paid:r.o.paid_at||"",sku:r.o.sku}:undefined,
+   last:r.kind==="msg"&&r.last?{fromUs:!!r.last.authored,text:String(r.last.body||"").slice(0,200)}:undefined}; };
+  const open=[...S.msg.rows.filter(r=>statusOf(r)!=="Done"),...S.offer.rows,...S.refund.rows,...S.order.rows.filter(r=>!/Delivered|Received|Picked|Refunded|Cancelled/.test(r.stage))];
+  return {now:new Date().toString(),you:WHO,staff:STAFF,managers:MANAGERS,items:open.slice(0,200).map(L),tasks:(TASKS||[]).filter(r=>tv(r,"status")!=="Done").map(r=>({task:tv(r,"task"),to:tv(r,"to")||"",dept:tv(r,"dept"),due:tv(r,"due")||"",status:tv(r,"status"),source:tv(r,"source")||""}))}; }
+var ASK=[]; var ASKBUSY=false;
+function md(t){ return esc(t).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/^#+\s*(.+)$/gm,"<b>$1</b>"); }
+async function openMgr(){ closeModal(); try{ if(!TASKS) await loadTasks(); }catch(e){}
+  const el=document.createElement("div"); el.className="mback"; el.id="mback";
+  const g=gaps();
+  el.innerHTML=`<div class="mbox mgr"><div class="row" style="justify-content:space-between"><h3>Manager view</h3><button class="btn sec sm" id="tClose" type="button">Close</button></div>
+   <div class="small muted" style="margin-bottom:8px">Everything open on Reverb right now, what's happening, and a box to ask about it.</div>
+   ${g.length?g.map((x,gi)=>`<div class="gap ${x.sev>1?"ok":""}"><b>${esc(x.title)}</b> <span class="small muted">${x.items.length}</span>${x.hint?` <span class="small muted">· ${esc(x.hint)}</span>`:""}
+      <div class="small">${x.items.slice(0,8).map((it,ii)=>`<div>• ${it.r?`<a href="#" data-gopen="${it.r.kind}|${esc(it.r.id)}">${esc(it.t)}</a>`:esc(it.t)}${it.x?` <span class="muted">(${esc(it.x)})</span>`:""}${it.r?` <button class="chip" style="padding:0 6px;font-size:11px" data-gtask="${it.r.kind}|${esc(it.r.id)}" type="button">+ task</button>`:""}</div>`).join("")}${x.items.length>8?`<div class="muted">…and ${x.items.length-8} more</div>`:""}</div></div>`).join(""):`<div class="gap ok">Nothing needs attention right now.</div>`}
+   <h3 style="margin-top:14px;font-size:16px">Ask</h3>
+   <div id="askOut">${ASK.filter(m=>m.role==="assistant").length?`<div class="askout">${md(ASK[ASK.length-1].content.replace(/TASKS_JSON:[\s\S]*$/,""))}</div>`:""}</div>
+   <div class="row"><input class="t" id="askIn" placeholder="e.g. What's happening? Who has the most open? Give the Martin offers to Sam." style="flex:1;min-width:0"><button class="btn" id="askGo" type="button">Ask</button></div>
+   <div id="askAct"></div></div>`;
+  document.body.appendChild(el); setTimeout(()=>{ try{ $("askIn").focus(); }catch(e){} },50); }
+async function askGo(){ if(ASKBUSY) return; const q=$("askIn").value.trim(); if(!q) return; ASKBUSY=true; $("askGo").disabled=true; $("askOut").innerHTML=`<div class="askout muted">Thinking…</div>`; $("askAct").innerHTML="";
+  const sys=`You are the Reverb manager's assistant at Mill River Music, a used and new music gear shop in Northampton, MA that sells on Reverb. You see a live snapshot of everything open in the shop's Reverb Desk (messages, offers, refund requests, orders) plus the team's task list. Answer the manager briefly and plainly, like a sharp coworker: short sentences, lists only when listing items. Point out anything slipping (unanswered messages, offers waiting on us or about to expire, unshipped paid orders, items needing a manager's OK, overdue or unclaimed tasks). Never invent items that aren't in the snapshot. You cannot send anything to buyers. If the manager asks you to assign or create tasks, include at the very end a line "TASKS_JSON:" followed by a JSON array of {"task","to","due","details","source"} where "to" is a staff first name from the list or "" for the Reverb department, and "due" is YYYY-MM-DD. Only include TASKS_JSON when tasks were asked for.
+SNAPSHOT:
+${JSON.stringify(snapshot())}`;
+  ASK.push({role:"user",content:q}); $("askIn").value="";
+  try{ const r=await fetch("/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,max_tokens:4000,messages:ASK.slice(-10)})}); const j=await r.json();
+    if(!r.ok) throw new Error((j.error&&j.error.message)||j.message||("Error "+r.status));
+    let text=(j.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n").trim(); ASK.push({role:"assistant",content:text});
+    let tasks=[]; const m=text.match(/TASKS_JSON:\s*(\[[\s\S]*\])\s*$/); if(m){ try{ tasks=JSON.parse(m[1]); }catch(e){} text=text.slice(0,m.index).trim(); }
+    $("askOut").innerHTML=`<div class="askout">${md(text)}</div>`+(j.stop_reason==="max_tokens"?`<div class="small muted">That answer got cut off. Ask it to keep it shorter.</div>`:"");
+    if(tasks.length){ window.__pendingTasks=tasks; $("askAct").innerHTML=`<div class="note"><b>Make these tasks?</b>${tasks.map(t=>`<div class="small">• ${esc(t.task)} → ${esc(t.to||"Reverb dept")}${t.due?" · due "+esc(t.due):""}</div>`).join("")}<div class="row" style="margin-top:6px"><button class="btn sm" id="askMake" type="button">Add them</button><button class="btn sec sm" id="askNo" type="button">Not now</button></div></div>`; }
+  }catch(err){ ASK.pop(); $("askOut").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; }
+  ASKBUSY=false; const b=$("askGo"); if(b) b.disabled=false; }
+async function makeAskTasks(){ const ts=window.__pendingTasks||[]; if(!WHO){ flashTop("Pick your name at the top first."); return; }
+  const recs=ts.map(t=>{ const needsOk=false; const f={[TF.task]:t.task,[TF.dept]:"Reverb",[TF.status]:needsOk?"Needs OK":"To do",[TF.details]:t.details||"",[TF.source]:t.source||"Manager view",[TF.madeBy]:WHO}; if(t.to&&STAFF.includes(t.to)) f[TF.to]=t.to; if(/^\d{4}-\d\d-\d\d$/.test(t.due||"")) f[TF.due]=t.due; return {fields:f}; });
+  for(let i=0;i<recs.length;i+=10) await at(`${TT}`,{method:"POST",body:JSON.stringify({records:recs.slice(i,i+10),typecast:true})});
+  TASKS=null; updTaskBtn(); $("askAct").innerHTML=`<div class="note ok">Added ${recs.length} task${recs.length===1?"":"s"}.</div>`; }
+document.addEventListener("click",async e=>{ const t=e.target;
+  if(t.id==="mgrBtn"){ openMgr(); return; }
+  if(t.id==="askGo"){ askGo(); return; }
+  if(t.id==="askMake"){ t.disabled=true; try{ await makeAskTasks(); }catch(err){ flashTop(err.message); t.disabled=false; } return; }
+  if(t.id==="askNo"){ $("askAct").innerHTML=""; return; }
+  if(t.dataset&&t.dataset.gopen){ e.preventDefault(); const [k,id]=t.dataset.gopen.split("|"); closeModal(); await openRow(k,id); return; }
+  if(t.dataset&&t.dataset.gtask){ const [k,id]=t.dataset.gtask.split("|"); const row=S[k].rows.find(r=>r.id===id); if(row) taskPrompt(Object.assign(taskCtx(row,k==="offer"?"offer":k==="order"?"order":"reply"),{ask:false})); return; }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="askIn"){ e.preventDefault(); askGo(); } });
+
+
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+/* MRM "Calm" look (11/8/2026). Loaded after warm.css on pages that opt in.
+   Principles: one thing stands out at a time; color only where it means something
+   (accent = the one primary action and "needs you"); status as quiet text, not pills;
+   no decorative icons or arrows; whiter surfaces; square edges; more space. */
+:root{
+  --bg:#FBFAF8; --surface:#FFFFFF; --sunk:#F6F4F0; --ink:#1F1A16; --muted:#6F655C; --line:#ECE7E0; --line2:#DCD5CB;
+  --accent:#7A2E1F; --accent-ink:#FFFFFF; --accent-soft:#F5ECE8; --accent-text:#7A2E1F;
+  --ok:#2F6B3A; --ok-soft:#EEF4EA; --warn:#A3301F; --warn-soft:#FBEEEB; --info:#3D4C8A; --info-soft:#EFF1F8; --sugg:#8A5A12; --sugg-soft:#FAF2E4;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#1E1B19; --surface:#272320; --sunk:#221F1C; --ink:#F2ECE4; --muted:#B3A79B; --line:#38322D; --line2:#4A433C;
+  --accent:#D0674D; --accent-ink:#FFFFFF; --accent-soft:#3A2722; --accent-text:#F0A48F;
+  --ok:#9BD394; --ok-soft:#24301F; --warn:#FF9E8B; --warn-soft:#3A2420; --info:#B9C2F5; --info-soft:#262A3D; --sugg:#EDC07A; --sugg-soft:#352B1D}}
+html body{background:var(--bg);color:var(--ink);line-height:1.5}
+
+/* edges: square and light */
+html body .card,html body .tile,html body .panel,html body .box,html body .item,html body .titem,html body .tcol,html body .modal,html body .sheet,html body .note,html body .ptile,html body .ann,html body .sect,html body .msg,html body .grp{border-radius:2px!important;box-shadow:none!important}
+html body .btn,html body button,html body input,html body select,html body textarea,html body .chip,html body .tab,html body .tag,html body .count,html body .rchip,html body .tchip,html body .flag{border-radius:2px!important}
+
+/* buttons: one primary, the rest quiet */
+html body .btn.sec,html body .btn.sec2,html body .btn.ghost{background:transparent!important;border:1px solid var(--line2)!important;color:var(--ink)!important}
+html body .btn.link{background:none!important;border:0!important;color:var(--accent-text)!important;padding:4px 2px!important;min-height:0!important;font-weight:600}
+html body .btn.link:hover{text-decoration:underline}
+
+/* tabs: underline, not filled boxes */
+html body .tabs-calm{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 4px;flex-wrap:wrap}
+html body .tabs-calm .tab{background:none!important;border:0!important;border-bottom:2px solid transparent!important;color:var(--muted)!important;padding:10px 12px!important;font-weight:600;min-height:0!important}
+html body .tabs-calm .tab.on{color:var(--ink)!important;border-bottom-color:var(--accent)!important}
+html body .tabs-calm .tab .n{margin-left:6px;font-size:12px;color:var(--muted);font-weight:600}
+html body .tabs-calm .tab .n.hot{color:var(--accent-text)}
+
+/* filter chips: small, quiet */
+html body .chip{background:transparent!important;border:1px solid transparent!important;color:var(--muted)!important;padding:4px 10px!important;font-size:13.5px!important}
+html body .chip:hover{color:var(--ink)!important;border-color:var(--line2)!important}
+html body .chip.on{background:var(--sunk)!important;border-color:var(--line2)!important;color:var(--ink)!important}
+
+/* sidebar: no icons, no arrows, more air */
+html body .side a .i{display:none!important}
+html body .side a.ext .t::after{content:""!important}
+html body .side a.l1{padding:9px 14px 9px 13px}
+html body .side .sgrp{padding:18px 0}
+html body .side{background:var(--surface)}
+
+/* list rows */
+html body .row-calm{display:flex;align-items:baseline;gap:10px}
+html body .row-calm .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+html body .row-calm .tm{font-size:12.5px;color:var(--muted);white-space:nowrap}
+html body .unread .nm{font-weight:700}
+html body .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:7px;vertical-align:1px}
+html body .meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+html body .meta b{color:var(--ink);font-weight:600}
+html body .meta .hot{color:var(--accent-text);font-weight:600}
+
+/* disclosure */
+html body details.calm>summary{cursor:pointer;list-style:none;font-weight:600;padding:8px 0}
+html body details.calm>summary::-webkit-details-marker{display:none}
+html body details.calm>summary::before{content:"▸";display:inline-block;width:16px;color:var(--muted);transition:transform .15s}
+html body details.calm[open]>summary::before{transform:rotate(90deg)}
+
+/* list items: white, hairline, selected = left accent bar (not a heavy outline) */
+html body .item,html body .titem{background:var(--surface)!important;border:1px solid var(--line)!important;padding:12px 14px!important}
+html body .item.on{border-color:var(--line2)!important;box-shadow:inset 3px 0 0 var(--accent)!important;background:var(--surface)!important}
+html body .item:hover{border-color:var(--line2)!important}
+html body a.btn.link{text-decoration:none}
+/* tabs scroll sideways on phones instead of wrapping */
+@media (max-width:640px){html body .tabs-calm{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}html body .tabs-calm .tab{white-space:nowrap;padding:10px 10px!important}}
