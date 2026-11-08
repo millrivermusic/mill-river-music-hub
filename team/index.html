@@ -168,6 +168,17 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
 .ann{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--sunk);padding:10px 12px;margin:8px 0}
 .ann .at{font-weight:700}.ann .am{font-size:12.5px;color:var(--muted)}
 .annstrip{margin:0 0 14px}
+/* sidebar v2 (11/7): tabbed first level, indented second level, space between groups */
+.side .sgrp{padding:14px 0;border-top:1px solid var(--line)}
+.side .sgrp:first-child{border-top:0;padding-top:4px}
+.side .sh{margin:0 12px 6px!important;font-size:11px!important;letter-spacing:.1em!important}
+.side a.l1{border-radius:0!important;border-left:3px solid transparent;padding:8px 12px 8px 11px;font-weight:600;font-size:14.5px}
+.side a.l1:hover{background:var(--surface);border-left-color:var(--line2)}
+.side a.l1.on{background:var(--surface);border-left-color:var(--accent);color:var(--ink);font-weight:700}
+.side .l2s{margin:2px 0 6px 23px;border-left:1px solid var(--line2)}
+.side a.l2{border-radius:0!important;padding:6px 12px;font-size:13.5px;font-weight:500;color:var(--muted)}
+.side a.l2:hover{color:var(--ink);background:var(--surface)}
+.side .sgrp>a.l2{padding-left:14px}
 </style>
 </head>
 <body>
@@ -462,14 +473,14 @@ fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.jso
 
 // ---- Pages (11/7): home is a set of tiles; each opens its own page ----
 const PAGES=[
- {k:"board",ic:"💬",t:"Team Board",p:"Messages, tasks and announcements for the whole team."},
- {k:"me",ic:"🙋",t:"My Messages & Tasks",p:"Pick a person: their messages, their tasks and the Reverb items assigned to them."},
- {k:"reverb",ic:"🎸",t:"Reverb Desk",p:"Reverb messages, offers, orders and the Reverb task list.",href:"/t/reverb/"},
- {k:"intake",ic:"🤝",t:"Intake & Inventory",p:"Buy, trade and consign; photos, listings and lookup.",secs:["Used Intake, Inventory & Listing"]},
- {k:"cs",ic:"👤",t:"Customer Service",p:"Customers, returns, lookup and notes.",secs:["Customer Service · Ops Desk"]},
- {k:"repair",ic:"🔧",t:"Repair & Tech",p:"Tech bench and Martin & Taylor warranty work.",secs:["Tech"]},
- {k:"util",ic:"🏷️",t:"Utilities & Help",p:"Label printing, gift cards, instructions and quick links.",secs:["Utilities","Help"]},
- {k:"soon",ic:"🧪",t:"Being built",p:"Tools on the way.",secs:["Coming soon"]}
+ {k:"board",g:"Team",ic:"💬",t:"Team Board",p:"Messages, tasks and announcements for the whole team."},
+ {k:"me",g:"Team",ic:"🙋",t:"My Messages & Tasks",p:"Pick a person: their messages, their tasks and the Reverb items assigned to them."},
+ {k:"reverb",g:"Desks",ic:"🎸",t:"Reverb Desk",p:"Reverb messages, offers, orders and the Reverb task list.",href:"/t/reverb/"},
+ {k:"intake",g:"Desks",ic:"🤝",t:"Intake & Inventory",p:"Buy, trade and consign; photos, listings and lookup.",secs:["Used Intake, Inventory & Listing"]},
+ {k:"cs",g:"Desks",ic:"👤",t:"Customer Service",p:"Customers, returns, lookup and notes.",secs:["Customer Service · Ops Desk"]},
+ {k:"repair",g:"Desks",ic:"🔧",t:"Repair & Tech",p:"Tech bench and Martin & Taylor warranty work.",secs:["Tech"]},
+ {k:"util",g:"More",ic:"🏷️",t:"Utilities & Help",p:"Label printing, gift cards, instructions and quick links.",secs:["Utilities","Help"]},
+ {k:"soon",g:"More",ic:"🧪",t:"Being built",p:"Tools on the way.",secs:["Coming soon"]}
 ];
 var PAGE="home", ANN=[], ACOMP=false, PREVV=null;
 function tilesOf(pg){ const out=[]; let cur=null; TILES.forEach(t=>{ if(t.sec){ cur=t.sec; return; } if(pg.secs&&pg.secs.includes(cur)) out.push(t); }); return out; }
@@ -494,11 +505,14 @@ renderTiles=function(){ renderSide(); const box=$("tiles"); const show=(id,on)=>
   if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length;
     box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s messages and tasks. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
   const ts=tilesOf(pg); box.innerHTML=head+`<div class="grid">${ts.map(tile).join("")}</div>`; };
-renderSide=function(){ const el=$("side"); if(!el) return; let h=`<a class="${PAGE==="home"?"on":""}" href="#home"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a>`;
-  PAGES.forEach(pg=>{ const fl=pageFlags(pg).filter(x=>x[1]); const n=fl.length?parseInt(fl[0][0]):0; h+=`<a class="${PAGE===pg.k?"on":""}" href="${pg.href||"#"+pg.k}"><span class="i" aria-hidden="true">${pg.ic}</span><span class="t">${esc(pg.t)}</span>${n?`<span class="n hot">${n}</span>`:""}</a>`;
-    if(PAGE===pg.k&&pg.secs){ tilesOf(pg).filter(t=>t.href).forEach(t=>{ const ext=/^https?:/.test(t.href); h+=`<a class="${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""} style="padding-left:30px"><span class="t">${esc(t.t)}</span></a>`; }); } });
+renderSide=function(){ const el=$("side"); if(!el) return; let h=`<div class="sgrp"><a class="l1 ${PAGE==="home"?"on":""}" href="#home"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a></div>`; let g=null;
+  PAGES.forEach(pg=>{ if(pg.g!==g){ if(g!==null) h+=`</div>`; g=pg.g; h+=`<div class="sgrp"><div class="sh">${esc(g)}</div>`; }
+    const fl=pageFlags(pg).filter(x=>x[1]); const n=fl.length?parseInt(fl[0][0]):0;
+    h+=`<a class="l1 ${PAGE===pg.k?"on":""}" href="${pg.href||"#"+pg.k}"><span class="i" aria-hidden="true">${pg.ic}</span><span class="t">${esc(pg.t)}</span>${n?`<span class="n hot">${n}</span>`:""}</a>`;
+    if(PAGE===pg.k&&pg.secs){ const ts=tilesOf(pg).filter(t=>t.href); if(ts.length) h+=`<div class="l2s">${ts.map(t=>{ const ext=/^https?:/.test(t.href); return `<a class="l2 ${ext?"ext":""}" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}><span class="t">${esc(t.t)}</span></a>`; }).join("")}</div>`; } });
+  if(g!==null) h+=`</div>`;
   const ql=[...document.querySelectorAll("#qlcard .links a")];
-  if(ql.length){ h+=`<div class="sh">Quick links</div>`+ql.map(a=>`<a class="ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="i" aria-hidden="true">·</span><span class="t">${esc(a.textContent)}</span></a>`).join(""); }
+  if(ql.length){ h+=`<div class="sgrp"><div class="sh">Quick links</div>`+ql.map(a=>`<a class="l2 ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="t">${esc(a.textContent)}</span></a>`).join("")+`</div>`; }
   el.innerHTML=`<div class="sidein">${h}</div>`; };
 function route(){ let k=(location.hash||"").slice(1); if(k==="tmsgs"||k==="tasks") k="board"; const prev=PAGE; PAGE=PAGES.some(p=>p.k===k&&!p.href)?k:"home";
   if(PAGE==="me"&&prev!=="me"){ PREVV=[MVIEW,TVIEW]; MVIEW="me"; TVIEW="mine"; } else if(PAGE!=="me"&&prev==="me"&&PREVV){ [MVIEW,TVIEW]=PREVV; PREVV=null; }
