@@ -503,12 +503,12 @@ fetch("/cdn-cgi/access/get-identity",{credentials:"include"}).then(r=>r.ok?r.jso
 
 // ---- Pages (11/7): home is a set of tiles; each opens its own page ----
 const PAGES=[
- {k:"board",g:"Team",ic:"💬",t:"Team Board",p:"Messages, tasks and announcements for the whole team."},
- {k:"me",g:"Team",ic:"🙋",t:"My Work",p:"Pick a person: their customer conversations, tasks, messages and Reverb items in one place."},
- {k:"reverb",g:"Desks",ic:"🎸",t:"Reverb Desk",p:"Reverb messages, offers, orders and the Reverb task list.",href:"/t/reverb/"},
  {k:"intake",g:"Desks",ic:"🤝",t:"Intake & Inventory",p:"Buy, trade and consign; photos, listings and lookup.",secs:["Used Intake, Inventory & Listing"]},
+ {k:"reverb",g:"Desks",ic:"🎸",t:"Reverb Desk",p:"Reverb messages, offers, orders and the Reverb task list.",href:"/t/reverb/"},
  {k:"cs",g:"Desks",ic:"👤",t:"Customer Service",p:"Customers, returns, lookup and notes.",secs:["Customer Service · Ops Desk"]},
  {k:"repair",g:"Desks",ic:"🔧",t:"Repair & Tech",p:"Tech bench and Martin & Taylor warranty work.",secs:["Tech"]},
+ {k:"board",g:"Team",ic:"💬",t:"Team Board",p:"Messages, tasks and announcements for the whole team."},
+ {k:"me",g:"Team",ic:"🙋",t:"My Work",p:"Pick a person: their customer conversations, tasks, messages and Reverb items in one place."},
  {k:"util",g:"More",ic:"🏷️",t:"Utilities & Help",p:"Label printing, gift cards, instructions and quick links.",secs:["Utilities","Help"]},
  {k:"soon",g:"More",ic:"🧪",t:"Being built",p:"Tools on the way.",secs:["Coming soon"]}
 ];
