@@ -82,6 +82,7 @@ tr.bad td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
       <select class="t" id="days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select>
       <select class="t" id="lister"><option value="">Anyone</option></select>
       <label class="chk"><input type="checkbox" id="probs"> Problems only</label>
+      <label class="chk"><input type="checkbox" id="otw"> Show on the way to Reverb</label>
       <button class="btn sec" type="button" id="reload">Refresh</button>
     </div>
     <div class="sum" id="sum"></div>
@@ -147,8 +148,8 @@ async function load(){
     out.sort((a,b)=>t(b)-t(a));
     HIDDEN=0; ALL=[];
     out.forEach(r=>{ const j=judge(r); const failed=/^Failed/.test(String(v(r,"result")||""));
-      if(j.rev===null&&!failed){ HIDDEN++; return; } // Jon: leave out items not yet sent to Reverb
-      if(j.rev===null) j.rev=["wait","Not checked yet"];
+      if(j.rev===null&&!failed){ HIDDEN++; j.rev=["wait","On the way"]; j.otw=true; } // Jon: left out unless "Show on the way to Reverb" is ticked
+      else if(j.rev===null) j.rev=["wait","Not checked yet"];
       ALL.push({r,j}); });
     const names=[...new Set(ALL.map(x=>v(x.r,"listedBy")).filter(Boolean))].sort(), cur=$("lister").value;
     $("lister").innerHTML=`<option value="">Anyone</option>`+names.map(n=>`<option${n===cur?" selected":""}>${esc(n)}</option>`).join("");
@@ -158,9 +159,9 @@ async function load(){
 
 function render(){
   const q=$("q").value.trim().toLowerCase(), who=$("lister").value, po=$("probs").checked;
-  const rows=ALL.filter(x=>(!po||x.j.bad)&&(!who||v(x.r,"listedBy")===who)&&(!q||(v(x.r,"name")+" "+v(x.r,"sku")).toLowerCase().includes(q)));
-  const both=ALL.filter(x=>x.j.web[0]==="ok"&&x.j.rev[0]==="ok").length, web=ALL.filter(x=>x.j.web[0]==="ok").length, rev=ALL.filter(x=>x.j.rev[0]==="ok").length, nowhere=ALL.filter(x=>x.j.web[0]!=="ok"&&x.j.rev[0]!=="ok").length, bad=ALL.filter(x=>x.j.bad).length;
-  $("sum").innerHTML=`<span><b>${ALL.length}</b> listed</span><span><b>${both}</b> on both</span><span><b>${web}</b> on the website</span><span><b>${rev}</b> on Reverb</span><span><b>${nowhere}</b> nowhere yet</span><span style="color:var(--warn)"><b style="color:inherit">${bad}</b> with problems</span>${HIDDEN?`<span>${HIDDEN} waiting for tonight's Reverb run (not shown)</span>`:""}`;
+  const otw=$("otw").checked; const rows=ALL.filter(x=>(otw||!x.j.otw)&&(!po||x.j.bad)&&(!who||v(x.r,"listedBy")===who)&&(!q||(v(x.r,"name")+" "+v(x.r,"sku")).toLowerCase().includes(q)));
+  const SHOWN=ALL.filter(x=>!x.j.otw); const both=SHOWN.filter(x=>x.j.web[0]==="ok"&&x.j.rev[0]==="ok").length, web=SHOWN.filter(x=>x.j.web[0]==="ok").length, rev=SHOWN.filter(x=>x.j.rev[0]==="ok").length, nowhere=SHOWN.filter(x=>x.j.web[0]!=="ok"&&x.j.rev[0]!=="ok").length, bad=SHOWN.filter(x=>x.j.bad).length;
+  $("sum").innerHTML=`<span><b>${SHOWN.length}</b> listed</span><span><b>${both}</b> on both</span><span><b>${web}</b> on the website</span><span><b>${rev}</b> on Reverb</span><span><b>${nowhere}</b> nowhere yet</span><span style="color:var(--warn)"><b style="color:inherit">${bad}</b> with problems</span>${HIDDEN?`<span>${HIDDEN} on the way to Reverb (tonight's run)${otw?"":", not shown"}</span>`:""}`;
   const pill=p=>`<span class="pill ${p[0]}">${esc(p[1])}</span>`;
   $("body").innerHTML=rows.length?rows.map(({r,j})=>{ const price=num(r.fields[FX.online])||num(r.fields[FX.pos]); const url=`https://airtable.com/${BASE}/${TABLE}/${r.id}`;
     return `<tr class="${j.bad?"bad":""}"><td class="nm"><a href="${url}" target="_blank" rel="noopener"><b>${esc(v(r,"name")||"(no name)")}</b></a> <span class="sku">${esc(v(r,"sku"))}</span>${j.probs.map(p=>`<div class="prob">${esc(p)}</div>`).join("")}${j.soft.map(p=>`<div class="prob soft">${esc(p)}</div>`).join("")}</td>
@@ -169,7 +170,7 @@ function render(){
   $("tw").hidden=false; $("foot").hidden=false; }
 
 ["q"].forEach(id=>$(id).addEventListener("input",render));
-["lister","probs"].forEach(id=>$(id).addEventListener("change",render));
+["lister","probs","otw"].forEach(id=>$(id).addEventListener("change",render));
 $("days").addEventListener("change",load);
 $("reload").addEventListener("click",load);
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
