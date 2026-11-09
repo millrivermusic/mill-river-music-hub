@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7A2E1F">
+<title>Listing Status</title>
+<link rel="icon" href="../icon-192.png">
+<style>
+/* MRM Listing Status (11/9): every listed item, newest first, where it's live (Website / Reverb) and what went wrong.
+   Read-only. Items still waiting for tonight's Reverb run are left out (Jon). */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --info:#3F51B5; --info-soft:#E4E7FA; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --info:#9AA6FF; --info-soft:#22264A; --sugg:#F0C14D; --sugg-soft:#3A2E10; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.wrap{max-width:1200px;margin:0 auto;padding-top:14px;padding-bottom:60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 8px;font-size:18px;font-weight:800}
+button,input,select{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:44px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.t{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--surface);min-height:44px;min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.small{font-size:13.5px}.muted{color:var(--muted)}
+.note{border-radius:10px;padding:9px 12px;font-size:14px;margin-top:8px}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters .t{flex:0 1 180px}
+.filters #q{flex:1 1 200px}
+.chk{display:flex;gap:6px;align-items:center;font-weight:700;font-size:14px;cursor:pointer;padding:0 6px;min-height:44px}
+.chk input{width:18px;height:18px}
+.sum{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:10px}
+.sum b{color:var(--ink);font-variant-numeric:tabular-nums}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{position:sticky;top:0;background:var(--sunk);text-align:left;font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:13px;color:var(--muted)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.nm{min-width:220px}
+td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sku{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;border:1px solid transparent}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.no{background:var(--warn-soft);color:var(--warn)}
+.pill.wait{background:var(--sugg-soft);color:var(--sugg)}
+.pill.off{background:var(--sunk);color:var(--muted);border-color:var(--line)}
+.prob{color:var(--warn);font-size:13px;margin-top:3px}
+.prob.soft{color:var(--sugg)}
+tr.bad td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+@media (max-width:700px){ td.hide-s,th.hide-s{display:none} }
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>📡 Listing Status</h1><a href="../">Hub</a></div></header>
+<main class="wrap">
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device</h2>
+    <p class="small muted" style="margin:0 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices with the Hub, Lookup or MRM Photos set up are connected already.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" style="flex:1 1 260px"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card" id="main" hidden>
+    <div class="filters">
+      <input class="t" id="q" placeholder="Filter by name or SKU" autocomplete="off">
+      <select class="t" id="days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select>
+      <select class="t" id="lister"><option value="">Anyone</option></select>
+      <label class="chk"><input type="checkbox" id="probs"> Problems only</label>
+      <button class="btn sec" type="button" id="reload">Refresh</button>
+    </div>
+    <div class="sum" id="sum"></div>
+    <div id="msg"></div>
+  </section>
+
+  <div class="tw" id="tw" hidden><table><thead><tr><th>Item</th><th class="hide-s">Listed</th><th class="num">Price</th><th>Website</th><th>Reverb</th><th class="hide-s">By</th></tr></thead><tbody id="body"></tbody></table></div>
+  <p class="small muted" style="margin:0" id="foot" hidden>Website comes from Lightspeed's publish setting. Reverb comes from the overnight Reverb check, so items listed today show up tomorrow morning. Click an item to open it in Airtable.</p>
+</main>
+<script>
+"use strict";
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", online:"fldd9UhO7Ld2Io9f0", pos:"fld0ESkFoFMOhfR0g",
+  listedBy:"fldmEXUkfXzeXUwEl", result:"fldnfx5HoaNwU2I8l", attempt:"fldJpRedmBqzwzhrD", dateIn:"fldf0h1eW3dxrlufr",
+  where:"fldmJ59kZgX92qgY9", published:"fldqw39YrfYU2ou0S", live:"fldhDcy7R5md05jLL", reverbUrl:"fldxpwguYzuqHGNrk",
+  urls:"fldsABSqaxA6WfmUL", img1:"fldECxEFzuwWNZoDi", photosLS:"fldR8AiYm7SMsM4yN", revProhib:"fldh4y6GZjBb9xqVI" };
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+let TOKEN=store.get("mrm-photos-token"), ALL=[], HIDDEN=0, loading=false;
+
+const v=(r,k)=>{ const x=r.fields&&r.fields[FX[k]]; if(x==null) return ""; if(Array.isArray(x)) return x.map(y=>y&&typeof y==="object"?(y.name??y.filename??""):y).filter(Boolean).join(", "); if(typeof x==="object") return x.text??x.name??""; return x; };
+const num=x=>{ const n=parseFloat(String(x??"").replace(/[$,]/g,"")); return isFinite(n)?n:0; };
+function when(iso){ if(!iso) return ""; const d=new Date(iso); if(isNaN(d)) return String(iso); const now=new Date(); const day=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime(); const diff=Math.round((day(now)-day(d))/864e5);
+  const t=/T/.test(String(iso))?" "+d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):""; return diff===0?"Today"+t:diff===1?"Yesterday"+t:d.toLocaleDateString([], {month:"short",day:"numeric"}); }
+
+async function api(params){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}?${params}`,{headers:{Authorization:"Bearer "+TOKEN}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
+
+/* One row per item: where it's live, and what (if anything) is wrong, in plain words */
+function judge(r){
+  const res=String(v(r,"result")||""), st=String(v(r,"status")||"").trim();
+  const where=String(v(r,"where")||""), sellsWeb=!where||/Website/.test(where), sellsRev=(!where||/Reverb/.test(where))&&!r.fields[FX.revProhib];
+  const failed=/^Failed/.test(res);
+  const photos=/res\.cloudinary\.com/.test(String(r.fields[FX.urls]||""))||(r.fields[FX.img1]||[]).length>0;
+  const out={ probs:[], soft:[] };
+  if(failed) out.probs.push("Sync failed: "+res.replace(/^Failed \((pos|ecom)\):\s*/,""));
+  // Website
+  const pub=String(v(r,"published")).toLowerCase()==="yes";
+  if(!sellsWeb) out.web=["off","Not chosen"];
+  else if(pub) out.web=["ok","Live"];
+  else { const m=res.match(/not on the website yet, needs ([^;)]+)/); out.web=["wait", m?"Needs "+m[1].toLowerCase():(st==="Ready For Ecommerce"?"Not published":"Not listed")]; if(st==="Ready For Ecommerce") (m?out.soft:out.probs).push(m?"Website waiting for "+m[1].toLowerCase():"Listed but not on the website"); }
+  // Reverb (from the overnight check)
+  const live=String(v(r,"live")||"");
+  if(!sellsRev) out.rev=["off","Not chosen"];
+  else if(live==="Live") out.rev=["ok","Live"];
+  else if(live) { out.rev=["no",live]; out.probs.push("Chosen for Reverb but "+live.toLowerCase()+" there"); }
+  else out.rev=null; // not checked yet: tonight's Reverb run hasn't happened
+  if(!photos&&!out.soft.some(x=>/photos/.test(x))) out.soft.push("No photos yet");
+  if(pub&&!photos) out.probs.push("Live on the website without photos");
+  out.bad=out.probs.length>0;
+  return out;
+}
+
+async function load(){
+  if(loading) return; loading=true; $("msg").innerHTML=`<div class="small muted" style="margin-top:8px">Loading…</div>`;
+  const days=+$("days").value||30;
+  const f=`AND(NOT({Archive}),OR(TRIM({Data Status}&'')='Ready For Ecommerce',LEFT({Last Sync Result}&'',6)='Failed'),IS_AFTER(IF({Last Sync Attempt},{Last Sync Attempt},{Date In}),DATEADD(TODAY(),-${days+1},'days')))`;
+  const fq=Object.values(FX).map(x=>"fields%5B%5D="+x).join("&");
+  try{ let out=[], offset="";
+    for(let i=0;i<20;i++){ const j=await api(`returnFieldsByFieldId=true&${fq}&pageSize=100&filterByFormula=${encodeURIComponent(f)}${offset?"&offset="+encodeURIComponent(offset):""}`); out=out.concat(j.records||[]); offset=j.offset||""; if(!offset) break; }
+    const t=r=>Date.parse(r.fields[FX.attempt]||r.fields[FX.dateIn]||r.createdTime)||0;
+    out.sort((a,b)=>t(b)-t(a));
+    HIDDEN=0; ALL=[];
+    out.forEach(r=>{ const j=judge(r); const failed=/^Failed/.test(String(v(r,"result")||""));
+      if(j.rev===null&&!failed){ HIDDEN++; return; } // Jon: leave out items not yet sent to Reverb
+      if(j.rev===null) j.rev=["wait","Not checked yet"];
+      ALL.push({r,j}); });
+    const names=[...new Set(ALL.map(x=>v(x.r,"listedBy")).filter(Boolean))].sort(), cur=$("lister").value;
+    $("lister").innerHTML=`<option value="">Anyone</option>`+names.map(n=>`<option${n===cur?" selected":""}>${esc(n)}</option>`).join("");
+    $("msg").innerHTML=""; render();
+  }catch(e){ $("msg").innerHTML=`<div class="note warn">Couldn't load: ${esc(e.message)}</div>`; }
+  loading=false; }
+
+function render(){
+  const q=$("q").value.trim().toLowerCase(), who=$("lister").value, po=$("probs").checked;
+  const rows=ALL.filter(x=>(!po||x.j.bad)&&(!who||v(x.r,"listedBy")===who)&&(!q||(v(x.r,"name")+" "+v(x.r,"sku")).toLowerCase().includes(q)));
+  const both=ALL.filter(x=>x.j.web[0]==="ok"&&x.j.rev[0]==="ok").length, web=ALL.filter(x=>x.j.web[0]==="ok").length, rev=ALL.filter(x=>x.j.rev[0]==="ok").length, nowhere=ALL.filter(x=>x.j.web[0]!=="ok"&&x.j.rev[0]!=="ok").length, bad=ALL.filter(x=>x.j.bad).length;
+  $("sum").innerHTML=`<span><b>${ALL.length}</b> listed</span><span><b>${both}</b> on both</span><span><b>${web}</b> on the website</span><span><b>${rev}</b> on Reverb</span><span><b>${nowhere}</b> nowhere yet</span><span style="color:var(--warn)"><b style="color:inherit">${bad}</b> with problems</span>${HIDDEN?`<span>${HIDDEN} waiting for tonight's Reverb run (not shown)</span>`:""}`;
+  const pill=p=>`<span class="pill ${p[0]}">${esc(p[1])}</span>`;
+  $("body").innerHTML=rows.length?rows.map(({r,j})=>{ const price=num(r.fields[FX.online])||num(r.fields[FX.pos]); const url=`https://airtable.com/${BASE}/${TABLE}/${r.id}`;
+    return `<tr class="${j.bad?"bad":""}"><td class="nm"><a href="${url}" target="_blank" rel="noopener"><b>${esc(v(r,"name")||"(no name)")}</b></a> <span class="sku">${esc(v(r,"sku"))}</span>${j.probs.map(p=>`<div class="prob">${esc(p)}</div>`).join("")}${j.soft.map(p=>`<div class="prob soft">${esc(p)}</div>`).join("")}</td>
+      <td class="hide-s small muted">${esc(when(r.fields[FX.attempt]||r.fields[FX.dateIn]))}</td><td class="num">${price?"$"+price.toLocaleString("en-US"):"<span class=muted>—</span>"}</td><td>${pill(j.web)}</td><td>${pill(j.rev)}</td><td class="hide-s small">${esc(v(r,"listedBy"))}</td></tr>`; }).join("")
+    :`<tr><td colspan="6" class="small muted">${ALL.length?"Nothing matches these filters.":"Nothing listed in this period."}</td></tr>`;
+  $("tw").hidden=false; $("foot").hidden=false; }
+
+["q"].forEach(id=>$(id).addEventListener("input",render));
+["lister","probs"].forEach(id=>$(id).addEventListener("change",render));
+$("days").addEventListener("change",load);
+$("reload").addEventListener("click",load);
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  TOKEN=t; try{ await api("pageSize=1&fields%5B%5D="+FX.sku); store.set("mrm-photos-token",t); start(); }catch(err){ TOKEN=""; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+function start(){ $("setup").hidden=!!TOKEN; $("main").hidden=!TOKEN; if(TOKEN){ try{ const p=localStorage.getItem("mrm-status-probs"); if(p==="1") $("probs").checked=true; }catch(e){} load(); } }
+$("probs").addEventListener("change",()=>store.set("mrm-status-probs",$("probs").checked?"1":"0"));
+start();
+</script>
+</body>
+</html>
