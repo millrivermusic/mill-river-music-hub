@@ -345,13 +345,21 @@ async function refresh(){ if(!TOKEN){ renderTiles(); return; } renderTiles(); le
 
 // ---- Team tasks (public): Airtable "Team Tasks" ----
 const TT="tblOwTXbybJC6K9Xn", TDEPTS=["Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used","Vendor Relations","General"], TSHOWN=["Reverb","Repair","Shipping"], TMGR=["Jon","Sam","Nina"];
-let DESKA=[];
+let DESKA=[], RVDONE=new Set(), RVN={m:0,o:0};
+/* 11/9 Jon: the Reverb tile shows what's waiting for a reply: unread Reverb messages and offers we haven't answered (same rules as the Reverb Desk) */
+async function loadReverbN(){ try{ const g=async u=>{ const r=await fetch("/rv/"+u); if(!r.ok) throw new Error(r.status); return r.json(); };
+  const [c,o]=await Promise.all([g("my/conversations?per_page=50"),g("my/listings/negotiations?per_page=50")]);
+  const ok=id=>!RVDONE.has(String(id));
+  const m=(c.conversations||[]).filter(x=>x.read===false&&ok((x._links&&x._links.self&&x._links.self.href.match(/conversations\/(\d+)/)||[])[1])).length;
+  let n=0; (o.listings||[]).forEach(L=>(L.negotiations||[]).forEach(x=>{ if(x.actionable&&!x.you_last_initiated&&ok(x.id)) n++; }));
+  RVN={m,o:n}; renderTiles(); }catch(e){} }
 let REAS=null, TGROUP=(()=>{ try{ return localStorage.getItem("hub-tgroup")==="1"; }catch(e){ return false; } })();
 let TASKS=[], TVIEW=(()=>{ try{ return localStorage.getItem("hub-tview")||"people"; }catch(e){ return "people"; } })(), TFORM=false;
 async function atT(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${path}`,Object.assign({},opt||{},{headers:{"Content-Type":"application/json",Authorization:"Bearer "+(TOKEN||"via-hub")}})); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error((j.error&&(j.error.message||j.error.type))||("Airtable "+r.status)); return j; }
 const tf=(r,k)=>{ const v=(r.fields||{})[k]; return v&&typeof v==="object"&&v.name?v.name:v; };
 async function loadDeskAssigned(){ const out=[]; let off=""; do{ const j=await atT(`tblNByB9aK4puxKFb?pageSize=100&returnFieldsByFieldId=true${off?"&offset="+off:""}`); out.push(...(j.records||[])); off=j.offset||""; }while(off);
   const nm=v=>v&&typeof v==="object"&&v.name?v.name:v;
+  RVDONE=new Set(out.filter(r=>/^Done$/.test(nm((r.fields||{}).fldhuIlW95NqgANw0)||"")).map(r=>String((r.fields||{}).fldnFibA16LGVMiUb||"")));
   DESKA=out.map(r=>{ const f=r.fields||{}; return {to:nm(f.fldn65XAPP9sf8kOz)||"",status:nm(f.fldhuIlW95NqgANw0)||"",title:f.fldubrj1IcLaHQXBg||"",kind:nm(f.fldZuZSoY93Kmc1lX)||"Reverb",rid:f.fldnFibA16LGVMiUb||"",by:f.fldv35IO74arRPOjc||"",needs:!!f.fldHrKUHh3JrdYRQb,okBy:f.fld1KLfYCjgWkFA0D||"",result:nm(f.fld5Podo2PfhkNBz6)||""}; }).filter(d=>d.to&&!/^(Done|Answered)$/.test(d.status)&&!/Sold|Expired|declined|Accepted/i.test(d.result)); }
 async function loadTeamTasks(){ try{ await loadDeskAssigned(); }catch(e){ DESKA=[]; } const out=[]; let off=""; const f=encodeURIComponent("OR({Status}!='Done',IS_AFTER(LAST_MODIFIED_TIME(),DATEADD(TODAY(),-3,'days')))"); do{ const j=await atT(`${TT}?pageSize=100&filterByFormula=${f}${off?"&offset="+off:""}`); out.push(...(j.records||[])); off=j.offset||""; }while(off); TASKS=out; renderTasks(); renderSide(); }
 function tToday(){ return new Date().toLocaleDateString("en-CA"); }
@@ -408,6 +416,7 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("button");
 document.addEventListener("change",async e=>{ const t=e.target; if(!t.dataset||!t.dataset.tdone) return; if(!WHO){ t.checked=!t.checked; alert0("Pick your name at the top first."); return; } t.disabled=true;
   try{ await atT(TT,{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.tdone,fields:t.checked?{Status:"Done","Done By":WHO}:{Status:"To do","Done By":""}}],typecast:true})}); await loadTeamTasks(); }catch(err){ t.disabled=false; t.checked=!t.checked; } });
 function alert0(m){ const b=$("tbody"); if(b) b.insertAdjacentHTML("afterbegin",`<div class="small late" style="margin-bottom:6px">${esc(m)}</div>`); }
+setTimeout(loadReverbN,1500); setInterval(()=>{ if(!document.hidden) loadReverbN(); },120000);
 loadTeamTasks().catch(e=>{ $("tbody").innerHTML=`<div class="small">Couldn't load tasks: ${esc(e.message)}</div>`; });
 setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 
@@ -522,7 +531,7 @@ function unreadN(){ return (MSGS||[]).filter(unread).length; }
 function pageFlags(pg){ const f=[];
   if(pg.k==="board"){ const u=unreadN(), o=TASKS.filter(r=>tf(r,"Status")!=="Done").length, a=ANN.length; if(u) f.push([u+" unread",1]); /* 11/9 Jon: no open-work counts on tiles, only things waiting for a reply */ void o; void a; }
   else if(pg.k==="me"){ if(!WHO) f.push(["Pick your name",0]); else { const u=unreadN(); if(u) f.push([u+" unread",1]); } }
-  else if(pg.k==="reverb"){ }
+  else if(pg.k==="reverb"){ if(RVN.m) f.push([RVN.m+" unread message"+(RVN.m>1?"s":""),1]); if(RVN.o) f.push([RVN.o+" offer"+(RVN.o>1?"s":"")+" to answer",1]); }
   else if(pg.secs){ const seen={}; tilesOf(pg).forEach(t=>t.counts.forEach(k=>{ if(seen[k]) return; seen[k]=1; const v=VAL[k]; if(typeof v==="number"&&v>0&&COUNTS[k]) f.push([v+" "+COUNTS[k].label.toLowerCase(),hotN(k)?1:0]); })); }
   return f.slice(0,4); }
 function annHTML(a,full){ const f=a.fields||{}; return `<div class="ann"><div class="at">${f.Pinned?"📌 ":""}${esc(f.Title||"")}</div>${f.Body&&full!==false?`<div style="white-space:pre-wrap;margin-top:3px">${esc(f.Body)}</div>`:""}<div class="am">${esc(f.From||"")}${f.Department&&f.Department!=="Everyone"?" · "+esc(f.Department):""} · ${esc(new Date(a.createdTime).toLocaleDateString([], {month:"short",day:"numeric"}))}${f["Show Until"]?" · until "+esc(f["Show Until"].slice(5).replace("-","/")):""}${full!==false&&WHO&&(f.From===WHO||TMGR.includes(WHO))?` · <a href="#" data-adown="${a.id}">Take down</a>`:""}</div></div>`; }
