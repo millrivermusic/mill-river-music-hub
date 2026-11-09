@@ -310,6 +310,8 @@ const TILES=[
   {ic:"📦", t:"New Product Builder", p:"Build a new product for Lightspeed and the website from the vendor info.", where:"Being built", soon:true, counts:[]},
   {ic:"🛒", t:"Special Orders", p:"Track customer special orders from request to pickup.", where:"Being built", soon:true, counts:[]},
 ];
+/* 11/9 Jon: no work counts on tiles; only desks that receive emails needing a reply (warranty, returns) show their unread count */
+TILES.forEach(t=>{ if(t.counts) t.counts=t.counts.filter(k=>COUNTS[k]&&COUNTS[k].alert); });
 const VAL={};
 
 async function count(key){ const c=COUNTS[key]; let n=0, offset="", pages=0;
@@ -338,7 +340,7 @@ function tile(t){ { const inner=`<div class="top"><div class="ic" aria-hidden="t
   const ext=/^https?:/.test(t.href); return `<div class="tile">${inner}<a class="open" href="${t.href}"${ext?' target="_blank" rel="noopener"':""}>Open ${esc(t.t)} →</a></div>`; } }
 
 async function refresh(){ if(!TOKEN){ renderTiles(); return; } renderTiles(); let err="";
-  await Promise.all(Object.keys(COUNTS).map(async k=>{ try{ VAL[k]=await count(k); }catch(e){ err=e.message; VAL[k]="?"; } }));
+  await Promise.all([...new Set(TILES.flatMap(t=>t.counts||[]))].map(async k=>{ try{ VAL[k]=await count(k); }catch(e){ err=e.message; VAL[k]="?"; } }));
   renderTiles(); $("fresh").textContent=err?("Counts: "+err):("Counts as of "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})); }
 
 // ---- Team tasks (public): Airtable "Team Tasks" ----
@@ -518,9 +520,9 @@ function hotN(k){ const v=VAL[k]; return typeof v==="number"&&v>0&&(k==="posWait
 function myOpen(){ return TASKS.filter(r=>tf(r,"Assigned To")===WHO&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===WHO).length+CONVS.filter(c=>cv(c,"Assigned To")===WHO).length+(typeof DW!=="undefined"?(()=>{ const w=deskWorkFor(WHO); return w.wa.length+w.re.length+w.rp.length; })():0); }
 function unreadN(){ return (MSGS||[]).filter(unread).length; }
 function pageFlags(pg){ const f=[];
-  if(pg.k==="board"){ const u=unreadN(), o=TASKS.filter(r=>tf(r,"Status")!=="Done").length, a=ANN.length; if(u) f.push([u+" unread",1]); f.push([o+" open task"+(o===1?"":"s"),0]); if(a) f.push([a+" announcement"+(a>1?"s":""),0]); }
-  else if(pg.k==="me"){ if(!WHO) f.push(["Pick your name",0]); else { const u=unreadN(), m=myOpen(); if(u) f.push([u+" unread",1]); f.push([m+" on your list",m>0?1:0]); } }
-  else if(pg.k==="reverb"){ const n=DESKA.length; if(n) f.push([n+" assigned",0]); }
+  if(pg.k==="board"){ const u=unreadN(), o=TASKS.filter(r=>tf(r,"Status")!=="Done").length, a=ANN.length; if(u) f.push([u+" unread",1]); /* 11/9 Jon: no open-work counts on tiles, only things waiting for a reply */ void o; void a; }
+  else if(pg.k==="me"){ if(!WHO) f.push(["Pick your name",0]); else { const u=unreadN(); if(u) f.push([u+" unread",1]); } }
+  else if(pg.k==="reverb"){ }
   else if(pg.secs){ const seen={}; tilesOf(pg).forEach(t=>t.counts.forEach(k=>{ if(seen[k]) return; seen[k]=1; const v=VAL[k]; if(typeof v==="number"&&v>0&&COUNTS[k]) f.push([v+" "+COUNTS[k].label.toLowerCase(),hotN(k)?1:0]); })); }
   return f.slice(0,4); }
 function annHTML(a,full){ const f=a.fields||{}; return `<div class="ann"><div class="at">${f.Pinned?"📌 ":""}${esc(f.Title||"")}</div>${f.Body&&full!==false?`<div style="white-space:pre-wrap;margin-top:3px">${esc(f.Body)}</div>`:""}<div class="am">${esc(f.From||"")}${f.Department&&f.Department!=="Everyone"?" · "+esc(f.Department):""} · ${esc(new Date(a.createdTime).toLocaleDateString([], {month:"short",day:"numeric"}))}${f["Show Until"]?" · until "+esc(f["Show Until"].slice(5).replace("-","/")):""}${full!==false&&WHO&&(f.From===WHO||TMGR.includes(WHO))?` · <a href="#" data-adown="${a.id}">Take down</a>`:""}</div></div>`; }
