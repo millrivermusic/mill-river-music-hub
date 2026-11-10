@@ -81,6 +81,9 @@ textarea.t{min-height:80px;resize:vertical}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:14px;margin:10px 0}
 .kv b{color:var(--muted);font-weight:600}
 .sect{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.ofbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;background:var(--sunk)}
+.ofbox .row{gap:10px;align-items:flex-end}
+.ofbox label.f{max-width:160px}
 .more{margin-top:8px}
 .empty{color:var(--muted);padding:20px;text-align:center}
 table.ht{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -226,7 +229,8 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
       box.innerHTML=`<h2>${esc(row.title)}</h2><div class="muted small">${L?`About: <a href="https://reverb.com/item/${esc(L.id)}" target="_blank" rel="noopener">${esc(L.title)}</a>`:"General question"}</div>
       <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}${(m.photos||[]).length?`<div class="mphotos">${m.photos.map(ph=>{ const L=ph._links||{}, th=(L.thumbnail||L.small_crop||L.full||{}).href, full=(L.full||L.large_crop||L.thumbnail||{}).href; return th?`<a href="${esc(full)}" target="_blank" rel="noopener"><img src="${esc(th)}" alt="Photo from the buyer" loading="lazy"></a>`:""; }).join("")}</div>`:""}</div>`).join("")}</div>
       <div class="sect"><label class="f">Reply to ${esc(row.title)}<div id="gpBox"></div><textarea class="t" id="rBody" data-rid="${esc(row.id)}" placeholder="Type a reply…">${esc(DRAFTS_R[row.id]||"")}</textarea></label>
-      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button><button class="btn link" id="gpLink" type="button">Add Google Photos link</button><a class="btn link" href="https://reverb.com/my/messages/${esc(row.id)}" target="_blank" rel="noopener" title="Reverb only lets photos be attached on its own site">Attach photos on Reverb</a>${statusOf(row)!=="Done"?`<button class="btn link" id="mNoReply">No reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
+      <div id="ofBox" hidden class="ofbox"></div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${L&&L.id?`<button class="btn link" id="ofToggle" type="button">Include an offer</button>`:""}<button class="btn link" id="gpLink" type="button">Add Google Photos link</button><a class="btn link" href="https://reverb.com/my/messages/${esc(row.id)}" target="_blank" rel="noopener" title="Reverb only lets photos be attached on its own site">Attach photos on Reverb</a>${statusOf(row)!=="Done"?`<button class="btn link" id="mNoReply">No reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
       <div id="plinfo"></div>
       ${deskPanel(row)}`;
       const ms=$("msgs"); ms.scrollTop=ms.scrollHeight;
@@ -608,6 +612,39 @@ document.addEventListener("click",async e=>{ const t=e.target;
 document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="askIn"){ e.preventDefault(); askGo(); } });
 
 
+
+/* 11/9 (Jon): include an offer with a reply, like Reverb's own "include an offer" button.
+   Price starts at the listing price, shipping at the listing's standard (US) shipping. Two clicks to send, showing exactly what goes out. */
+const OFFER={};
+function listingShip(L){ const s=L&&L.shipping; if(!s) return ""; if(s.free_expedited_shipping||s.free_shipping) return "0"; const rs=s.rates||[]; const us=rs.find(x=>x.region_code==="US_CON")||rs.find(x=>x.region_code==="US")||s.user_region_rate; return us&&us.rate?String(us.rate.amount):""; }
+function renderOffer(row){ const box=$("ofBox"); if(!box) return; const L=row.detail&&row.detail.listing; const o=OFFER[row.id]||(OFFER[row.id]={price:L&&L.price?String(parseFloat(L.price.amount)):"",ship:listingShip(L)});
+  const p=parseFloat(o.price), sh=parseFloat(o.ship||0);
+  box.innerHTML=`<div class="row"><label class="f">Offer price<input class="t" id="ofPrice" inputmode="decimal" value="${esc(o.price)}"></label><label class="f">Shipping<input class="t" id="ofShip" inputmode="decimal" value="${esc(o.ship)}"></label>
+    <div class="small" style="padding-bottom:10px">${isFinite(p)?`Buyer pays <b>$${(p+(isFinite(sh)?sh:0)).toFixed(2).replace(/\.00$/,"")}</b>`:""}${L&&L.price?` · listed at ${esc(L.price.display||("$"+L.price.amount))}`:""}</div></div>
+    <div class="small muted">The reply text above goes with the offer. The buyer can accept, counter or decline it on Reverb.</div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="ofSend" type="button" ${locked(row)?"disabled":""}>Send offer</button><button class="btn link" id="ofCancel" type="button">Don't include an offer</button><span class="small" id="ofMsg"></span></div>`; }
+document.addEventListener("input",e=>{ if(e.target.id==="ofPrice"||e.target.id==="ofShip"){ const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return; const o=OFFER[row.id]; o[e.target.id==="ofPrice"?"price":"ship"]=e.target.value; const b=$("ofSend"); if(b){ delete b.dataset.sure; b.textContent="Send offer"; }
+  const p=parseFloat(o.price), sh=parseFloat(o.ship||0), el=e.target.closest(".ofbox").querySelector(".row .small"); if(el&&isFinite(p)) el.innerHTML=el.innerHTML.replace(/Buyer pays <b>[^<]*<\/b>/,`Buyer pays <b>$${(p+(isFinite(sh)?sh:0)).toFixed(2).replace(/\.00$/,"")}</b>`); } });
+document.addEventListener("click",async e=>{ const t=e.target; if(!t||!t.id) return;
+  const row=SEL&&S[SEL.kind]&&S[SEL.kind].rows.find(r=>r.id===SEL.id);
+  if(t.id==="ofToggle"){ const b=$("ofBox"); if(!b||!row) return; b.hidden=!b.hidden; if(!b.hidden){ renderOffer(row); $("rSend").hidden=true; } else $("rSend").hidden=false; return; }
+  if(t.id==="ofCancel"){ $("ofBox").hidden=true; $("rSend").hidden=false; return; }
+  if(t.id==="ofSend"&&row){ const o=OFFER[row.id], body=($("rBody").value||"").trim(), price=parseFloat(o.price), ship=parseFloat(o.ship||0);
+    const msg=$("ofMsg"); msg.style.color="var(--warn)";
+    if(!WHO){ msg.textContent="Pick your name at the top first."; return; }
+    if(!(price>0)){ msg.textContent="Type the offer price."; return; } if(!(ship>=0)){ msg.textContent="Type the shipping (0 for free)."; return; }
+    if(!t.dataset.sure){ t.dataset.sure="1"; t.dataset.at=String(Date.now()); t.textContent=`Yes, send ${row.title} an offer of $${price} + $${ship} shipping`; msg.style.color=""; msg.textContent=body?"With your reply text as the message. Click again to send.":"No message typed; the offer goes on its own. Click again to send."; return; }
+    if(Date.now()-(+t.dataset.at||0)<900) return; // a double-click never confirms
+    t.disabled=true; msg.style.color=""; msg.textContent="Sending…";
+    const payload={price:price.toFixed(2),shipping_price:ship.toFixed(2)}; if(body) payload.message=body;
+    const link=row.detail&&row.detail._links&&row.detail._links.make_offer&&row.detail._links.make_offer.href;
+    try{ await rv(link||`conversations/${row.id}/offer`,{method:"POST",body:JSON.stringify(payload)});
+      delete DRAFTS_R[row.id]; delete OFFER[row.id];
+      const d=deskOf(row), prev=dv(d,"notes")||"";
+      await saveDesk(row,{[DF.status]:"Answered",[DF.lastBy]:WHO,[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Sent an offer: $${price} + $${ship} shipping`});
+      await loadMsgs(); renderList(); await openRow(row.kind,row.id); }
+    catch(err){ t.disabled=false; delete t.dataset.sure; t.textContent="Send offer"; msg.style.color="var(--warn)"; msg.textContent="Didn't send: "+err.message; } return; }
+});
 </script>
 </body>
 </html>
