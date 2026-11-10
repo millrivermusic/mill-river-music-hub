@@ -248,6 +248,8 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
     <div class="sect"><div class="grid2"><label class="f">Counter price (item)<input class="t" id="oPrice" inputmode="decimal" placeholder="e.g. 450"></label><label class="f">Shipping on the counter<input class="t" id="oShip" inputmode="decimal" value="${esc(String(amtX(n.last_offered_shipping)||""))}" placeholder="e.g. 35"></label></div><div class="small muted" id="oShipNote">Shipping starts at what their offer had. Change it if this buyer is far away or the box is big.</div>
     <label class="f">Note to the buyer (optional)<textarea class="t" id="oMsg"></textarea></label>
     <div class="row" style="margin-top:8px">${["accept","counter","decline"].map(a=>`<button class="btn ${a==="accept"?"":"sec"}" data-oact="${a}" ${!n.actionable||locked(row)?"disabled":""}>${a[0].toUpperCase()+a.slice(1)}</button>`).join("")}<span class="small muted" id="oRes">${locked(row)?"Needs a manager's OK first.":!n.actionable?"Waiting on the buyer.":""}</span></div></div>
+    <div class="sect"><label class="f">Just message ${esc(n.buyer_name||"the buyer")} (no accept, counter or decline)<textarea class="t" id="oOnlyMsg" placeholder="Ask a question or answer one. The offer stays open."></textarea></label>
+    <div class="row" style="margin-top:8px"><button class="btn" id="oOnlySend" type="button" ${locked(row)?"disabled":""}>Send message</button><span class="small muted" id="oOnlyRes">Goes to the buyer in Reverb messages. The offer stays as it is.</span></div></div>
     ${deskPanel(row)}`;
     offerBrief(row); }
   if(kind==="order"){ const o=row.o, A=x=>x&&x.display||"–", ad=o.shipping_address||{}, web=o._links&&o._links.web&&o._links.web.href, lst=o._links&&o._links.web_listing&&o._links.web_listing.href;
@@ -344,11 +346,26 @@ async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the to
 function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
 
 /* ---------- actions ---------- */
-document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#oOnlySend,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
   if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":TAB==="tasks"?"tall":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
   if(t.id==="mback"){ document.body.classList.remove("mdet"); const on=document.querySelector("#list .on"); if(on) on.scrollIntoView({block:"center"}); return; }
+  if(t.id==="oOnlySend"){ const row=S.offer.rows.find(r=>SEL&&r.id===SEL.id); if(!row) return; const n=row.n, L=row.L, body=$("oOnlyMsg").value.trim(), res=$("oOnlyRes");
+    if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Write the message first."); return; }
+    if(!t.dataset.sure){ t.dataset.sure="1"; t.dataset.at=String(Date.now()); t.textContent="Yes, send to "+(n.buyer_name||"the buyer"); res.textContent="Click again to send exactly what's in the box. It goes straight to the buyer on Reverb."; res.style.color=""; return; }
+    if(Date.now()-(+t.dataset.at||0)<900) return;
+    t.disabled=true; res.textContent="Sending…";
+    try{ const lid=String(L.id||""), bn=String(n.buyer_name||"").trim().toLowerCase();
+      const match=c=>c&&c.listing&&String(c.listing.id)===lid&&(!bn||String(c.other_party&&c.other_party.name||"").trim().toLowerCase()===bn);
+      let conv=(S.msg.rows.find(r=>match(r.raw))||{}).raw;
+      for(let p=1;!conv&&p<=4;p++){ const j=await rv(`my/conversations?per_page=50&page=${p}`); conv=(j.conversations||[]).find(match); if(p>=(j.total_pages||1)) break; }
+      if(conv){ const cid=(conv._links.self.href.match(/conversations\/(\d+)/)||[])[1]; await rv(`my/conversations/${cid}/messages`,{method:"POST",body:JSON.stringify({body})}); }
+      else { await rv(`my/conversations`,{method:"POST",body:JSON.stringify({listing_id:lid,recipient_id:String(n.buyer_id||""),body})}); } /* first message to this buyer starts the conversation */
+      const d=deskOf(row), prev=dv(d,"notes")||"";
+      await saveDesk(row,{[DF.lastBy]:WHO,[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Messaged the buyer: ${body.slice(0,200)}`}).catch(()=>{});
+      $("oOnlyMsg").value=""; res.textContent="Sent to "+(n.buyer_name||"the buyer")+". The offer is still open."; res.style.color="var(--ok)"; t.textContent="Send message"; delete t.dataset.sure; t.disabled=false; loadMsgs().catch(()=>{}); }
+    catch(err){ res.innerHTML="Didn't send: "+esc(err.message)+` You can message them from <a href="https://reverb.com/my/selling/offers" target="_blank" rel="noopener">Offers on Reverb</a>.`; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send message"; delete t.dataset.sure; } return; }
   if(t.id==="oSendMsg"){ const row=S.order.rows.find(r=>SEL&&r.id===SEL.id); if(!row) return; const o=row.o, body=$("oMsgBuyer").value.trim(), res=$("oMsgRes");
     if(!WHO){ alertBox("Pick your name at the top first."); return; } if(!body){ alertBox("Write the message first."); return; }
     if(!t.dataset.sure){ t.dataset.sure="1"; t.textContent="Send to "+(o.buyer_name||"buyer")+"?"; res.textContent="Click again to send. This goes straight to the buyer on Reverb."; res.style.color=""; return; }
