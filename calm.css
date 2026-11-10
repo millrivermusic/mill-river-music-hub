@@ -30,9 +30,11 @@ html body .tabs-calm .tab .n{margin-left:6px;font-size:12px;color:var(--muted);f
 html body .tabs-calm .tab .n.hot{color:var(--accent-text)}
 
 /* filter chips: small, quiet */
-html body .chip{background:transparent!important;border:1px solid transparent!important;color:var(--muted)!important;padding:4px 10px!important;font-size:13.5px!important}
-html body .chip:hover{color:var(--ink)!important;border-color:var(--line2)!important}
-html body .chip.on{background:var(--sunk)!important;border-color:var(--line2)!important;color:var(--ink)!important}
+/* 11/9 Jon: make the choices obvious. Each choice looks like a button; the picked one is filled in. */
+html body .chip{background:var(--surface)!important;border:1.5px solid var(--line2)!important;color:var(--ink)!important;padding:6px 12px!important;font-size:14px!important;border-radius:8px!important;cursor:pointer}
+html body .chip:hover{border-color:var(--accent)!important}
+html body .chip.on,html body .chip.on:hover{background:var(--accent)!important;border-color:var(--accent)!important;color:var(--accent-ink,#fff)!important;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+html body .chip.on .n{opacity:.9!important;color:inherit!important}
 
 /* sidebar: no icons, no arrows, more air */
 html body .side a .i{display:none!important}
