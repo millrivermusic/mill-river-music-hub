@@ -90,7 +90,7 @@ tr.bad td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
   </section>
 
   <div class="tw" id="tw" hidden><table><thead><tr><th>Item</th><th class="hide-s">Listed</th><th class="num">Price</th><th>Website</th><th>Reverb</th><th class="hide-s">By</th></tr></thead><tbody id="body"></tbody></table></div>
-  <p class="small muted" style="margin:0" id="foot" hidden>Website comes from Lightspeed's publish setting. Reverb comes from the overnight Reverb check, and an hourly live check also compares every listed item with Lightspeed and Reverb (problems it finds always show here, whatever the date), so items listed today show up tomorrow morning. Click an item to open it in Airtable.</p>
+  <p class="small muted" style="margin:0" id="foot" hidden>Website comes from Lightspeed's publish setting. Reverb comes from the overnight Reverb check, and an hourly live check also compares every listed item with Lightspeed and Reverb (problems it finds always show here, whatever the date), so items listed today show up tomorrow morning. Click an item to fix it in Update Live Products.</p>
 </main>
 <script>
 "use strict";
@@ -168,8 +168,8 @@ function render(){
   const SHOWN=ALL.filter(x=>!x.j.otw&&!x.j.sold); const both=SHOWN.filter(x=>x.j.web[0]==="ok"&&x.j.rev[0]==="ok").length, web=SHOWN.filter(x=>x.j.web[0]==="ok").length, rev=SHOWN.filter(x=>x.j.rev[0]==="ok").length, nowhere=SHOWN.filter(x=>x.j.web[0]!=="ok"&&x.j.rev[0]!=="ok").length, bad=ALL.filter(x=>!x.j.otw&&x.j.bad).length;
   $("sum").innerHTML=`<span><b>${SHOWN.length}</b> listed</span><span><b>${both}</b> on both</span><span><b>${web}</b> on the website</span><span><b>${rev}</b> on Reverb</span><span><b>${nowhere}</b> nowhere yet</span><span style="color:var(--warn)"><b style="color:inherit">${bad}</b> with problems</span>${HIDDEN?`<span>${HIDDEN} on the way to Reverb (tonight's run)${otw?"":", not shown"}</span>`:""}`;
   const pill=p=>`<span class="pill ${p[0]}">${esc(p[1])}</span>`;
-  $("body").innerHTML=rows.length?rows.map(({r,j})=>{ const price=num(r.fields[FX.online])||num(r.fields[FX.pos]); const url=`https://airtable.com/${BASE}/${TABLE}/${r.id}`;
-    return `<tr class="${j.bad?"bad":""}"><td class="nm"><a href="${url}" target="_blank" rel="noopener"><b>${esc(v(r,"name")||"(no name)")}</b></a> <span class="sku">${esc(v(r,"sku"))}</span>${j.probs.map(p=>`<div class="prob">${esc(p)}</div>`).join("")}${j.soft.map(p=>`<div class="prob soft">${esc(p)}</div>`).join("")}</td>
+  $("body").innerHTML=rows.length?rows.map(({r,j})=>{ const price=num(r.fields[FX.online])||num(r.fields[FX.pos]); const url=`../update/?rec=${r.id}`;
+    return `<tr class="${j.bad?"bad":""}"><td class="nm"><a href="${url}"><b>${esc(v(r,"name")||"(no name)")}</b></a> <span class="sku">${esc(v(r,"sku"))}</span>${j.probs.map(p=>`<div class="prob">${esc(p)}</div>`).join("")}${j.soft.map(p=>`<div class="prob soft">${esc(p)}</div>`).join("")}</td>
       <td class="hide-s small muted">${esc(when(r.fields[FX.attempt]||r.fields[FX.dateIn]))}${j.checked?`<div title="Hourly live check">checked ${esc(when(j.checked))}</div>`:""}${j.sold?`<div style="color:var(--warn);font-weight:700">Sold in Airtable</div>`:""}</td><td class="num">${price?"$"+price.toLocaleString("en-US"):"<span class=muted>—</span>"}</td><td>${pill(j.web)}</td><td>${pill(j.rev)}</td><td class="hide-s small">${esc(v(r,"listedBy"))}</td></tr>`; }).join("")
     :`<tr><td colspan="6" class="small muted">${ALL.length?"Nothing matches these filters.":"Nothing listed in this period."}</td></tr>`;
   $("tw").hidden=false; $("foot").hidden=false; }

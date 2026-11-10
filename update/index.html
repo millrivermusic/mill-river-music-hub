@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7A2E1F">
+<title>Update Live Products</title>
+<link rel="icon" href="../icon-192.png">
+<style>
+/* MRM Update Live Products (11/9, Jon): change items that are already in Lightspeed (POS Synced or listed).
+   Airtable is the one place for edits; Save re-sends the item through the new sync to Lightspeed, the website and Reverb,
+   and logs every change (old -> new) in Notes with the date and who. Sold items open read-only. */
+:root{
+  --bg:#F2EFEA; --surface:#FFFFFF; --sunk:#F8F6F2; --ink:#1E1B16; --muted:#6B6358; --line:#E2DCD2;
+  --accent:#8A3B12; --accent-ink:#FFFFFF; --accent-soft:#F6E4D8;
+  --ok:#1D7A4E; --ok-soft:#DDF2E6; --warn:#B4361F; --warn-soft:#FBE3DD; --sugg:#9A6A00; --sugg-soft:#FBEFCF;
+  --font:"Atkinson Hyperlegible","Roboto","Segoe UI",system-ui,sans-serif; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#13110E; --surface:#1C1915; --sunk:#171511; --ink:#EEE8DF; --muted:#A39A8C; --line:#2F2A23;
+  --accent:#F09A5E; --accent-ink:#1A0D04; --accent-soft:#3A2414;
+  --ok:#4FC68D; --ok-soft:#163626; --warn:#FF7A5E; --warn-soft:#3A1B14; --sugg:#F0C14D; --sugg-soft:#3A2E10; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45}
+a{color:var(--accent)}
+.bar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.bar h1{margin:0;font-size:20px;font-weight:800}
+.bar a{color:inherit;font-size:14px;font-weight:700;text-decoration:none;opacity:.9}
+.bar select{font:inherit;font-size:14px;border-radius:9px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
+.bar select option{color:#1E1B16}
+.wrap{max-width:980px;margin:0 auto;padding-top:14px;padding-bottom:80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 4px;font-size:19px;font-weight:800}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:44px;cursor:pointer}
+.btn.sec{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.t{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--surface);min-height:44px;width:100%;min-width:0}
+textarea.t{min-height:120px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.small{font-size:13.5px}.muted{color:var(--muted)}
+.note{border-radius:10px;padding:9px 12px;font-size:14px;margin-top:8px}
+.note.warn{background:var(--warn-soft);color:var(--warn)} .note.ok{background:var(--ok-soft);color:var(--ok)} .note.sugg{background:var(--sugg-soft);color:var(--sugg)}
+.res{display:flex;justify-content:space-between;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:9px 12px;cursor:pointer;margin-top:6px}
+.res:hover{border-color:var(--accent)}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);border:1px solid var(--line);color:var(--muted)}
+.pill.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}.pill.no{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid .wide{grid-column:1/-1}
+@media (max-width:640px){.grid{grid-template-columns:minmax(0,1fr)}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:var(--muted)}
+label.f.chg .t{border-color:var(--sugg);box-shadow:0 0 0 1px var(--sugg)}
+.price{display:flex;flex-direction:column;gap:4px}
+.was{font-size:13px;color:var(--muted)} .was s{color:var(--warn)}
+.md{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.md button{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px;cursor:pointer;min-height:36px}
+.md button:hover{border-color:var(--accent)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{font-size:13.5px;font-weight:700;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--muted);cursor:pointer;min-height:36px}
+.chip.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.chip.on::before{content:"\2713  "}
+.chip.off{text-decoration:line-through;opacity:.75}
+.chip.lock{cursor:default}
+.savebar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);margin:12px -16px -16px;padding:12px 16px;border-radius:0 0 16px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.changes{font-size:13.5px;color:var(--muted);flex:1 1 240px}
+.thumbs{display:flex;gap:6px;overflow-x:auto;margin-top:8px}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in"><h1>✏️ Update Live Products</h1><div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../status/">Listing Status</a><a href="../">Hub</a></div></div></header>
+<main class="wrap">
+  <section class="card" id="setup" hidden>
+    <h2>Connect this device</h2>
+    <p class="small muted" style="margin:0 0 10px">Paste the MRM Photos Airtable key (starts with pat). Devices with the Hub, Lookup or MRM Photos set up are connected already.</p>
+    <form id="setform" class="row" autocomplete="off"><input class="t" id="tok" type="password" placeholder="Airtable key (starts with pat)" spellcheck="false" style="flex:1 1 260px;width:auto"><button class="btn" type="submit">Save and test</button></form>
+    <div id="setmsg"></div>
+  </section>
+
+  <section class="card" id="find" hidden>
+    <p class="small muted" style="margin:0 0 8px">For items already in Lightspeed (POS Synced or listed). Saving sends the change to Lightspeed, the website and Reverb, and logs it in the item's notes. Items still being listed go in the Listing Desk; deals and intake in the Intake Desk; anything else in Lookup.</p>
+    <form id="sform" class="row"><input class="t" id="q" inputmode="search" placeholder="SKU or name" autocomplete="off" style="flex:1 1 220px;width:auto"><button class="btn" type="submit">Find</button></form>
+    <div id="smsg"></div><div id="results"></div>
+  </section>
+
+  <section class="card" id="item" hidden></section>
+</main>
+<script>
+"use strict";
+const LISTS={"ship":["1","3","4","7","10","12","15","19","29","39","49","55","59","65","69","75","79","89","99","129","159","169","199","249","299","Acoustic Guitar 1000 to 1999","Acoustic Guitar 2000 to 2999","Acoustic Guitar Over 3000","Acoustic Guitar Under 999","Acoustic Guitar w Hard Case 1000 to 1999","Acoustic Guitar w Hard Case 2000-2999","Acoustic Guitar w Hard Case Over 3000","Acoustic Guitar w Hard Case Under 999","Electric Bass 1000 to 1999","Electric Bass 2000 to 2999","Electric Bass Over 3000","Electric Bass Under 999","Electric Bass w Hard Case 1000 to 1999","Electric Bass w Hard Case 2000 to 2999","Electric Bass w Hard Case Over 3000","Electric Bass w Hard Case Under 999","Electric Guitar 1000 to 1999","Electric Guitar 2000 to 2999","Electric Guitar Over 3000","Electric Guitar Under 999","Electric Guitar w Hard Case 1000 to 1999","Electric Guitar w Hard Case 2000 to 2999","Electric Guitar w Hard Case Over 3000","Electric Guitar w Hard Case Under 999","Free Shipping Domestic Only","Large Amplifier","Large Effects Pedal","Local Pickup Only","Medium Amplifier","Medium Effects Pedal","Small Amplifier","Small Effects Pedal","XL Amplifier","XXL Amplifier"],"types":["Acoustic Bass Guitar","Acoustic Drum Kit","Acoustic Guitar","Acoustic Guitar Pickup","Acoustic-Electric Bass Guitar","Acoustic-Electric Guitar","Analog Recorder","Backpack","Banjo","Bit Crusher","Bookshelf Speaker","Boost","Cabinet","Channel Strip","China","Chorus","Clarinet","Combo","Compact Mixer","Compressor","Condenser Microphone","Control Surface","Cornet","Cover","Crash","Crash Ride","Delay","Desktop Microphone","Digital Piano","Digital Recorder","Direct/DI Box","Distortion","DJ Mixer","DJ Speaker","Drum Pad","Dynamic Microphone","Earset Microphone","Echo","Effects Loop","Electric Bass Guitar","Electric Guitar","Electric Guitar Pickup","Electric Lap Steel Guitar","Electric Mandola","Electric Violin","Equalizer","Expression","Flanger","FM Synthesizer","Footswitch","Fuzz","Gig Bag","Guitar Synth","Handheld/Stand-Held","Hanging Microphone","Hard Case","Head","Headphone Amp","Headset","Hi-Hat","Home Theater Speaker System","In-Wall Speaker","Interface","Keyboard","Keyboard Controller","Keyboard Synthesizer","Lavalier/Lapel","Looper","Mandolin","Microphone Preamp","Microphone Receiver","Mini Synth","Mixing Console","Modular","Modular Synthesizer","Multi-Effects","Noise Gate","Octave","Overdrive","PA Head","PA Speaker","PA Speaker System","Pad Controller","Passive Speaker","Patch Bay","Pedal Accessories","Pedal Board","Phaser","Power Amplifier","Preamp","Processor","Rackmount Synthesizer","Rear Surround","Receiver","Reed Organ","Reverb","Ribbon Microphone","Ride","Ring Mod","Sampler","Shifter","Snare","Splash","Stack","Stage/Wedge Monitor","Studio Monitor","Subwoofer","Surround/Satellite","Tape Echo","Tenor Banjo","Tongue Drum","Tower Speaker","Tremolo","Trombone","Tubano","Tuner","Ukulele","Univibe","Vibrato","Volume","Wah","Wireless Speaker System","Workstation","World Drums","Road Case","Buffer","Pitch Shifter","Filter","Blender","Alto Saxophone","Stand","Dulcimer","Tabla","CD Player","Drum Machine","DJ Controller","Practice Tool","Speaker Stand","Utility","Cassette Recorder","Tom","Soft Case","Guitar Neck","Studio Rack","Electronic Drum Kit","Pickguard","DVD Player","Simulator","Flute","Bass Drum","Violin","Acoustic Travel Guitar","Attenuator","Acoustic Resonator Guitar","Acoustic-Electric Resonator Guitar","Turntable","Bongo","Speaker","Wind Instrument","Integrated Amplifier","Viola","Cassette Player","Power Supply","Wireless Guitar System","Power Conditioner","Electric Upright Bass","Harmonizer","Drum Synth","Autoharp","Rack Case","Talkbox","Rotary Speaker Emulator","Sustainer","Percussion Kit","Doubler","Desktop Synthesizer","Banjo Ukulele","Vocal Effect","Djembe","Amplifier","Capo","ABY switch","Theremin","Electric Travel Guitar","Instrument Cable","Case","Sustain Pedal","Microphone System","Powered Mixer","Tenor Saxophone","Piano Bench","Cajon","Drum Throne","Sound Bar","Stereo System","Humidifier","Mouthpiece","Kick Drum","Brasswind","Phase Shifter","Accordion","Bouzouki","Kalimba","Tenor Ukulele","Congas","Trumpet","Headphones","Melodica","Piano","Guitar Strap","Soprano Saxophone","Speaker Cable","MIDI Controller","Cymbal","Bass Head","Keyboard Amp","Drum Hardware","Keyboard Stand","Accessories","Classical","Hand Drum","Cello","Harp","Bridge","Contact Microphone","Amp Simulator"],"cats":["Accessories","Accessories>Amp Covers","Accessories>Books and DVDs","Accessories>Cable Adapters and Splitters","Accessories>Cables","Accessories>Capos","Accessories>Case Candy","Accessories>Cases and Gig Bags>Bass Cases","Accessories>Cases and Gig Bags>Bass Gig Bags","Accessories>Cases and Gig Bags>Guitar Cases","Accessories>Cases and Gig Bags>Guitar Gig Bags","Accessories>Headphones","Accessories>Humidifiers","Accessories>Merchandise","Accessories>Metronome","Accessories>Picks","Accessories>Power Supplies","Accessories>Slides","Accessories>Stands","Accessories>Straps","Accessories>Strings>Banjo Strings","Accessories>Strings>Bass Strings","Accessories>Strings>Guitar Strings","Accessories>Strings>Mandolin Strings","Accessories>Strings>Other Strings","Accessories>Strings>Ukulele Strings","Accessories>Tools","Accessories>Tuners","Acoustic Guitars","Acoustic Guitars>12-String","Acoustic Guitars>Archtop","Acoustic Guitars>Baritone","Acoustic Guitars>Built-in Electronics","Acoustic Guitars>Classical","Acoustic Guitars>Concert","Acoustic Guitars>Dreadnought","Acoustic Guitars>Jumbo","Acoustic Guitars>Left-Handed","Acoustic Guitars>Mini/Travel","Acoustic Guitars>OM and Auditorium","Acoustic Guitars>Parlor","Acoustic Guitars>Resonator","Acoustic Guitars>Tenor","Amps","Amps>Amp Attenuators","Amps>Bass Amps>Bass Amp Stacks","Amps>Bass Amps>Bass Cabinets","Amps>Bass Amps>Bass Combos","Amps>Bass Amps>Bass Headphone Amps","Amps>Bass Amps>Bass Heads","Amps>Bass Amps>Bass Modeling Amps","Amps>Bass Amps>Bass Preamps","Amps>Bass Amps>Pedalboard Bass Amps","Amps>Boutique Amps","Amps>Electronic Drum Amps","Amps>Guitar Amps>Acoustic Guitar Amps","Amps>Guitar Amps>Guitar Amp Stacks","Amps>Guitar Amps>Guitar Cabinets","Amps>Guitar Amps>Guitar Combos","Amps>Guitar Amps>Guitar Headphone Amps","Amps>Guitar Amps>Guitar Heads","Amps>Guitar Amps>Guitar Modeling Amps","Amps>Guitar Amps>Guitar Power Amps","Amps>Guitar Amps>Guitar Preamps","Amps>Guitar Amps>Pedalboard Guitar Amps","Amps>Keyboard Amps","Amps>Small Amps","Band and Orchestra","Band and Orchestra>Brass>Baritone","Band and Orchestra>Brass>Brass Accessories","Band and Orchestra>Brass>French Horns","Band and Orchestra>Brass>Trombones","Band and Orchestra>Brass>Trumpets","Band and Orchestra>Brass>Tubas","Band and Orchestra>String>Cellos","Band and Orchestra>String>Harps","Band and Orchestra>String>String Accessories","Band and Orchestra>String>Upright Bass","Band and Orchestra>String>Violas","Band and Orchestra>String>Violins","Band and Orchestra>Woodwind>Bassoons","Band and Orchestra>Woodwind>Clarinets","Band and Orchestra>Woodwind>Flutes","Band and Orchestra>Woodwind>Oboes","Band and Orchestra>Woodwind>Saxophones","Band and Orchestra>Woodwind>Woodwind Accessories","Bass Guitars","Bass Guitars>4-String","Bass Guitars>5-String or More","Bass Guitars>Acoustic Bass Guitars","Bass Guitars>Active Electronics","Bass Guitars>Fretless","Bass Guitars>Left-Handed","Bass Guitars>Short Scale","DJ and Lighting Gear","DJ and Lighting Gear>All-in-one DJ Systems","DJ and Lighting Gear>DJ Controllers","DJ and Lighting Gear>DJ Interfaces","DJ and Lighting Gear>Lighting","DJ and Lighting Gear>Mixers","DJ and Lighting Gear>Turntables","Drums and Percussion","Drums and Percussion>Acoustic Drums>Bass Drum","Drums and Percussion>Acoustic Drums>Full Acoustic Kits","Drums and Percussion>Acoustic Drums>Snare","Drums and Percussion>Acoustic Drums>Tom","Drums and Percussion>Auxiliary Percussion","Drums and Percussion>Concert Percussion>Concert Bass Drums","Drums and Percussion>Concert Percussion>Concert Cymbals","Drums and Percussion>Concert Percussion>Concert Snare Drums","Drums and Percussion>Concert Percussion>Concert Toms","Drums and Percussion>Concert Percussion>Gongs","Drums and Percussion>Concert Percussion>Timpani","Drums and Percussion>Cymbals>Crash","Drums and Percussion>Cymbals>Cymbal Packs","Drums and Percussion>Cymbals>Hi-Hats","Drums and Percussion>Cymbals>Other (Splash, China, etc)","Drums and Percussion>Cymbals>Ride","Drums and Percussion>Electronic Drums>Full Electronic Kits","Drums and Percussion>Electronic Drums>Modules","Drums and Percussion>Hand Drums>Cajons","Drums and Percussion>Hand Drums>Congas and Bongos","Drums and Percussion>Hand Drums>Djembes","Drums and Percussion>Hand Drums>Shakers","Drums and Percussion>Mallet Percussion>Bells and Glockenspiels","Drums and Percussion>Mallet Percussion>Marimbas","Drums and Percussion>Mallet Percussion>Vibraphones","Drums and Percussion>Mallet Percussion>Xylophones","Drums and Percussion>Marching Percussion>Marching Bass Drums","Drums and Percussion>Marching Percussion>Marching Cymbals","Drums and Percussion>Marching Percussion>Marching Snare Drums","Drums and Percussion>Marching Percussion>Marching Toms and Tenors","Drums and Percussion>Pad Controllers","Drums and Percussion>Parts and Accessories>Cases and Bags","Drums and Percussion>Parts and Accessories>Drum Keys and Tuners","Drums and Percussion>Parts and Accessories>Drum Parts","Drums and Percussion>Parts and Accessories>Drum Sticks and Mallets","Drums and Percussion>Parts and Accessories>Heads","Drums and Percussion>Parts and Accessories>Mounts","Drums and Percussion>Parts and Accessories>Pedals","Drums and Percussion>Parts and Accessories>Stands","Drums and Percussion>Parts and Accessories>Thrones","Drums and Percussion>Practice Pads","Effects and Pedals","Effects and Pedals>Amp Simulators","Effects and Pedals>Bass Pedals","Effects and Pedals>Buffer","Effects and Pedals>Cabinet Simulators","Effects and Pedals>Chorus and Vibrato","Effects and Pedals>Compression and Sustain","Effects and Pedals>Controllers, Volume and Expression","Effects and Pedals>Delay","Effects and Pedals>Distortion","Effects and Pedals>EQ","Effects and Pedals>Flanger","Effects and Pedals>Fuzz","Effects and Pedals>Guitar Synths","Effects and Pedals>Loop Pedals and Samplers","Effects and Pedals>Multi-Effect Unit","Effects and Pedals>Noise Generators","Effects and Pedals>Noise Reduction and Gates","Effects and Pedals>Octave and Pitch","Effects and Pedals>Overdrive and Boost","Effects and Pedals>Pedalboards and Power Supplies","Effects and Pedals>Phase Shifters","Effects and Pedals>Preamps","Effects and Pedals>Reverb","Effects and Pedals>Ring Modulators","Effects and Pedals>Tremolo","Effects and Pedals>Tuning Pedals","Effects and Pedals>Vocal","Effects and Pedals>Wahs and Filters","Electric Guitars","Electric Guitars>12-String","Electric Guitars>Archtop","Electric Guitars>Baritone","Electric Guitars>Hollow Body","Electric Guitars>Lap Steel","Electric Guitars>Left-Handed","Electric Guitars>Pedal Steel","Electric Guitars>Semi-Hollow","Electric Guitars>Solid Body","Electric Guitars>Tenor","Electric Guitars>Travel / Mini","Folk Instruments","Folk Instruments>Accordions","Folk Instruments>Bajo Quintos","Folk Instruments>Bajo Sextos","Folk Instruments>Banjos","Folk Instruments>Guitarrones","Folk Instruments>Harmonicas","Folk Instruments>Harmoniums","Folk Instruments>Mandolins","Folk Instruments>Ouds","Folk Instruments>Shrutis","Folk Instruments>Sitars","Folk Instruments>Ukuleles","Folk Instruments>Vihuelas","Home Audio","Home Audio>Amplifiers","Home Audio>Cables","Home Audio>Complete Stereo Systems","Home Audio>Digital Players>CD Players","Home Audio>Digital Players>DACs","Home Audio>Digital Players>Media Servers","Home Audio>Digital Players>Portable Digital Players","Home Audio>Digital Players>Streamers","Home Audio>Equalizers","Home Audio>Headphones>Closed-back Headphones","Home Audio>Headphones>In-Ear Headphones","Home Audio>Headphones>Noise-canceling Headphones","Home Audio>Headphones>On-ear Headphones","Home Audio>Headphones>Open-back Headphones","Home Audio>Headphones>Over-ear Headphones","Home Audio>Headphones>Wireless Headphones","Home Audio>Parts and Accessories>Headphone Parts and Accessories","Home Audio>Parts and Accessories>Speaker Parts and Accessories","Home Audio>Parts and Accessories>Turntable Parts and Accessories","Home Audio>Power Distribution and Conditioning","Home Audio>Preamps","Home Audio>Receivers","Home Audio>Speakers>Bookshelf Speakers","Home Audio>Speakers>Floor Speakers","Home Audio>Speakers>In-wall Speakers","Home Audio>Speakers>Outdoor Speakers","Home Audio>Speakers>Portable Speaker Systems","Home Audio>Speakers>Subwoofers","Home Audio>Speakers>Surround and Satellite Speakers","Home Audio>Speakers>Wireless Speakers","Home Audio>Tape Decks","Home Audio>Tuners and Radios","Home Audio>Turntables","Keyboards and Synths","Keyboards and Synths>Acoustic Pianos>Grand Pianos","Keyboards and Synths>Acoustic Pianos>Upright Pianos","Keyboards and Synths>Arranger Keyboards","Keyboards and Synths>Digital Pianos>Digital Home Pianos","Keyboards and Synths>Digital Pianos>Digital Stage Pianos","Keyboards and Synths>Drum Machines","Keyboards and Synths>Electric Pianos","Keyboards and Synths>Grooveboxes","Keyboards and Synths>Keyboard and Synth Accessories>Keyboard Sustain Pedals","Keyboards and Synths>Keyboard and Synth Accessories>Keyboard and Piano Benches","Keyboards and Synths>Keyboard and Synth Accessories>Keyboard and Synth Cases","Keyboards and Synths>Keyboard and Synth Accessories>Keyboard and Synth Covers","Keyboards and Synths>Keyboard and Synth Accessories>Keyboard and Synth Gig Bags","Keyboards and Synths>Keyboard and Synth Accessories>Keyboard and Synth Stands","Keyboards and Synths>Keyboard and Synth Accessories>Modular Synth Accessories>Blank Modular Synth Panels","Keyboards and Synths>Keyboard and Synth Accessories>Modular Synth Accessories>Modular Synth DSP Cards","Keyboards and Synths>Keyboard and Synth Accessories>Modular Synth Accessories>Modular Synth Power Supplies","Keyboards and Synths>Keyboard and Synth Accessories>Modular Synth Accessories>Modular Synth Splitters / Hubs","Keyboards and Synths>Keyboard and Synth Parts","Keyboards and Synths>MIDI Controllers>Foot Pedal MIDI Controllers","Keyboards and Synths>MIDI Controllers>Keyboard MIDI Controllers","Keyboards and Synths>MIDI Controllers>Keytar MIDI Controllers","Keyboards and Synths>MIDI Controllers>Pad MIDI Controllers","Keyboards and Synths>MIDI Controllers>Wind MIDI Controllers","Keyboards and Synths>Organs","Keyboards and Synths>Portable Keyboards","Keyboards and Synths>Samplers","Keyboards and Synths>Sequencers","Keyboards and Synths>Synths>Analog Synths","Keyboards and Synths>Synths>Desktop Synths","Keyboards and Synths>Synths>Digital Synths","Keyboards and Synths>Synths>Eurorack","Keyboards and Synths>Synths>Keyboard Synths","Keyboards and Synths>Synths>Modular Synths>Complete Modular Synth Systems","Keyboards and Synths>Synths>Modular Synths>Modular Synth Cases","Keyboards and Synths>Synths>Modular Synths>Synth Modules","Keyboards and Synths>Synths>Rackmount Synths","Keyboards and Synths>Synths>Vocoders","Keyboards and Synths>Workstation Keyboards","Parts","Parts>Acoustic Pickups","Parts>Amp Parts","Parts>Bass Guitar Parts","Parts>Bass Pickups","Parts>Guitar Bodies","Parts>Guitar Parts>Bridge Pins","Parts>Guitar Parts>Bridges","Parts>Guitar Parts>Necks","Parts>Guitar Parts>Tailpieces","Parts>Guitar Pickups","Parts>Knobs","Parts>Pedal Parts","Parts>Pickguards","Parts>Replacement Speakers","Parts>Tubes","Parts>Tuning Heads","Pro Audio","Pro Audio>500 Series","Pro Audio>Accessories>Wireless Instrument Systems","Pro Audio>Accessories>Wireless Receivers","Pro Audio>Accessories>Wireless Transmitters","Pro Audio>Boxed Software","Pro Audio>DI Boxes","Pro Audio>Interfaces","Pro Audio>Microphones","Pro Audio>Mixers","Pro Audio>Outboard Gear>AD/DA Converters","Pro Audio>Outboard Gear>Channel Strips","Pro Audio>Outboard Gear>Compressors and Limiters","Pro Audio>Outboard Gear>Delay","Pro Audio>Outboard Gear>Equalizers","Pro Audio>Outboard Gear>Gates and Expanders","Pro Audio>Outboard Gear>Microphone Preamps","Pro Audio>Outboard Gear>Multi-Effect","Pro Audio>Outboard Gear>Reverb","Pro Audio>Outboard Gear>Summing","Pro Audio>Outboard Gear>Utility","Pro Audio>Patchbays","Pro Audio>Portable PA Systems","Pro Audio>Portable Recorders","Pro Audio>Power Amps","Pro Audio>Powered Mixers","Pro Audio>Recording","Pro Audio>Speakers>Passive Speakers","Pro Audio>Speakers>Powered Speakers","Pro Audio>Speakers>Studio Monitors","Pro Audio>Studio Furniture"]};
+const BASE="appZD2jJGbSlvofcV", TABLE="tbleYgUhKCIepPtFR";
+const FX={ name:"flde17o9HEpKPdMlS", sku:"fldfKGlajXOBkUQ92", status:"fldQNSoYTvTVEIgwG", phys:"fldM1ajllQvTvdKwI", cat:"fldRSem0EtiWihkN1", cond:"fldYuGbUJO4a0bNvu",
+  online:"fldd9UhO7Ld2Io9f0", pos:"fld0ESkFoFMOhfR0g", ship:"fldMXyf3MJT81bP8H", make:"fldrk4O58Pt7F1bez", model:"fldVoULHvGrxjP6FI", year:"fldTH1EvXbtdRpqLX",
+  finish:"flduMrOukLdpZa903", type:"fldP5zfGXdPdoE1BM", short:"fldZmv2LiJWkwfYhK", desc:"fldK4r1UVR5CMLNwZ", where:"fldmJ59kZgX92qgY9", notes:"fldW0Sgi7TVduheu1",
+  posBox:"fld1az0IL2lcwPNqf", ecomBox:"fldGp19YJM5I5YKdK", result:"fldnfx5HoaNwU2I8l", attempt:"fldJpRedmBqzwzhrD", check:"fld9j1AvzWQzbDwfR", checkAt:"fld4toQPmE2W6fs5i",
+  published:"fldqw39YrfYU2ou0S", live:"fldhDcy7R5md05jLL", urls:"fldsABSqaxA6WfmUL", archive:"fld5fnEFFTThTL3TC", listedBy:"fldmEXUkfXzeXUwEl" };
+const PHYS=["Ready to Sell","TBD","Needs Minor Work","Needs Medium Work","Needs Work: Guitar Repair","Needs Work: Electronics Repair","Needs Work: Tube Amp Repair","Needs Work: Horn Repair","Needs Work: Misc","Hold","Parts","Long Term Project","Tag Sale","Non-Reverb","Listed"];
+const CONDS=["Mint","Excellent","Very Good","Good","Fair","Poor","Non Functioning","As-Is","B-Stock","Brand New"];
+// Editable fields, in screen order. kind: text | money | select | long
+const EDIT=[
+  {k:"name",label:"Title",kind:"text",wide:true},
+  {k:"online",label:"Online price",kind:"money"},{k:"pos",label:"POS price",kind:"money"},
+  {k:"phys",label:"Physical Status",kind:"select",opts:PHYS},{k:"cond",label:"Condition",kind:"select",opts:CONDS},
+  {k:"cat",label:"Category",kind:"select",opts:LISTS.cats,wide:true},
+  {k:"ship",label:"Shipping profile",kind:"select",opts:LISTS.ship},{k:"type",label:"Type",kind:"select",opts:LISTS.types},
+  {k:"make",label:"Make",kind:"text"},{k:"model",label:"Model",kind:"text"},{k:"year",label:"Year",kind:"text"},{k:"finish",label:"Finish / color",kind:"text"},
+  {k:"short",label:"Short description",kind:"long",wide:true,rows:3},
+  {k:"desc",label:"Description",kind:"long",wide:true,rows:10},
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={ get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const STAFF=(function(){ const fb=["Jon","Sam","Nina","Julia","Ethan","Kyle","Andy","Jeff","Chris","Sturgis","Mike"]; try{ const c=JSON.parse(localStorage.getItem("mrm-staff")||"null"); if(Array.isArray(c)&&c.length) return c; }catch(e){} return fb; })();
+let TOKEN=store.get("mrm-photos-token"), WHO=store.get("mrm-photos-who");
+let REC=null, ORIG={}, VAL={}, WHERE=null, ORIGWHERE=null, MD=null, saving=false;
+
+const cv=(r,k)=>{ const v=r&&r.fields&&r.fields[FX[k]]; if(v==null) return ""; if(Array.isArray(v)) return v.map(x=>x&&typeof x==="object"?(x.name??""):x).filter(Boolean).join(", "); if(typeof v==="object") return v.text??v.name??""; return v; };
+const num=v=>{ const x=parseFloat(String(v??"").replace(/[$,]/g,"")); return isFinite(x)?x:null; };
+const money=v=>{ const x=num(v); return x==null?"":"$"+x.toLocaleString("en-US",{minimumFractionDigits:x%1?2:0,maximumFractionDigits:2}); };
+const st=r=>String(cv(r,"status")||"").trim();
+const editable=r=>["POS Synced","Ready For Ecommerce"].includes(st(r))&&!r.fields[FX.archive];
+
+async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/${BASE}/${TABLE}${path||""}`,{...opt,headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"}});
+  const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
+const getRec=id=>api("/"+id+"?returnFieldsByFieldId=true");
+
+/* ---------- find ---------- */
+async function find(q){ q=q.trim(); if(!q) return; $("smsg").innerHTML=`<div class="small muted" style="margin-top:8px">Searching…</div>`; $("results").innerHTML="";
+  const lq=q.toLowerCase().replace(/'/g,"\\'");
+  const f=`AND(NOT({Archive}),OR({SKU}&''='${q.replace(/'/g,"\\'")}',FIND('${lq}',LOWER({Name}&''))),OR(TRIM({Data Status}&'')='POS Synced',TRIM({Data Status}&'')='Ready For Ecommerce',TRIM({Data Status}&'')='Sold'))`;
+  try{ const fl=["name","sku","status","online","pos","check"].map(k=>"fields%5B%5D="+FX[k]).join("&");
+    const j=await api(`?returnFieldsByFieldId=true&${fl}&pageSize=25&filterByFormula=${encodeURIComponent(f)}&sort%5B0%5D%5Bfield%5D=Date%20In&sort%5B0%5D%5Bdirection%5D=desc`);
+    const recs=j.records||[]; $("smsg").innerHTML=recs.length?"":`<div class="note sugg">Nothing found that's in Lightspeed. Items still being listed are in the Listing Desk; deals in the Intake Desk; anything else in Lookup.</div>`;
+    $("results").innerHTML=recs.map(r=>{ const s=st(r); return `<button class="res" data-open="${r.id}"><span><b>${esc(cv(r,"name"))}</b> <span class="small muted">${esc(cv(r,"sku"))}</span>${/^PROBLEM/.test(cv(r,"check"))?` <span class="pill no">Problem</span>`:""}</span><span class="row"><span class="small">${esc(money(cv(r,"online")||cv(r,"pos")))}</span><span class="pill ${s==="Sold"?"no":s==="Ready For Ecommerce"?"ok":""}">${esc(s==="Ready For Ecommerce"?"Listed":s)}</span></span></button>`; }).join("");
+  }catch(e){ $("smsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
+
+/* ---------- open ---------- */
+async function open(id){ $("item").hidden=false; $("item").innerHTML=`<div class="small muted">Loading…</div>`; MD=null;
+  try{ const r=await getRec(id); REC=r; ORIG={}; EDIT.forEach(f=>ORIG[f.k]=String(cv(r,f.k)??"")); VAL={...ORIG};
+    const w=(r.fields[FX.where]||[]).map(x=>typeof x==="object"?x.name:x); WHERE={reverb:!w.length||w.includes("Reverb"), web:!w.length||w.includes("Website")}; ORIGWHERE={...WHERE};
+    try{ history.replaceState(null,"","?rec="+id); }catch(e){}
+    render(); window.scrollTo({top:$("item").offsetTop-70,behavior:"smooth"}); }
+  catch(e){ $("item").innerHTML=`<div class="note warn">Couldn't open it: ${esc(e.message)}</div>`; } }
+
+function changes(){ const out=[];
+  EDIT.forEach(f=>{ const a=String(ORIG[f.k]??"").trim(), b=String(VAL[f.k]??"").trim();
+    if(f.kind==="money"){ if(num(a)!==num(b)) out.push({k:f.k,label:f.label,from:a===""?"(blank)":money(a),to:b===""?"(blank)":money(b),val:b===""?null:num(b)}); }
+    else if(a!==b) out.push({k:f.k,label:f.label,from:a||"(blank)",to:b||"(blank)",val:b, long:f.kind==="long"}); });
+  if(WHERE.reverb!==ORIGWHERE.reverb||WHERE.web!==ORIGWHERE.web){ const t=x=>["Store"].concat(x.reverb?["Reverb"]:[],x.web?["Website"]:[]).join(", "); out.push({k:"where",label:"Where to Sell",from:t(ORIGWHERE),to:t(WHERE)}); }
+  return out; }
+
+function render(){ const r=REC; if(!r) return; const s=st(r), ro=!editable(r);
+  const lc=cv(r,"check"), res=cv(r,"result"), pub=String(cv(r,"published")).toLowerCase()==="yes", rlive=cv(r,"live");
+  const photos=String(r.fields[FX.urls]||"").split(/\s+/).filter(u=>/^https:\/\/res\.cloudinary\.com\//.test(u));
+  const field=f=>{ const v=VAL[f.k]??"", chg=String(ORIG[f.k]??"").trim()!==String(v).trim()&&!(f.kind==="money"&&num(ORIG[f.k])===num(v));
+    let inp;
+    if(f.kind==="select"){ const opts=f.opts.includes(v)||!v?f.opts:[v].concat(f.opts); inp=`<select class="t" data-k="${f.k}" ${ro?"disabled":""}><option value="">—</option>${opts.map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`; }
+    else if(f.kind==="long") inp=`<textarea class="t" data-k="${f.k}" rows="${f.rows||4}" ${ro?"disabled":""}>${esc(v)}</textarea>`;
+    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal"':""} ${ro?"disabled":""}>`;
+    if(f.k==="online"||f.k==="pos"){ const was=num(ORIG[f.k]), now=num(v); inp=`<div class="price">${inp}${was!=null&&now!=null&&now<was?`<div class="was">was <s>${esc(money(was))}</s>, ${Math.round((1-now/was)*100)}% off</div>`:""}</div>`; }
+    return `<label class="f ${chg?"chg":""} ${f.wide?"wide":""}">${esc(f.label)}${inp}</label>`; };
+  const chs=changes();
+  $("item").innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2>${esc(cv(r,"name")||"(no name)")}</h2>
+      <div class="small muted">SKU ${esc(cv(r,"sku"))} · ${esc(s==="Ready For Ecommerce"?"Listed":s)}${cv(r,"listedBy")?" · listed by "+esc(cv(r,"listedBy")):""}</div></div>
+      <div class="row"><span class="pill ${pub?"ok":""}">Website: ${pub?"Live":"Not live"}</span><span class="pill ${rlive==="Live"?"ok":rlive?"no":""}">Reverb: ${esc(rlive||"Not checked")}</span></div></div>
+    ${/^PROBLEM/.test(lc)?`<div class="note warn"><b>Live check:</b> ${esc(lc.replace(/^PROBLEM\s*/,""))}</div>`:lc?`<div class="small muted" style="margin-top:6px">Live check: ${esc(lc)}</div>`:""}
+    ${/^Failed/.test(res)?`<div class="note warn"><b>Last sync failed:</b> ${esc(res)}</div>`:res?`<div class="small muted" style="margin-top:4px">Last sync: ${esc(res)}</div>`:""}
+    ${ro?`<div class="note sugg">${s==="Sold"?"This item is Sold, so it opens read-only.":`This item is "${esc(s||"no status")}", not in Lightspeed yet. Edit it in the Listing Desk, Intake Desk or Lookup.`}</div>`:""}
+    ${photos.length?`<div class="thumbs">${photos.slice(0,10).map(u=>`<img src="${esc(u.replace("/upload/","/upload/c_fill,w_160,h_160/"))}" alt="" loading="lazy">`).join("")}</div>`:`<div class="small muted" style="margin-top:6px">No photos yet. Shoot them in MRM Photos; the website waits for photos.</div>`}
+    <div class="grid" style="margin-top:14px">
+      ${EDIT.slice(0,1).map(field).join("")}
+      ${field(EDIT[1])}${field(EDIT[2])}
+      ${ro?"":`<div class="wide"><div class="small muted" style="font-weight:700">Mark down (both prices)</div><div class="md"><button type="button" data-md="10">−10%</button><button type="button" data-md="20">−20%</button><button type="button" data-md="custom">Custom…</button>${MD?`<button type="button" data-md="undo">Undo markdown</button>`:""}</div>
+        <div id="mdcustom" hidden class="row" style="margin-top:6px"><input class="t" id="mdval" inputmode="decimal" placeholder="New online price" style="max-width:200px"><button class="btn sec" type="button" data-md="apply">Apply</button></div></div>`}
+      <div class="wide"><div class="small muted" style="font-weight:700;margin-bottom:6px">Sell on</div><div class="chips"><span class="chip on lock" title="Always sold in the store">Store</span>
+        <button type="button" class="chip ${WHERE.reverb?"on":"off"}" data-ch="reverb" ${ro?"disabled":""}>Reverb</button><button type="button" class="chip ${WHERE.web?"on":"off"}" data-ch="web" ${ro?"disabled":""}>Website</button></div>${!ro&&ORIGWHERE.reverb&&!WHERE.reverb?`<div class="small" style="color:var(--sugg);margin-top:6px">Turning Reverb off here doesn't end a live Reverb listing yet. End it on Reverb too.</div>`:""}${!ro&&ORIGWHERE.web&&!WHERE.web&&String(cv(r,"published")).toLowerCase()==="yes"?`<div class="small" style="color:var(--sugg);margin-top:6px">The sync never unpublishes, so it stays on the website until someone turns off "Publish to eCom" in Lightspeed.</div>`:""}</div>
+      ${EDIT.slice(3).map(field).join("")}
+    </div>
+    ${ro?"":`<div class="savebar"><div class="changes" id="chlist">${chs.length?`${chs.length} change${chs.length>1?"s":""}: ${esc(chs.map(c=>c.label).join(", "))}${MD?" (markdown)":""}`:"No changes yet."}</div>
+      <button class="btn sec" type="button" data-act="reset" ${chs.length?"":"disabled"}>Undo all</button><button class="btn" type="button" data-act="save" ${chs.length&&!saving?"":"disabled"}>${saving?"Saving…":"Save and send"}</button></div>
+      <div id="savemsg"></div>`}`;
+}
+function refreshBar(){ const chs=changes(); const el=$("chlist"); if(!el) return render();
+  el.textContent=chs.length?`${chs.length} change${chs.length>1?"s":""}: ${chs.map(c=>c.label).join(", ")}${MD?" (markdown)":""}`:"No changes yet.";
+  document.querySelector('[data-act="save"]').disabled=!chs.length||saving; document.querySelector('[data-act="reset"]').disabled=!chs.length;
+  document.querySelectorAll("label.f").forEach(l=>{ const i=l.querySelector("[data-k]"); if(!i) return; const k=i.dataset.k, f=EDIT.find(x=>x.k===k); const a=ORIG[k], b=VAL[k]; l.classList.toggle("chg", f.kind==="money"?num(a)!==num(b):String(a??"").trim()!==String(b??"").trim()); }); }
+
+/* ---------- markdown ---------- */
+function markdown(pct,newOnline){ const o=num(ORIG.online), p=num(ORIG.pos); const base=o||p; if(!base) return alertNote("Set a price first; there's nothing to mark down.");
+  const target=newOnline!=null?newOnline:Math.round(base*(1-pct/100));
+  if(!(target>0)||target>=base) return alertNote("The new price has to be lower than "+money(base)+".");
+  const ratio=target/base; if(o) VAL.online=String(target); if(p) VAL.pos=String(o?Math.round(p*ratio):target);
+  MD={pct:Math.round((1-ratio)*100)}; render(); }
+function alertNote(t){ const el=$("savemsg"); if(el) el.innerHTML=`<div class="note warn">${esc(t)}</div>`; }
+
+/* ---------- save ---------- */
+async function save(){ if(saving) return; const chs=changes(); if(!chs.length) return;
+  if(!WHO){ alertNote("Pick who's working (top right) first, so the notes say who changed it."); $("who").focus(); return; }
+  saving=true; refreshBar(); $("savemsg").innerHTML=`<div class="small muted" style="margin-top:8px">Saving…</div>`;
+  try{
+    // Someone else may have changed it since it was opened: check the fields we're about to change
+    const now=await getRec(REC.id); const clash=chs.filter(c=>c.k!=="where"&&String(cv(now,c.k)??"").trim()!==String(ORIG[c.k]??"").trim());
+    if(clash.length){ saving=false; REC=now; $("savemsg").innerHTML=`<div class="note warn">Someone else changed ${esc(clash.map(c=>c.label).join(", "))} since you opened this. Nothing was saved. Reload it to see their version.</div><button class="btn sec" type="button" data-act="reload" style="margin-top:8px">Reload</button>`; refreshBar(); return; }
+    if(!editable(now)){ saving=false; REC=now; render(); alertNote("This item changed status (now "+st(now)+"), so it can't be edited here."); return; }
+    const f={};
+    chs.forEach(c=>{ if(c.k==="where") f[FX.where]=["Store"].concat(WHERE.reverb?["Reverb"]:[],WHERE.web?["Website"]:[]); else if(c.k==="online"||c.k==="pos") f[FX[c.k]]=c.val; else f[FX[c.k]]=c.val; });
+    const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
+    const line=`[${stamp} ${WHO}] ${MD?"Markdown "+MD.pct+"%: ":"Updated: "}`+chs.map(c=>c.long?`${c.label} edited`:`${c.label} ${c.from} → ${c.to}`).join("; ");
+    const prev=String(now.fields[FX.notes]||"").replace(/\s+$/,""); f[FX.notes]=(prev?prev+"\n":"")+line;
+    const listed=st(now)==="Ready For Ecommerce"; f[listed?FX.ecomBox:FX.posBox]=true;   // re-send through the new sync
+    await api("/"+REC.id,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true})});
+    $("savemsg").innerHTML=`<div class="note ok">Saved and logged in the notes. Sending to Lightspeed${listed?", the website and Reverb":""}…</div>`;
+    const t0=Date.now(); let out=null;
+    while(Date.now()-t0<45000){ await new Promise(r=>setTimeout(r,3000)); const x=await getRec(REC.id); const res=cv(x,"result"); const at=Date.parse(x.fields[FX.attempt]||0)||0;
+      if(at>=t0-2000&&res&&!/^Processing/.test(res)){ out=x; break; } }
+    saving=false;
+    if(out){ REC=out; ORIG={}; EDIT.forEach(fl=>ORIG[fl.k]=String(cv(out,fl.k)??"")); VAL={...ORIG}; ORIGWHERE={...WHERE}; MD=null; render();
+      const res=cv(out,"result"); $("savemsg").innerHTML=/^Failed/.test(res)?`<div class="note warn">Saved in Airtable, but the sync failed: ${esc(res)}</div>`:`<div class="note ok">Done. ${esc(res)}</div>`; }
+    else { const x=await getRec(REC.id); REC=x; ORIG={}; EDIT.forEach(fl=>ORIG[fl.k]=String(cv(x,fl.k)??"")); VAL={...ORIG}; ORIGWHERE={...WHERE}; MD=null; render();
+      $("savemsg").innerHTML=`<div class="note sugg">Saved in Airtable. The sync hasn't answered yet; check Listing Status in a minute.</div>`; }
+  }catch(e){ saving=false; refreshBar(); alertNote("Didn't save: "+e.message); } }
+
+/* ---------- events ---------- */
+document.addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.k; if(!k) return; VAL[k]=e.target.value; if((k==="online"||k==="pos")&&MD) MD=null; refreshBar(); });
+document.addEventListener("change",e=>{ const k=e.target.dataset&&e.target.dataset.k; if(!k) return; VAL[k]=e.target.value; refreshBar(); });
+document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.open){ open(b.dataset.open); return; }
+  if(b.dataset.ch){ WHERE[b.dataset.ch]=!WHERE[b.dataset.ch]; render(); return; }
+  if(b.dataset.md){ const m=b.dataset.md; if(m==="custom"){ $("mdcustom").hidden=false; $("mdval").focus(); return; }
+    if(m==="apply"){ const v=num($("mdval").value); if(v==null) return alertNote("Type the new online price."); markdown(null,v); return; }
+    if(m==="undo"){ VAL.online=ORIG.online; VAL.pos=ORIG.pos; MD=null; render(); return; }
+    markdown(+m); return; }
+  if(b.dataset.act==="save"){ save(); return; }
+  if(b.dataset.act==="reset"){ VAL={...ORIG}; WHERE={...ORIGWHERE}; MD=null; render(); return; }
+  if(b.dataset.act==="reload"){ open(REC.id); return; } });
+$("sform").addEventListener("submit",e=>{ e.preventDefault(); find($("q").value); });
+$("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<option${n===WHO?" selected":""}>${esc(n)}</option>`).join("");
+$("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); });
+$("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
+  TOKEN=t; try{ await api("?pageSize=1&fields%5B%5D="+FX.sku); store.set("mrm-photos-token",t); start(); }catch(err){ TOKEN=""; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
+function start(){ $("setup").hidden=!!TOKEN; $("find").hidden=!TOKEN; if(!TOKEN) return;
+  const p=new URLSearchParams(location.search); const id=p.get("rec"), sku=p.get("sku");
+  if(id&&/^rec[A-Za-z0-9]{14}$/.test(id)) open(id); else if(sku){ $("q").value=sku; find(sku); } }
+start();
+</script>
+</body>
+</html>
