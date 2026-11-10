@@ -636,7 +636,7 @@ document.addEventListener("click",async e=>{ const t=e.target; if(!t||!t.id) ret
     if(!t.dataset.sure){ t.dataset.sure="1"; t.dataset.at=String(Date.now()); t.textContent=`Yes, send ${row.title} an offer of $${price} + $${ship} shipping`; msg.style.color=""; msg.textContent=body?"With your reply text as the message. Click again to send.":"No message typed; the offer goes on its own. Click again to send."; return; }
     if(Date.now()-(+t.dataset.at||0)<900) return; // a double-click never confirms
     t.disabled=true; msg.style.color=""; msg.textContent="Sending…";
-    const payload={price:price.toFixed(2),shipping_price:ship.toFixed(2)}; if(body) payload.message=body;
+    const payload={price:{amount:price.toFixed(2),currency:"USD"},shipping_price:{amount:ship.toFixed(2),currency:"USD"}}; /* Reverb wants {amount,currency} (checked 11/9) */ if(body) payload.message=body;
     const link=row.detail&&row.detail._links&&row.detail._links.make_offer&&row.detail._links.make_offer.href;
     try{ await rv(link||`conversations/${row.id}/offer`,{method:"POST",body:JSON.stringify(payload)});
       delete DRAFTS_R[row.id]; delete OFFER[row.id];
