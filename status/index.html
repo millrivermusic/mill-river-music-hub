@@ -89,7 +89,7 @@ tr.bad td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
     <div id="msg"></div>
   </section>
 
-  <div class="tw" id="tw" hidden><table><thead><tr><th>Item</th><th class="hide-s">Listed</th><th class="num">Price</th><th>Website</th><th>Reverb</th><th class="hide-s">By</th></tr></thead><tbody id="body"></tbody></table></div>
+  <div class="tw" id="tw" hidden><table><thead><tr><th>Item</th><th class="hide-s">Listed</th><th class="num">Price</th><th>Website</th><th>Reverb</th><th>Listed by</th></tr></thead><tbody id="body"></tbody></table></div>
   <p class="small muted" style="margin:0" id="foot" hidden>Website comes from Lightspeed's publish setting. Reverb comes from the overnight Reverb check, and an hourly live check also compares every listed item with Lightspeed and Reverb (problems it finds always show here, whatever the date), so items listed today show up tomorrow morning. Click an item to fix it in Update Live Products.</p>
 </main>
 <script>
@@ -170,7 +170,7 @@ function render(){
   const pill=p=>`<span class="pill ${p[0]}">${esc(p[1])}</span>`;
   $("body").innerHTML=rows.length?rows.map(({r,j})=>{ const price=num(r.fields[FX.online])||num(r.fields[FX.pos]); const url=`../update/?rec=${r.id}`;
     return `<tr class="${j.bad?"bad":""}"><td class="nm"><a href="${url}"><b>${esc(v(r,"name")||"(no name)")}</b></a> <span class="sku">${esc(v(r,"sku"))}</span>${j.probs.map(p=>`<div class="prob">${esc(p)}</div>`).join("")}${j.soft.map(p=>`<div class="prob soft">${esc(p)}</div>`).join("")}</td>
-      <td class="hide-s small muted">${esc(when(r.fields[FX.attempt]||r.fields[FX.dateIn]))}${j.checked?`<div title="Hourly live check">checked ${esc(when(j.checked))}</div>`:""}${j.sold?`<div style="color:var(--warn);font-weight:700">Sold in Airtable</div>`:""}</td><td class="num">${price?"$"+price.toLocaleString("en-US"):"<span class=muted>—</span>"}</td><td>${pill(j.web)}</td><td>${pill(j.rev)}</td><td class="hide-s small">${esc(v(r,"listedBy"))}</td></tr>`; }).join("")
+      <td class="hide-s small muted">${esc(when(r.fields[FX.attempt]||r.fields[FX.dateIn]))}${j.checked?`<div title="Hourly live check">checked ${esc(when(j.checked))}</div>`:""}${j.sold?`<div style="color:var(--warn);font-weight:700">Sold in Airtable</div>`:""}</td><td class="num">${price?"$"+price.toLocaleString("en-US"):"<span class=muted>—</span>"}</td><td>${pill(j.web)}</td><td>${pill(j.rev)}</td><td class="small">${v(r,"listedBy")?esc(v(r,"listedBy")):'<span class="muted">—</span>'}</td></tr>`; }).join("")
     :`<tr><td colspan="6" class="small muted">${ALL.length?"Nothing matches these filters.":"Nothing listed in this period."}</td></tr>`;
   $("tw").hidden=false; $("foot").hidden=false; }
 
