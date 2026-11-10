@@ -144,6 +144,17 @@ html body .vsep{display:none}
 html body .res .why.newrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .lread{display:inline-block;border:1.5px solid var(--accent);color:var(--accent-text);background:var(--surface);border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer}
 .lread:hover{background:var(--accent);color:var(--accent-ink)}
+
+/* 11/9 Jon: tidy filters. Tech and Brand one line each; statuses one even grid (to-do row, then the case stages). */
+html body .fline{align-items:start}
+html body .fline>.lab{padding-top:9px}
+html body .fline>.ctl{gap:14px}
+html body .seg{flex-wrap:nowrap;gap:6px}
+html body .stchips{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;width:100%}
+html body .stchips .chip{justify-content:space-between;width:100%;min-width:0;white-space:nowrap;overflow:hidden}
+html body .stchips .vsep{display:block!important;grid-column:1/-1;height:1px;width:auto;background:var(--line)!important;margin:4px 0}
+@media (max-width:1000px){html body .stchips{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:640px){html body .stchips{grid-template-columns:repeat(2,minmax(0,1fr))} html body .seg{flex-wrap:wrap}}
 </style>
 </head>
 <body>
