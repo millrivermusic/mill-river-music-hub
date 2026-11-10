@@ -184,6 +184,8 @@ async function loadRefunds(){ const st=S.refund; st.rows=[]; const j=await rv(`m
 function deskOf(row){ return DESKROWS[row.kind+":"+row.id]; }
 function statusOf(row){ const d=deskOf(row), s=dv(d,"status");
   if(row.kind==="offer"){ if(row.n.actionable) return s==="Assigned"||s==="Waiting on manager"?s:"New"; return s==="Done"?"Done":"Waiting on buyer"; } // offer status follows whose turn it is on Reverb
+  /* 11/10: the buyer wrote again after we answered (or marked it done): it needs a reply again */
+  if(s&&row.kind==="msg"&&s!=="Waiting on manager"&&row.last&&!row.last.authored&&row.at&&(!dv(d,"last")||Date.parse(row.at)>Date.parse(dv(d,"last"))+1000)) return dv(d,"to")?"Assigned":"New";
   if(s) return s; if(row.kind==="msg"){ if((row.last&&row.last.authored)||row.replied) return "Answered"; if(row.at&&Date.parse(row.at)<OLD_CUTOFF) return "Done"; return "New"; } if(row.kind==="offer") return row.n.actionable?"New":"Answered"; if(row.kind==="refund") return /pending|requested/.test(row.r.state)?"New":"Done"; if(row.kind==="order") return /needs shipping|Waiting for payment|local pickup/.test(row.stage)?"New":"Done"; return "New"; }
 const FILTERS=[["open","Needs reply"],["mine","Mine"],["new","Not assigned"],["buyer","Waiting on buyer"],["done","Done"],["all","All"]];
 const OFILTERS=[["oship","To ship"],["mine","Mine"],["otransit","In transit"],["ounpaid","Unpaid"],["odeliv","Delivered"],["all","All"]];
