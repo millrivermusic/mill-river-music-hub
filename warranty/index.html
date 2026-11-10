@@ -141,6 +141,9 @@ html body .res .why{color:var(--accent-text);font-weight:600}
 html body .notebox{border-left-color:var(--line2);border-radius:0;background:var(--sunk)}
 html body .drop{border:1px dashed var(--line2);border-radius:2px}
 html body .vsep{display:none}
+html body .res .why.newrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lread{display:inline-block;border:1.5px solid var(--accent);color:var(--accent-text);background:var(--surface);border-radius:8px;padding:3px 10px;font-size:13px;font-weight:700;cursor:pointer}
+.lread:hover{background:var(--accent);color:var(--accent-ink)}
 </style>
 </head>
 <body>
@@ -234,11 +237,12 @@ async function load(){ $("dmsg").innerHTML=`<div class="small muted">Loading cas
     await loadUnseen();
     $("dmsg").innerHTML=""; render(); if(CUR){ const c=CASES.find(x=>x.id===CUR.id); if(c) openCase(c.id,true); } else if(/^#rec\w{14}$/.test(location.hash)&&CASES.some(x=>x.id===location.hash.slice(1))) openCase(location.hash.slice(1));
   }catch(e){ $("dmsg").innerHTML=`<div class="note warn">Couldn't load warranty cases: ${esc(e.message)}</div>`; } }
-async function loadUnseen(){ UNSEEN={}; UNMATCHED=[];
+let UNSEENIDS={};
+async function loadUnseen(){ UNSEEN={}; UNSEENIDS={}; UNMATCHED=[];
   try{ const f=`OR(AND({Direction}='Received',NOT({Seen})),{Match}='unmatched')`; const rs=await allF(EM.table,[EM.subject,EM.from,EM.date,EM.taylor,EM.martin,EM.match,EM.body,EM.dir,EM.seen,EM.thread],f);
     const byT={};
     rs.forEach(r=>{ const F=r.fields||{}; const ids=(F[EM.taylor]||[]).concat(F[EM.martin]||[]);
-      if(ids.length){ if(s(F[EM.dir])==="Received"&&!F[EM.seen]) ids.forEach(id=>UNSEEN[id]=(UNSEEN[id]||0)+1); }
+      if(ids.length){ if(s(F[EM.dir])==="Received"&&!F[EM.seen]) ids.forEach(id=>{ UNSEEN[id]=(UNSEEN[id]||0)+1; (UNSEENIDS[id]=UNSEENIDS[id]||[]).push(r.id); }); }
       else if(F[EM.match]==="unmatched"){ const t=F[EM.thread]||r.id; (byT[t]=byT[t]||[]).push(r); } });
     UNMATCHED=Object.values(byT).map(list=>{ list.sort((a,b)=>String(b.fields[EM.date]).localeCompare(String(a.fields[EM.date]))); const top=list[0]; top._ids=list.map(x=>x.id); top._n=list.length; return top; })
       .sort((a,b)=>String(b.fields[EM.date]).localeCompare(String(a.fields[EM.date])));
@@ -268,7 +272,7 @@ function render(){
   const v=visible();
   $("list").innerHTML=v.length?v.map(c=>{ const fl=flags(c); return `<button class="res" data-act="open" data-id="${c.id}"><b><span class="brandtag">${BR[c.b].label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</b><span class="pill s-${c.status}">${SLABEL[c.status]}</span>
     <span class="meta">${[c.serial&&"S/N "+c.serial, c.num&&(c.b==="martin"?"Auth ":"Ticket ")+c.num, c.wo&&"WO "+c.wo+(c.wos?" ("+c.wos+")":""), c.techId&&RECSTAFF[c.techId], c.req&&"Requested "+fmtD(c.req)].filter(Boolean).map(esc).join(" · ")}</span>
-    ${UNSEEN[c.id]?`<span class="why">${UNSEEN[c.id]} new repl${UNSEEN[c.id]>1?"ies":"y"} from ${BR[c.b].label}</span>`:""}
+    ${UNSEEN[c.id]?`<span class="why newrow">${UNSEEN[c.id]} new repl${UNSEEN[c.id]>1?"ies":"y"} from ${BR[c.b].label}<span class="lread" role="button" tabindex="0" data-act="lread" data-id="${c.id}" title="Mark read without opening">Mark read</span></span>`:""}
     ${fl.length?`<span class="why">${esc(fl[0])}</span>`:""}</button>`; }).join(""):`<div class="small muted">No cases match.</div>`;
 }
 
@@ -454,7 +458,7 @@ async function loadConvo(c){ if(!c.emIds.length) return; const box=$("convo");
         ${showSu?`<div class="su">${esc(su)}</div>`:""}<div class="tx">${esc(short||"(no text)")}</div>
         ${cut?`<details class="fullmail"><summary>Show full email</summary><pre>${esc(full)}</pre></details>`:""}
         ${atts.length?`<div class="files" style="margin-top:6px">${atts.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.filename)}</a>`).join("")}</div>`:""}
-        ${!out&&!F[EM.seen]?`<div class="row" style="margin-top:6px"><button class="btn sec sm" data-act="mread" data-ids="${r.id}">Mark read: no reply needed</button></div>`:""}</div>`; }).join("")||'<div class="small muted">No emails yet.</div>';
+        ${!out&&!F[EM.seen]?`<div class="row" style="margin-top:6px"><button class="btn sm" data-act="mread" data-ids="${r.id}">Mark read (no reply needed)</button></div>`:""}</div>`; }).join("")||'<div class="small muted">No emails yet.</div>';
     box.scrollTop=box.scrollHeight;
     const unseen=rs.filter(r=>s(r.fields[EM.dir])==="Received"&&!r.fields[EM.seen]); c.unseenIds=unseen.map(r=>r.id);
     if(unseen.length>1) box.insertAdjacentHTML("beforeend",`<div class="row" style="margin-top:4px;justify-content:flex-end"><span class="small muted">${unseen.length} new emails from ${esc(BR[c.b].toName)}.</span><button class="btn sec sm" data-act="mread" data-ids="${unseen.map(r=>r.id).join(",")}">Mark all read: no reply needed</button></div>`);
@@ -526,6 +530,13 @@ document.addEventListener("click",async e=>{ const b=e.target.closest("[data-act
   if(a==="brand"){ BRAND=b.dataset.k; store.set("mrm-war-brand",BRAND); render(); }
   else if(a==="sfilt"){ SFILT=SFILT===b.dataset.k?"":b.dataset.k; ALERT=false; render(); }
   else if(a==="alert"){ ALERT=!ALERT; SFILT=""; render(); }
+  else if(a==="lread"){ e.stopPropagation(); const c=CASES.find(x=>x.id===b.dataset.id); if(!c) return; if(!WHO){ alertBox("Pick who's working (top right) first."); return; }
+    const ids=UNSEENIDS[c.id]||[]; if(!ids.length) return; b.textContent="Marking…";
+    try{ for(let i=0;i<ids.length;i+=10) await at(EM.table,"",{method:"PATCH",body:JSON.stringify({records:ids.slice(i,i+10).map(id=>({id,fields:{[EM.seen]:true}}))})});
+      delete UNSEEN[c.id]; delete UNSEENIDS[c.id];
+      await patch(c,{[BR[c.b].F.notes]:(c.notes?c.notes+"\n\n":"")+noteLine("Marked "+(ids.length>1?ids.length+" emails":"email")+" from "+BR[c.b].toName+" read")}).catch(()=>{});
+      render(); }
+    catch(err){ alertBox(err.message); b.textContent="Mark read"; } }
   else if(a==="open") openCase(b.dataset.id);
   else if(a==="back"){ CUR=null; show("dash"); render(); }
   else if(a==="setst"){ const k=b.dataset.k; if(k===CUR.status) return;
