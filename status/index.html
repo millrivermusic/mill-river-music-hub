@@ -136,7 +136,7 @@ function judge(r){
   // Hourly Live Check (11/9): what Lightspeed and Reverb actually show right now
   const lc=String(r.fields[FX.check]||"");
   if(/^PROBLEM/.test(lc)){ const body=lc.replace(/^PROBLEM .*?(AM|PM):\s*/,"").replace(/\s*Live: [^.]*\.\s*$/,""); body.split(/;\s*/).filter(Boolean).forEach(x=>{ const t=x.replace(/\.$/,""); if(!out.probs.includes(t)) out.probs.push(t.charAt(0).toUpperCase()+t.slice(1)); }); }
-  if(st==="Sold"){ out.web=["off","Sold"]; out.rev=/still live on Reverb/.test(lc)?["no","Still live!"]:["off","Sold"]; out.sold=true; out.soft=[]; }
+  if(st==="Sold"){ out.web=["off","Sold"]; out.rev=/live on Reverb/.test(lc)&&/^PROBLEM/.test(lc)?["no","Still live!"]:["off","Sold"]; out.sold=true; out.soft=[]; }
   out.checked=r.fields[FX.checkAt]||"";
   out.bad=out.probs.length>0;
   return out;
