@@ -101,6 +101,8 @@ table.ht tr.cur td{background:var(--accent-soft)}
 @media (max-width:900px){ body.tasksTab:not(.mdet) #detail{display:block} body.tasksTab:not(.mdet) .cols>div:first-child{display:block} }
 .mphotos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.mphotos img{width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
 .titem.done{opacity:.55}.titem .tt{font-weight:600}.titem input{margin-top:3px;width:18px;height:18px;flex:none}
+.lread{display:inline-block;margin-left:8px;border:1.5px solid var(--accent);color:var(--accent-text,var(--accent));background:var(--surface);border-radius:8px;padding:2px 9px;font-size:12.5px;font-weight:700;cursor:pointer;vertical-align:middle}
+.lread:hover{background:var(--accent);color:var(--accent-ink,#fff)}
 </style>
 <link rel="stylesheet" href="../warm.css?v=2"><link rel="stylesheet" href="../calm.css?v=3">
 </head>
@@ -209,7 +211,7 @@ function renderTabs(){ const n=k=>S[k].rows.filter(r=>{ const st=statusOf(r); re
 let LASTVIS=[];
 function flash(m){ const box=$("detail"); if(box) box.insertAdjacentHTML("afterbegin",`<div class="note ok" id="flash">${esc(m)}</div>`); setTimeout(()=>{ const f=$("flash"); if(f) f.remove(); },4000); }
 function renderList(){ document.body.classList.toggle("tasksTab",TAB==="tasks"); if(TAB==="tasks"){ renderTaskTab(); return; } renderTabs(); const rows=S[TAB].rows.filter(pass); LASTVIS=rows.slice();
-  $("list").innerHTML=rows.length?rows.map(r=>`<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""} ${isUnread(r)?"unread":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="row-calm"><span class="nm">${isUnread(r)?'<span class="dot" aria-label="Needs you"></span>':""}${esc(r.title)}</span><span class="tm">${r.at?esc(ago(r.at)):""}</span></div><div class="s">${esc(r.sub)}${r.kind==="msg"&&r.last?" — "+esc((r.last.authored?"You: ":"")+r.last.body):""}</div><div class="meta">${tagsFor(r)}</div></div>`).join(""):`<div class="empty">Nothing here.</div>`;
+  $("list").innerHTML=rows.length?rows.map(r=>`<div class="item ${SEL&&SEL.kind===r.kind&&SEL.id===r.id?"on":""} ${isUnread(r)?"unread":""}" data-k="${r.kind}" data-id="${esc(r.id)}"><div class="row-calm"><span class="nm">${isUnread(r)?'<span class="dot" aria-label="Needs you"></span>':""}${esc(r.title)}</span><span class="tm">${r.at?esc(ago(r.at)):""}</span></div><div class="s">${esc(r.sub)}${r.kind==="msg"&&r.last?" — "+esc((r.last.authored?"You: ":"")+r.last.body):""}</div><div class="meta">${tagsFor(r)}${r.kind==="msg"&&isUnread(r)&&statusOf(r)!=="Done"?`<span class="lread" role="button" tabindex="0" data-mread="${esc(r.id)}" title="No reply needed: mark it read here and on Reverb">Mark read</span>`:""}</div></div>`).join(""):`<div class="empty">Nothing here.</div>`;
   $("more").innerHTML=(TAB==="msg"||TAB==="order")&&S[TAB].page<S[TAB].pages?`<button class="btn sec" id="loadmore">Load older ${TAB==="msg"?"messages":"orders"}</button> <span class="muted small">${S[TAB].rows.length} of ${S[TAB].total||"?"} loaded</span>`:""; }
 
 function deskPanel(row){ const d=deskOf(row), to=dv(d,"to")||"", st=statusOf(row), needs=!!dv(d,"needs"), ok=dv(d,"okBy")||"";
@@ -230,7 +232,7 @@ async function openRow(kind,id){ const row=S[kind].rows.find(r=>r.id===id); if(!
       <div class="msgs" id="msgs">${(c.messages||[]).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(m=>`<div class="msg ${m.authored?"me":""}"><div class="w">${esc(m.authored?"Mill River Music":(m.author&&m.author.name)||row.title)} · ${esc(when(m.created_at))}</div>${esc(m.body)}${(m.photos||[]).length?`<div class="mphotos">${m.photos.map(ph=>{ const L=ph._links||{}, th=(L.thumbnail||L.small_crop||L.full||{}).href, full=(L.full||L.large_crop||L.thumbnail||{}).href; return th?`<a href="${esc(full)}" target="_blank" rel="noopener"><img src="${esc(th)}" alt="Photo from the buyer" loading="lazy"></a>`:""; }).join("")}</div>`:""}</div>`).join("")}</div>
       <div class="sect"><label class="f">Reply to ${esc(row.title)}<div id="gpBox"></div><textarea class="t" id="rBody" data-rid="${esc(row.id)}" placeholder="Type a reply…">${esc(DRAFTS_R[row.id]||"")}</textarea></label>
       <div id="ofBox" hidden class="ofbox"></div>
-      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${L&&L.id?`<button class="btn link" id="ofToggle" type="button">Include an offer</button>`:""}<button class="btn link" id="gpLink" type="button">Add Google Photos link</button><a class="btn link" href="https://reverb.com/my/messages/${esc(row.id)}" target="_blank" rel="noopener" title="Reverb only lets photos be attached on its own site">Attach photos on Reverb</a>${statusOf(row)!=="Done"?`<button class="btn link" id="mNoReply">No reply needed</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="rSend" ${locked(row)?"disabled":""}>Send reply</button>${L&&L.id?`<button class="btn link" id="ofToggle" type="button">Include an offer</button>`:""}<button class="btn link" id="gpLink" type="button">Add Google Photos link</button><a class="btn link" href="https://reverb.com/my/messages/${esc(row.id)}" target="_blank" rel="noopener" title="Reverb only lets photos be attached on its own site">Attach photos on Reverb</a>${statusOf(row)!=="Done"?`<button class="btn sec" id="mNoReply">Mark read (no reply needed)</button>`:""}<span class="small muted" id="rMsg">${locked(row)?"Needs a manager's OK first.":""}</span></div></div>
       <div id="plinfo"></div>
       ${deskPanel(row)}`;
       const ms=$("msgs"); ms.scrollTop=ms.scrollHeight;
@@ -346,7 +348,7 @@ async function saveDesk(row,extra){ if(!WHO){ alertBox("Pick your name at the to
 function alertBox(m,ok){ const el=$("dMsg")||$("rMsg")||$("oRes"); if(el){ el.textContent=m; el.style.color=ok?"var(--ok)":"var(--warn)"; } }
 
 /* ---------- actions ---------- */
-document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#oOnlySend,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
+document.addEventListener("click",async e=>{ const t=e.target.closest("[data-mread],[data-tab],[data-f],.item,#loadmore,#mback,#oSendMsg,#oOnlySend,#dSave,#dApprove,#rSend,#mNoReply,[data-oact]"); if(!t) return;
   if(t.dataset.tab){ document.body.classList.remove("mdet"); TAB=t.dataset.tab; store.set("rv-tab",TAB); FILTER=TAB==="order"?"oship":TAB==="tasks"?"tall":"open"; SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; renderList(); return; }
   if(t.dataset.f){ FILTER=t.dataset.f; renderList(); return; }
   if(t.classList.contains("item")){ openRow(t.dataset.k,t.dataset.id); return; }
@@ -379,6 +381,11 @@ document.addEventListener("click",async e=>{ const t=e.target.closest("[data-tab
       await rv(`my/conversations/${cid}/messages`,{method:"POST",body:JSON.stringify({body})});
       await saveDesk(row,{[DF.lastBy]:WHO}).catch(()=>{}); $("oMsgBuyer").value=""; res.textContent="Sent to "+(o.buyer_name||"the buyer")+"."; taskPrompt(taskCtx(row,"order")); res.style.color="var(--ok)"; t.textContent="Send to buyer"; delete t.dataset.sure; t.disabled=false; }
     catch(err){ res.textContent=err.message; res.style.color="var(--warn)"; t.disabled=false; t.textContent="Send to buyer"; delete t.dataset.sure; } return; }
+  if(t.dataset.mread){ e.stopPropagation(); if(!WHO){ alertBox("Pick your name at the top first."); return; } const r=S.msg.rows.find(x=>x.id===t.dataset.mread); if(!r) return; t.textContent="Marking…";
+    try{ rv(`my/conversations/${r.id}`,{method:"PUT",body:JSON.stringify({read:true})}).catch(()=>{}); r.read=true;
+      const d=deskOf(r), prev=dv(d,"notes")||""; await saveDesk(r,{[DF.status]:"Done",[DF.lastBy]:WHO+" (no reply needed)",[DF.notes]:(prev?prev+"\n":"")+`[${new Date().toLocaleDateString()} ${WHO}] Marked read, no reply needed`});
+      if(SEL&&SEL.id===r.id){ SEL=null; $("detail").innerHTML=`<div class="muted">Pick something on the left.</div>`; } renderList(); flashTop(`Marked read: ${r.title}`); }
+    catch(err){ alertBox(err.message); t.textContent="Mark read"; } return; }
   if(t.id==="loadmore"){ t.disabled=true; try{ await (TAB==="order"?loadOrders(true):loadMsgs(true)); }catch(err){} renderList(); return; }
   const row=SEL&&S[SEL.kind].rows.find(r=>r.id===SEL.id); if(!row) return;
   if(t.id==="dSave"){ const rb=$("rBody"); if(rb&&rb.value.trim()&&!t.dataset.sure2){ t.dataset.sure2="1"; alertBox("Your reply to the buyer has NOT been sent yet. It stays in the box. Press Save again to save the assignment, then press Send reply."); return; } t.disabled=true; try{ await saveDesk(row); renderList(); await openRow(row.kind,row.id); alertBox("Saved.",true); }catch(err){ alertBox(err.message); t.disabled=false; } return; }
