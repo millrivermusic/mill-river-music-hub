@@ -212,12 +212,12 @@ function render(){ const r=REC; if(!r) return; const s=st(r), ro=!editable(r);
       ${EDIT.slice(3).map(field).join("")}
     </div>
     ${ro?"":`<div class="savebar"><div class="changes" id="chlist">${chs.length?`${chs.length} change${chs.length>1?"s":""}: ${esc(chs.map(c=>c.label).join(", "))}${MD?" (markdown)":""}`:"No changes yet."}</div>
-      <button class="btn sec" type="button" data-act="reset" ${chs.length?"":"disabled"}>Undo all</button><button class="btn" type="button" data-act="save" ${chs.length&&!saving&&!brandBlocked()?"":"disabled"}>${saving?"Saving…":"Save and send"}</button></div>
+      <button class="btn sec" type="button" data-act="reset" ${chs.length?"":"disabled"}>Undo all</button><button class="btn" type="button" data-act="save" ${!saving&&!brandBlocked()?"":"disabled"} title="${chs.length?"Save your changes and send them out":"Nothing changed: send it to Lightspeed, the website and Reverb again to refresh it"}">${saving?"Saving…":chs.length?"Save and send":"Send again (no changes)"}</button></div>
       <div id="savemsg"></div>`}`;
 }
 function refreshBar(){ const chs=changes(); const el=$("chlist"); if(!el) return render();
   el.textContent=chs.length?`${chs.length} change${chs.length>1?"s":""}: ${chs.map(c=>c.label).join(", ")}${MD?" (markdown)":""}`:"No changes yet.";
-  refreshBrand(); document.querySelector('[data-act="save"]').disabled=!chs.length||saving||brandBlocked(); document.querySelector('[data-act="reset"]').disabled=!chs.length;
+  refreshBrand(); { const sb=document.querySelector('[data-act="save"]'); sb.disabled=saving||brandBlocked(); if(!saving) sb.textContent=chs.length?"Save and send":"Send again (no changes)"; } document.querySelector('[data-act="reset"]').disabled=!chs.length;
   document.querySelectorAll("label.f").forEach(l=>{ const i=l.querySelector("[data-k]"); if(!i) return; const k=i.dataset.k, f=EDIT.find(x=>x.k===k); const a=ORIG[k], b=VAL[k]; l.classList.toggle("chg", f.kind==="money"?num(a)!==num(b):String(a??"").trim()!==String(b??"").trim()); }); }
 
 /* ---------- markdown ---------- */
@@ -229,7 +229,7 @@ function markdown(pct,newOnline){ const o=num(ORIG.online), p=num(ORIG.pos); con
 function alertNote(t){ const el=$("savemsg"); if(el) el.innerHTML=`<div class="note warn">${esc(t)}</div>`; }
 
 /* ---------- save ---------- */
-async function save(){ if(saving) return; const chs=changes(); if(!chs.length) return;
+async function save(){ if(saving) return; const chs=changes(); const resend=!chs.length;   // 11/12 Jon: no changes = send it again to refresh
   if(brandBlocked()){ alertNote("Make: pick a brand from the list, or get a manager's OK for a new one."); return; }
   if(!WHO){ alertNote("Pick who's working (top right) first, so the notes say who changed it."); $("who").focus(); return; }
   saving=true; refreshBar(); $("savemsg").innerHTML=`<div class="small muted" style="margin-top:8px">Saving…</div>`;
@@ -242,7 +242,7 @@ async function save(){ if(saving) return; const chs=changes(); if(!chs.length) r
     const bs=bState(VAL.make); chs.forEach(c=>{ if(c.k==="make"&&bs.st==="known"&&bs.name) c.val=bs.name; });
     chs.forEach(c=>{ if(c.k==="where") f[FX.where]=["Store"].concat(WHERE.reverb?["Reverb"]:[],WHERE.web?["Website"]:[]); else if(c.k==="online"||c.k==="pos") f[FX[c.k]]=c.val; else f[FX[c.k]]=c.val; });
     const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
-    const line=`[${stamp} ${WHO}] ${MD?"Markdown "+MD.pct+"%: ":"Updated: "}`+chs.map(c=>c.long?`${c.label} edited`:`${c.label} ${c.from} → ${c.to}`).join("; ");
+    const line=resend?`[${stamp} ${WHO}] Sent again with no changes (refresh)`:`[${stamp} ${WHO}] ${MD?"Markdown "+MD.pct+"%: ":"Updated: "}`+chs.map(c=>c.long?`${c.label} edited`:`${c.label} ${c.from} → ${c.to}`).join("; ");
     const prev=String(now.fields[FX.notes]||"").replace(/\s+$/,""); f[FX.notes]=(prev?prev+"\n":"")+line+(chs.some(c=>c.k==="make")&&bs.st==="approved"?`\n[${stamp} ${WHO}] New brand "${bs.name}" added, OK'd by ${bs.by}`:"");
     const listed=st(now)==="Ready For Ecommerce"; f[listed?FX.ecomBox:FX.posBox]=true;   // re-send through the new sync
     await api("/"+REC.id,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true})});
