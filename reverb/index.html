@@ -117,7 +117,7 @@ table.ht tr.cur td{background:var(--accent-soft)}
 </head>
 <body>
 <header class="bar"><div class="in"><h1>Reverb Desk</h1>
-  <div class="row"><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+  <div class="row"><button type="button" class="btn sec sm" id="rvCheck" title="Get the newest messages and offers from Reverb">↻ Check for new messages &amp; offers</button><span class="small" id="rvChecked" style="opacity:.8"></span><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
 <main class="wrap">
   <div class="note" id="banner" hidden></div>
   <div class="tabs tabs-calm" id="tabs"></div>
@@ -473,7 +473,19 @@ $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<opt
 
 (async()=>{ renderTabs(); try{ await loadDesk(); }catch(e){ $("banner").className="note warn"; $("banner").textContent="Couldn't load assignments: "+e.message; }
   await Promise.all([loadMsgs().catch(e=>{$("list").innerHTML=`<div class="note warn">${esc(e.message)}</div>`}),loadOffers().catch(()=>{}),loadRefunds().catch(()=>{}),loadOrders().catch(()=>{})]); renderList();
-  try{ await syncOffers(); renderList(); }catch(e){ console.warn("offer log",e); } })();
+  try{ await syncOffers(); renderList(); }catch(e){ console.warn("offer log",e); } LASTCHECK=Date.now(); showChecked(); })();
+/* 11/12 (Jon): check Reverb for new messages and offers on demand, every 3 minutes while the desk is open and in view, and when you come back to the tab. */
+var LASTCHECK=0, CHECKING=false;
+function showChecked(){ const el=$("rvChecked"); if(el) el.textContent=LASTCHECK?"Checked "+new Date(LASTCHECK).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""; }
+async function checkNow(manual){ if(CHECKING) return; if(!manual){ const a=document.activeElement; if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return; } CHECKING=true; const b=$("rvCheck"); if(b){ b.disabled=true; b.textContent="Checking Reverb…"; }
+  try{ try{ await loadDesk(); }catch(e){}
+    await Promise.all([loadMsgs().catch(()=>{}),loadOffers().catch(()=>{}),loadRefunds().catch(()=>{}),loadOrders().catch(()=>{})]); if(manual||TAB!=="tasks") renderList();
+    try{ await syncOffers(); if(manual||TAB!=="tasks") renderList(); }catch(e){}
+    LASTCHECK=Date.now(); }
+  finally{ CHECKING=false; if(b){ b.disabled=false; b.textContent="↻ Check for new messages & offers"; } showChecked(); } }
+$("rvCheck").addEventListener("click",()=>checkNow(true));
+setInterval(()=>{ if(document.visibilityState==="visible"&&Date.now()-LASTCHECK>170000) checkNow(false); },30000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&LASTCHECK&&Date.now()-LASTCHECK>60000) checkNow(false); });
 // ---- Team Tasks (Airtable "Team Tasks"; Google Tasks copy comes later) ----
 const TT="tblOwTXbybJC6K9Xn", TF={task:"fldUmwZCpYmY4ydf4",to:"fldULoJtT1tjDewdy",dept:"fldI5KOzdrPwbar0s",status:"fldX2trA6QSciYsT4",due:"fldnzJlk5rWhduMoI",details:"fld4laJasSMdypGRQ",source:"fldZQT4sY9W9ZOusm",link:"fld6iLbLRVCke9OA0",madeBy:"fldlJbD6svflYUgEg",doneBy:"fldB5i9XgOsK4i2Zs"};
 const DEPTS=["Reverb","Repair","Shipping","Sales","Customer Success","Intake & Used","Vendor Relations","General"];
