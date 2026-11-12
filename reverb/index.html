@@ -32,6 +32,8 @@ a{color:var(--accent-text)}
 .bar h1 small{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-left:8px;border:1px solid rgba(255,255,255,.45);border-radius:4px;padding:1px 6px;vertical-align:3px}
 .bar select{font-size:14px;border-radius:6px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;padding:5px 8px}
 .bar select option{color:#2B211A}
+#rvCheck{font-size:15px;font-weight:800;padding:8px 14px;border-radius:8px;border:2px solid #fff;background:#fff;color:#2B211A;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}#rvCheck:hover{background:#ffe9a8;border-color:#ffe9a8}#rvCheck:disabled{opacity:.75;cursor:wait}
+#rvChecked{font-size:13px;font-weight:600;color:inherit;opacity:.95}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .wrap{max-width:1400px;margin:0 auto;padding-block:14px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -117,7 +119,7 @@ table.ht tr.cur td{background:var(--accent-soft)}
 </head>
 <body>
 <header class="bar"><div class="in"><h1>Reverb Desk</h1>
-  <div class="row"><button type="button" class="btn sec sm" id="rvCheck" title="Get the newest messages and offers from Reverb">↻ Check for new messages &amp; offers</button><span class="small" id="rvChecked" style="opacity:.8"></span><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
+  <div class="row"><button type="button" id="rvCheck" title="Get the newest messages and offers from Reverb">↻ Check for new messages &amp; offers</button><span class="small" id="rvChecked" style="opacity:.8"></span><select id="who" aria-label="Who's working"><option value="">Who's working?</option></select><a href="../">Hub</a></div></div></header>
 <main class="wrap">
   <div class="note" id="banner" hidden></div>
   <div class="tabs tabs-calm" id="tabs"></div>
