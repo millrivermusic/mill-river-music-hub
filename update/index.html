@@ -68,6 +68,10 @@ label.f.chg .t{border-color:var(--sugg);box-shadow:0 0 0 1px var(--sugg)}
 .changes{font-size:13.5px;color:var(--muted);flex:1 1 240px}
 .thumbs{display:flex;gap:6px;overflow-x:auto;margin-top:8px}
 .thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.bbox{margin-top:6px;border:1.5px solid var(--sugg,#9A6A00);background:var(--sugg-soft,#FBEFCF);border-radius:10px;padding:8px 10px;font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.bbox.ok{border-color:var(--ok,#1D7A4E);background:var(--ok-soft,#DDF2E6)}
+.bpicks{display:flex;gap:6px;flex-wrap:wrap}.bpicks button,.bnew button,.blink{border:1.5px solid var(--line,#ccc);background:var(--surface,#fff);border-radius:8px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer}
+.bpicks button:hover{border-color:var(--accent,#8A3B12)}.bnew{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.bnew select{font:inherit;padding:3px 6px;border-radius:8px}
 </style>
 </head>
 <body>
@@ -127,6 +131,31 @@ async function api(path,opt){ const r=await fetch(`https://api.airtable.com/v0/$
   const j=await r.json().catch(()=>({})); if(!r.ok){ const m=(j.error&&(j.error.message||j.error.type))||("HTTP "+r.status); throw new Error(r.status===401||r.status===403?"Airtable didn't accept the key ("+m+").":m); } return j; }
 const getRec=id=>api("/"+id+"?returnFieldsByFieldId=true");
 
+/* 11/11 Jon: Make is picked from our brand list. A brand that isn't on it needs a manager's OK (Jon, Sam or Nina),
+   because saving it also creates the brand in Lightspeed. Shared by Manual Listing, Update Live Products and the Listing Desk. */
+const BRAND={ list:null, ok:null, mgrs:["Jon","Sam","Nina"] };
+const bKey=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+function bSetList(names){ const seen=new Map(); (names||[]).forEach(n=>{ const t=String(n||"").trim(); if(t&&!seen.has(bKey(t))) seen.set(bKey(t),t); }); BRAND.list=[...seen.values()].sort((a,b)=>a.localeCompare(b));
+  let dl=document.getElementById("brandlist"); if(!dl){ dl=document.createElement("datalist"); dl.id="brandlist"; document.body.appendChild(dl); } dl.innerHTML=BRAND.list.map(m=>`<option value="${String(m).replace(/"/g,"&quot;")}">`).join(""); }
+function bFind(v){ if(!BRAND.list) return null; const k=bKey(v); return k?BRAND.list.find(m=>bKey(m)===k)||null:null; }
+function bLev(a,b){ if(Math.abs(a.length-b.length)>3) return 9; const d=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i; for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; }
+function bNear(v,n){ const k=bKey(v); if(!k||!BRAND.list) return []; return BRAND.list.map(m=>{ const mk=bKey(m); let s=mk.startsWith(k)||k.startsWith(mk)?0:mk.includes(k)||k.includes(mk)?1:bLev(k,mk)<=Math.max(1,Math.floor(k.length/4))?2:mk.slice(0,4)===k.slice(0,4)?3:9; return {m,s}; }).filter(x=>x.s<9).sort((a,b)=>a.s-b.s||a.m.length-b.m.length).slice(0,n||4).map(x=>x.m); }
+/* state of the typed value: "" (blank), "known" (canonical name), "approved", or "new" (needs OK) */
+function bState(v){ const t=String(v||"").trim(); if(!t) return {st:"",name:""}; const f=bFind(t); if(f) return {st:"known",name:f}; if(!BRAND.list) return {st:"known",name:t}; if(BRAND.ok&&bKey(BRAND.ok.name)===bKey(t)) return {st:"approved",name:t,by:BRAND.ok.by}; return {st:"new",name:t}; }
+function bBoxHTML(v,esc){ const s=bState(v); if(s.st!=="new"&&s.st!=="approved") return "";
+  if(s.st==="approved") return `<div class="bbox ok">New brand <b>${esc(s.name)}</b>, OK'd by ${esc(s.by)}. Saving adds it to Airtable and Lightspeed. <button type="button" class="blink" data-bact="undo">Undo</button></div>`;
+  const near=bNear(s.name,4);
+  return `<div class="bbox"><div><b>${esc(s.name)}</b> isn't one of our brands.${near.length?" Did you mean:":""}</div>${near.length?`<div class="bpicks">${near.map(m=>`<button type="button" data-bpick="${esc(m)}">${esc(m)}</button>`).join("")}</div>`:""}
+    <div class="bnew">Really a new brand? A manager has to OK it: <select data-bmgr><option value="">Manager…</option>${BRAND.mgrs.map(m=>`<option>${m}</option>`).join("")}</select><button type="button" data-bact="approve">Add new brand</button></div></div>`; }
+const BRAND_CSS=`.bbox{margin-top:6px;border:1.5px solid var(--sugg,#9A6A00);background:var(--sugg-soft,#FBEFCF);border-radius:10px;padding:8px 10px;font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.bbox.ok{border-color:var(--ok,#1D7A4E);background:var(--ok-soft,#DDF2E6)}
+.bpicks{display:flex;gap:6px;flex-wrap:wrap}.bpicks button,.bnew button,.blink{border:1.5px solid var(--line,#ccc);background:var(--surface,#fff);border-radius:8px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer}
+.bpicks button:hover{border-color:var(--accent,#8A3B12)}.bnew{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.bnew select{font:inherit;padding:3px 6px;border-radius:8px}`;
+
+async function loadMakes(){ try{ const r=await fetch(`https://api.airtable.com/v0/meta/bases/${BASE}/tables`,{headers:{Authorization:"Bearer "+TOKEN}}); if(!r.ok) throw new Error("meta "+r.status); const j=await r.json(); const t=(j.tables||[]).find(x=>x.id===TABLE); const f=t&&t.fields.find(x=>x.id===FX.make);
+  bSetList(((f&&f.options&&f.options.choices)||[]).map(c=>c.name)); refreshBrand(); }catch(e){ BRAND.list=null; } }
+function refreshBrand(){ const el=$("brandbox"); if(!el) return; const h=String(VAL.make||"").trim()===String(ORIG.make||"").trim()?"":bBoxHTML(VAL.make,esc); if(el._h!==h){ el._h=h; el.innerHTML=h; } }
+function brandBlocked(){ return String(VAL.make||"").trim()!==String(ORIG.make||"").trim() && bState(VAL.make).st==="new"; }
 /* ---------- find ---------- */
 async function find(q){ q=q.trim(); if(!q) return; $("smsg").innerHTML=`<div class="small muted" style="margin-top:8px">Searching…</div>`; $("results").innerHTML="";
   const lq=q.toLowerCase().replace(/'/g,"\\'");
@@ -138,7 +167,7 @@ async function find(q){ q=q.trim(); if(!q) return; $("smsg").innerHTML=`<div cla
   }catch(e){ $("smsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 
 /* ---------- open ---------- */
-async function open(id){ $("item").hidden=false; $("item").innerHTML=`<div class="small muted">Loading…</div>`; MD=null;
+async function open(id){ BRAND.ok=null; $("item").hidden=false; $("item").innerHTML=`<div class="small muted">Loading…</div>`; MD=null;
   try{ const r=await getRec(id); REC=r; ORIG={}; EDIT.forEach(f=>ORIG[f.k]=String(cv(r,f.k)??"")); VAL={...ORIG};
     const w=(r.fields[FX.where]||[]).map(x=>typeof x==="object"?x.name:x); WHERE={reverb:!w.length||w.includes("Reverb"), web:!w.length||w.includes("Website")}; ORIGWHERE={...WHERE};
     try{ history.replaceState(null,"","?rec="+id); }catch(e){}
@@ -159,7 +188,7 @@ function render(){ const r=REC; if(!r) return; const s=st(r), ro=!editable(r);
     let inp;
     if(f.kind==="select"){ const opts=f.opts.includes(v)||!v?f.opts:[v].concat(f.opts); inp=`<select class="t" data-k="${f.k}" ${ro?"disabled":""}><option value="">—</option>${opts.map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`; }
     else if(f.kind==="long") inp=`<textarea class="t" data-k="${f.k}" rows="${f.rows||4}" ${ro?"disabled":""}>${esc(v)}</textarea>`;
-    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal"':""} ${ro?"disabled":""}>`;
+    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal"':""}${f.k==="make"?' list="brandlist" autocomplete="off"':""} ${ro?"disabled":""}>${f.k==="make"?'<div id="brandbox"></div>':""}`;
     if(f.k==="online"||f.k==="pos"){ const was=num(ORIG[f.k]), now=num(v); inp=`<div class="price">${inp}${was!=null&&now!=null&&now<was?`<div class="was">was <s>${esc(money(was))}</s>, ${Math.round((1-now/was)*100)}% off</div>`:""}</div>`; }
     return `<label class="f ${chg?"chg":""} ${f.wide?"wide":""}">${esc(f.label)}${inp}</label>`; };
   const chs=changes();
@@ -181,12 +210,12 @@ function render(){ const r=REC; if(!r) return; const s=st(r), ro=!editable(r);
       ${EDIT.slice(3).map(field).join("")}
     </div>
     ${ro?"":`<div class="savebar"><div class="changes" id="chlist">${chs.length?`${chs.length} change${chs.length>1?"s":""}: ${esc(chs.map(c=>c.label).join(", "))}${MD?" (markdown)":""}`:"No changes yet."}</div>
-      <button class="btn sec" type="button" data-act="reset" ${chs.length?"":"disabled"}>Undo all</button><button class="btn" type="button" data-act="save" ${chs.length&&!saving?"":"disabled"}>${saving?"Saving…":"Save and send"}</button></div>
+      <button class="btn sec" type="button" data-act="reset" ${chs.length?"":"disabled"}>Undo all</button><button class="btn" type="button" data-act="save" ${chs.length&&!saving&&!brandBlocked()?"":"disabled"}>${saving?"Saving…":"Save and send"}</button></div>
       <div id="savemsg"></div>`}`;
 }
 function refreshBar(){ const chs=changes(); const el=$("chlist"); if(!el) return render();
   el.textContent=chs.length?`${chs.length} change${chs.length>1?"s":""}: ${chs.map(c=>c.label).join(", ")}${MD?" (markdown)":""}`:"No changes yet.";
-  document.querySelector('[data-act="save"]').disabled=!chs.length||saving; document.querySelector('[data-act="reset"]').disabled=!chs.length;
+  refreshBrand(); document.querySelector('[data-act="save"]').disabled=!chs.length||saving||brandBlocked(); document.querySelector('[data-act="reset"]').disabled=!chs.length;
   document.querySelectorAll("label.f").forEach(l=>{ const i=l.querySelector("[data-k]"); if(!i) return; const k=i.dataset.k, f=EDIT.find(x=>x.k===k); const a=ORIG[k], b=VAL[k]; l.classList.toggle("chg", f.kind==="money"?num(a)!==num(b):String(a??"").trim()!==String(b??"").trim()); }); }
 
 /* ---------- markdown ---------- */
@@ -199,6 +228,7 @@ function alertNote(t){ const el=$("savemsg"); if(el) el.innerHTML=`<div class="n
 
 /* ---------- save ---------- */
 async function save(){ if(saving) return; const chs=changes(); if(!chs.length) return;
+  if(brandBlocked()){ alertNote("Make: pick a brand from the list, or get a manager's OK for a new one."); return; }
   if(!WHO){ alertNote("Pick who's working (top right) first, so the notes say who changed it."); $("who").focus(); return; }
   saving=true; refreshBar(); $("savemsg").innerHTML=`<div class="small muted" style="margin-top:8px">Saving…</div>`;
   try{
@@ -207,10 +237,11 @@ async function save(){ if(saving) return; const chs=changes(); if(!chs.length) r
     if(clash.length){ saving=false; REC=now; $("savemsg").innerHTML=`<div class="note warn">Someone else changed ${esc(clash.map(c=>c.label).join(", "))} since you opened this. Nothing was saved. Reload it to see their version.</div><button class="btn sec" type="button" data-act="reload" style="margin-top:8px">Reload</button>`; refreshBar(); return; }
     if(!editable(now)){ saving=false; REC=now; render(); alertNote("This item changed status (now "+st(now)+"), so it can't be edited here."); return; }
     const f={};
+    const bs=bState(VAL.make); chs.forEach(c=>{ if(c.k==="make"&&bs.st==="known"&&bs.name) c.val=bs.name; });
     chs.forEach(c=>{ if(c.k==="where") f[FX.where]=["Store"].concat(WHERE.reverb?["Reverb"]:[],WHERE.web?["Website"]:[]); else if(c.k==="online"||c.k==="pos") f[FX[c.k]]=c.val; else f[FX[c.k]]=c.val; });
     const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
     const line=`[${stamp} ${WHO}] ${MD?"Markdown "+MD.pct+"%: ":"Updated: "}`+chs.map(c=>c.long?`${c.label} edited`:`${c.label} ${c.from} → ${c.to}`).join("; ");
-    const prev=String(now.fields[FX.notes]||"").replace(/\s+$/,""); f[FX.notes]=(prev?prev+"\n":"")+line;
+    const prev=String(now.fields[FX.notes]||"").replace(/\s+$/,""); f[FX.notes]=(prev?prev+"\n":"")+line+(chs.some(c=>c.k==="make")&&bs.st==="approved"?`\n[${stamp} ${WHO}] New brand "${bs.name}" added, OK'd by ${bs.by}`:"");
     const listed=st(now)==="Ready For Ecommerce"; f[listed?FX.ecomBox:FX.posBox]=true;   // re-send through the new sync
     await api("/"+REC.id,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true})});
     $("savemsg").innerHTML=`<div class="note ok">Saved and logged in the notes. Sending to Lightspeed${listed?", the website and Reverb":""}…</div>`;
@@ -226,10 +257,13 @@ async function save(){ if(saving) return; const chs=changes(); if(!chs.length) r
 
 /* ---------- events ---------- */
 document.addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.k; if(!k) return; VAL[k]=e.target.value; if((k==="online"||k==="pos")&&MD) MD=null; refreshBar(); });
-document.addEventListener("change",e=>{ const k=e.target.dataset&&e.target.dataset.k; if(!k) return; VAL[k]=e.target.value; refreshBar(); });
+document.addEventListener("change",e=>{ const k=e.target.dataset&&e.target.dataset.k; if(!k) return; if(k==="make"){ const f=bFind(e.target.value); if(f&&f!==e.target.value) e.target.value=f; } VAL[k]=e.target.value; refreshBar(); });
 document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.open){ open(b.dataset.open); return; }
   if(b.dataset.ch){ WHERE[b.dataset.ch]=!WHERE[b.dataset.ch]; render(); return; }
+  if(b.dataset.bpick){ VAL.make=b.dataset.bpick; const i=document.querySelector('[data-k="make"]'); if(i) i.value=VAL.make; refreshBar(); return; }
+  if(b.dataset.bact==="approve"){ const m=document.querySelector("[data-bmgr]"); if(!m||!m.value){ if(m) m.focus(); return; } BRAND.ok={name:String(VAL.make).trim(),by:m.value}; refreshBar(); return; }
+  if(b.dataset.bact==="undo"){ BRAND.ok=null; refreshBar(); return; }
   if(b.dataset.md){ const m=b.dataset.md; if(m==="custom"){ $("mdcustom").hidden=false; $("mdval").focus(); return; }
     if(m==="apply"){ const v=num($("mdval").value); if(v==null) return alertNote("Type the new online price."); markdown(null,v); return; }
     if(m==="undo"){ VAL.online=ORIG.online; VAL.pos=ORIG.pos; MD=null; render(); return; }
@@ -242,7 +276,7 @@ $("who").innerHTML=`<option value="">Who's working?</option>`+STAFF.map(n=>`<opt
 $("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); });
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
   TOKEN=t; try{ await api("?pageSize=1&fields%5B%5D="+FX.sku); store.set("mrm-photos-token",t); start(); }catch(err){ TOKEN=""; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
-function start(){ $("setup").hidden=!!TOKEN; $("find").hidden=!TOKEN; if(!TOKEN) return;
+function start(){ $("setup").hidden=!!TOKEN; $("find").hidden=!TOKEN; if(!TOKEN) return; loadMakes();
   const p=new URLSearchParams(location.search); const id=p.get("rec"), sku=p.get("sku");
   if(id&&/^rec[A-Za-z0-9]{14}$/.test(id)) open(id); else if(sku){ $("q").value=sku; find(sku); } }
 start();

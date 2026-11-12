@@ -87,6 +87,10 @@ label.check{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:6
 label.check input{width:20px;height:20px}
 .req::after{content:" *";color:var(--warn)}
 .counter{font-size:12px;color:var(--muted);text-align:right}
+.bbox{margin-top:6px;border:1.5px solid var(--sugg,#9A6A00);background:var(--sugg-soft,#FBEFCF);border-radius:10px;padding:8px 10px;font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.bbox.ok{border-color:var(--ok,#1D7A4E);background:var(--ok-soft,#DDF2E6)}
+.bpicks{display:flex;gap:6px;flex-wrap:wrap}.bpicks button,.bnew button,.blink{border:1.5px solid var(--line,#ccc);background:var(--surface,#fff);border-radius:8px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer}
+.bpicks button:hover{border-color:var(--accent,#8A3B12)}.bnew{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.bnew select{font:inherit;padding:3px 6px;border-radius:8px}
 </style>
 </head>
 <body>
@@ -183,7 +187,7 @@ async function search(q){ q=q.trim(); if(!q) return; $("smsg").innerHTML=`<div c
   catch(e){ $("smsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 
 /* ---------- open an item ---------- */
-async function open(id){ $("item").hidden=false; $("item").innerHTML=`<div class="small muted">Loading…</div>`; DRAFTNOTE="";
+async function open(id){ BRAND.ok=null; $("item").hidden=false; $("item").innerHTML=`<div class="small muted">Loading…</div>`; DRAFTNOTE="";
   try{ const r=await getRec(id); REC=r; ORIG={}; EDIT.forEach(f=>ORIG[f.k]=String(cv(r,f.k)??"")); VAL={...ORIG};
     const w=(r.fields[FX.where]||[]).map(x=>typeof x==="object"?x.name:x); WHERE={reverb:!w.length||w.includes("Reverb"), web:!w.length||w.includes("Website")}; OFFER=r.fields[FX.offer]!==false; SEND=true;
     const d=store.get("mrm-manual-draft-"+id); if(d){ try{ const o=JSON.parse(d); if(Date.now()-(o.at||0)<7*864e5){ VAL={...VAL,...o.val}; if(o.where) WHERE=o.where; if(o.offer!=null) OFFER=o.offer; DRAFTNOTE=`Picked up your unsaved work from ${new Date(o.at).toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})}.`; } else store.del("mrm-manual-draft-"+id); }catch(e){} }
@@ -198,12 +202,13 @@ function missing(){ const m=[]; if(!WHO) m.push("Who's listing (top right)");
   const d=String(VAL.desc||"").trim(); if(d&&d.length<80) m.push("Description is too short");
   if(/\*\*|^#/m.test(d)) m.push("Remove bold/markdown from the description");
   if(!isReady(String(cv(REC,"phys")))) m.push("Physical Status isn't Ready to Sell");
+  if(bState(VAL.make).st==="new") m.push("Make: pick a brand from the list, or get a manager's OK for a new one");
   return m; }
 function render(){ const r=REC; if(!r) return; const ph=String(cv(r,"phys")||""), photos=photosOf(r), m=missing();
   const field=f=>{ const v=VAL[f.k]??""; let inp;
     if(f.kind==="select"){ const opts=f.opts.includes(v)||!v?f.opts:[v].concat(f.opts); inp=`<select class="t" data-k="${f.k}"><option value="">Choose…</option>${opts.map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`; }
     else if(f.kind==="long") inp=`<textarea class="t" data-k="${f.k}" rows="${f.rows||4}" placeholder="Plain text, no bold or markdown. What it is, condition details, what's included.">${esc(v)}</textarea><div class="counter" id="cnt-${f.k}">${String(v).length} characters</div>`;
-    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal" placeholder="0"':""}${f.k==="make"?' list="makes" autocomplete="off"':""}>${f.k==="make"?'<div class="small" id="makewarn" style="color:var(--sugg)"></div>':""}`;
+    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal" placeholder="0"':""}${f.k==="make"?' list="brandlist" autocomplete="off" placeholder="Start typing, pick from the list"':""}>${f.k==="make"?`<div id="brandbox">${bBoxHTML(VAL.make,esc)}</div>`:""}`;
     return `<label class="f ${f.wide?"wide":""}"><span class="${f.req?"req":""}">${esc(f.label)}</span>${inp}</label>`; };
   $("item").innerHTML=`
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><button class="btn sec" type="button" data-act="back" style="min-height:36px;padding:6px 12px;margin-bottom:8px">← Back to the list</button>
@@ -223,15 +228,31 @@ function render(){ const r=REC; if(!r) return; const ph=String(cv(r,"phys")||"")
     <div class="savebar"><div class="todo" id="todo">${m.length?m.map(x=>`<span>${esc(x)}</span>`).join(""):`<span class="ok">Everything's filled in.</span>`}</div>
       <button class="btn" type="button" data-act="save" ${m.length||saving?"disabled":""}>${saving?"Saving…":"Save listing"}</button></div>
     <div id="savemsg"></div>`; }
-/* 11/11: Make is picked from the brands we already have; a new one shows a spelling warning, because saving creates the brand in Lightspeed too ("Walrus Auio" happened that way) */
-let MAKES=null;
-async function loadMakes(){ try{ const r=await fetch(`https://api.airtable.com/v0/meta/bases/${BASE}/tables`,{headers:{Authorization:"Bearer "+TOKEN}}); const j=await r.json(); const t=(j.tables||[]).find(x=>x.id===TABLE); const f=t&&t.fields.find(x=>x.id===FX.make);
-  MAKES=((f&&f.options&&f.options.choices)||[]).map(c=>c.name).filter(Boolean).sort((a,b)=>a.localeCompare(b)); let dl=$("makes"); if(!dl){ dl=document.createElement("datalist"); dl.id="makes"; document.body.appendChild(dl); } dl.innerHTML=MAKES.map(m=>`<option value="${esc(m)}">`).join(""); }catch(e){ MAKES=null; } }
-function makeCheck(){ const el=$("makewarn"); if(!el) return; const v=String(VAL.make||"").trim(); if(!v||!MAKES){ el.textContent=""; return; }
-  if(MAKES.some(m=>m.toLowerCase()===v.toLowerCase())){ el.textContent=""; return; }
-  const close=MAKES.filter(m=>m.toLowerCase().startsWith(v.toLowerCase().slice(0,4))).slice(0,3);
-  el.textContent=`New brand: saving adds "${v}" to Lightspeed. Check the spelling${close.length?" (did you mean "+close.join(", ")+"?)":""}.`; }
-function refreshTodo(){ makeCheck(); const m=missing(), el=$("todo"); if(!el) return; el.innerHTML=m.length?m.map(x=>`<span>${esc(x)}</span>`).join(""):`<span class="ok">Everything's filled in.</span>`; const b=document.querySelector('[data-act="save"]'); if(b) b.disabled=!!m.length||saving; const c=$("cnt-desc"); if(c) c.textContent=String(VAL.desc||"").length+" characters"; }
+/* 11/11 Jon: Make is picked from our brand list. A brand that isn't on it needs a manager's OK (Jon, Sam or Nina),
+   because saving it also creates the brand in Lightspeed. Shared by Manual Listing, Update Live Products and the Listing Desk. */
+const BRAND={ list:null, ok:null, mgrs:["Jon","Sam","Nina"] };
+const bKey=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+function bSetList(names){ const seen=new Map(); (names||[]).forEach(n=>{ const t=String(n||"").trim(); if(t&&!seen.has(bKey(t))) seen.set(bKey(t),t); }); BRAND.list=[...seen.values()].sort((a,b)=>a.localeCompare(b));
+  let dl=document.getElementById("brandlist"); if(!dl){ dl=document.createElement("datalist"); dl.id="brandlist"; document.body.appendChild(dl); } dl.innerHTML=BRAND.list.map(m=>`<option value="${String(m).replace(/"/g,"&quot;")}">`).join(""); }
+function bFind(v){ if(!BRAND.list) return null; const k=bKey(v); return k?BRAND.list.find(m=>bKey(m)===k)||null:null; }
+function bLev(a,b){ if(Math.abs(a.length-b.length)>3) return 9; const d=[...Array(b.length+1).keys()]; for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i; for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } } return d[b.length]; }
+function bNear(v,n){ const k=bKey(v); if(!k||!BRAND.list) return []; return BRAND.list.map(m=>{ const mk=bKey(m); let s=mk.startsWith(k)||k.startsWith(mk)?0:mk.includes(k)||k.includes(mk)?1:bLev(k,mk)<=Math.max(1,Math.floor(k.length/4))?2:mk.slice(0,4)===k.slice(0,4)?3:9; return {m,s}; }).filter(x=>x.s<9).sort((a,b)=>a.s-b.s||a.m.length-b.m.length).slice(0,n||4).map(x=>x.m); }
+/* state of the typed value: "" (blank), "known" (canonical name), "approved", or "new" (needs OK) */
+function bState(v){ const t=String(v||"").trim(); if(!t) return {st:"",name:""}; const f=bFind(t); if(f) return {st:"known",name:f}; if(!BRAND.list) return {st:"known",name:t}; if(BRAND.ok&&bKey(BRAND.ok.name)===bKey(t)) return {st:"approved",name:t,by:BRAND.ok.by}; return {st:"new",name:t}; }
+function bBoxHTML(v,esc){ const s=bState(v); if(s.st!=="new"&&s.st!=="approved") return "";
+  if(s.st==="approved") return `<div class="bbox ok">New brand <b>${esc(s.name)}</b>, OK'd by ${esc(s.by)}. Saving adds it to Airtable and Lightspeed. <button type="button" class="blink" data-bact="undo">Undo</button></div>`;
+  const near=bNear(s.name,4);
+  return `<div class="bbox"><div><b>${esc(s.name)}</b> isn't one of our brands.${near.length?" Did you mean:":""}</div>${near.length?`<div class="bpicks">${near.map(m=>`<button type="button" data-bpick="${esc(m)}">${esc(m)}</button>`).join("")}</div>`:""}
+    <div class="bnew">Really a new brand? A manager has to OK it: <select data-bmgr><option value="">Manager…</option>${BRAND.mgrs.map(m=>`<option>${m}</option>`).join("")}</select><button type="button" data-bact="approve">Add new brand</button></div></div>`; }
+const BRAND_CSS=`.bbox{margin-top:6px;border:1.5px solid var(--sugg,#9A6A00);background:var(--sugg-soft,#FBEFCF);border-radius:10px;padding:8px 10px;font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.bbox.ok{border-color:var(--ok,#1D7A4E);background:var(--ok-soft,#DDF2E6)}
+.bpicks{display:flex;gap:6px;flex-wrap:wrap}.bpicks button,.bnew button,.blink{border:1.5px solid var(--line,#ccc);background:var(--surface,#fff);border-radius:8px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer}
+.bpicks button:hover{border-color:var(--accent,#8A3B12)}.bnew{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.bnew select{font:inherit;padding:3px 6px;border-radius:8px}`;
+
+async function loadMakes(){ try{ const r=await fetch(`https://api.airtable.com/v0/meta/bases/${BASE}/tables`,{headers:{Authorization:"Bearer "+TOKEN}}); if(!r.ok) throw new Error("meta "+r.status); const j=await r.json(); const t=(j.tables||[]).find(x=>x.id===TABLE); const f=t&&t.fields.find(x=>x.id===FX.make);
+  bSetList(((f&&f.options&&f.options.choices)||[]).map(c=>c.name)); if(REC) refreshBrand(); }catch(e){ BRAND.list=null; } }
+function refreshBrand(){ const el=$("brandbox"); if(!el) return; const h=bBoxHTML(VAL.make,esc); if(el._h!==h){ el._h=h; el.innerHTML=h; } } /* only redraw when it changes, so a click on a suggestion isn't lost on blur */
+function refreshTodo(){ refreshBrand(); const m=missing(), el=$("todo"); if(!el) return; el.innerHTML=m.length?m.map(x=>`<span>${esc(x)}</span>`).join(""):`<span class="ok">Everything's filled in.</span>`; const b=document.querySelector('[data-act="save"]'); if(b) b.disabled=!!m.length||saving; const c=$("cnt-desc"); if(c) c.textContent=String(VAL.desc||"").length+" characters"; }
 function note(t,k){ const el=$("savemsg"); if(el) el.innerHTML=`<div class="note ${k||"warn"}">${t}</div>`; }
 
 /* ---------- save ---------- */
@@ -242,11 +263,12 @@ async function save(){ if(saving||missing().length) return; saving=true; refresh
     const v=VAL, f={}, title=String(v.name).trim();
     f[FX.name]=title; f[FX.short]=title; f[FX.desc]=String(v.desc).trim()+"\n"; f[FX.cat]=v.cat; f[FX.cond]=v.cond; f[FX.ship]=v.ship;
     ["make","model","year","finish","type"].forEach(k=>{ if(String(v[k]||"").trim()) f[FX[k]]=String(v[k]).trim(); });
+    const bs=bState(v.make); if(bs.st==="known"&&bs.name) f[FX.make]=bs.name;
     f[FX.online]=num(v.online); f[FX.pos]=num(v.pos)>0?num(v.pos):num(v.online);
     f[FX.ebayPay]="eBay Payments"; f[FX.ebayRet]="Returns Accepted,Buyer,14 Days,Money Back"; f[FX.offer]=!!OFFER;
     f[FX.where]=["Store"].concat(WHERE.reverb?["Reverb"]:[],WHERE.web?["Website"]:[]); f[FX.listedBy]=WHO; f[FX.descDone]=true; if(SEND) f[FX.ecomBox]=true;
     const stamp=new Date().toLocaleString("en-US",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"numeric",minute:"2-digit"});
-    const prev=String(now.fields[FX.notes]||"").replace(/\s+$/,""); f[FX.notes]=(prev?prev+"\n":"")+`[${stamp} ${WHO}] Listed in Manual Listing: online ${money(f[FX.online])}, POS ${money(f[FX.pos])}`;
+    const prev=String(now.fields[FX.notes]||"").replace(/\s+$/,""); f[FX.notes]=(prev?prev+"\n":"")+`[${stamp} ${WHO}] Listed in Manual Listing: online ${money(f[FX.online])}, POS ${money(f[FX.pos])}`+(bs.st==="approved"?`\n[${stamp} ${WHO}] New brand "${bs.name}" added, OK'd by ${bs.by}`:"");
     await api("/"+REC.id,{method:"PATCH",body:JSON.stringify({fields:f,typecast:true})});
     store.del("mrm-manual-draft-"+REC.id); if(BROWSE) BROWSE=BROWSE.filter(x=>x.r.id!==REC.id);
     if(!SEND){ saving=false; done("Saved. Not sent yet: tick Send to Ecommerce in Airtable when it's ready to go out."); return; }
@@ -262,12 +284,15 @@ function done(msg,bad){ const r=REC; $("item").innerHTML=`<h2>✓ Listing saved<
 
 /* ---------- events ---------- */
 document.addEventListener("input",e=>{ const t=e.target; if(t.dataset&&t.dataset.k){ VAL[t.dataset.k]=t.value; keepDraft(); refreshTodo(); } if(t.id==="bq") renderBrowse(); });
-document.addEventListener("change",e=>{ const t=e.target; if(t.dataset&&t.dataset.k){ VAL[t.dataset.k]=t.value; keepDraft(); refreshTodo(); }
+document.addEventListener("change",e=>{ const t=e.target; if(t.dataset&&t.dataset.k){ if(t.dataset.k==="make"){ const f=bFind(t.value); if(f&&f!==t.value) t.value=f; } VAL[t.dataset.k]=t.value; keepDraft(); refreshTodo(); }
   if(t.id==="offer"){ OFFER=t.checked; keepDraft(); } if(t.id==="send") SEND=t.checked; if(t.id==="bcat"||t.id==="bphoto") renderBrowse(); });
 document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.mode){ MODE=b.dataset.mode; store.set("mrm-manual-mode",MODE); renderPick(); if(MODE==="search") setTimeout(()=>$("q").focus(),0); return; }
   if(b.dataset.open){ open(b.dataset.open); return; }
   if(b.dataset.ch){ WHERE[b.dataset.ch]=!WHERE[b.dataset.ch]; keepDraft(); render(); return; }
+  if(b.dataset.bpick){ VAL.make=b.dataset.bpick; const i=document.querySelector('[data-k="make"]'); if(i) i.value=VAL.make; keepDraft(); refreshTodo(); return; }
+  if(b.dataset.bact==="approve"){ const m=document.querySelector("[data-bmgr]"); if(!m||!m.value){ if(m) m.focus(); return; } BRAND.ok={name:String(VAL.make).trim(),by:m.value}; refreshTodo(); return; }
+  if(b.dataset.bact==="undo"){ BRAND.ok=null; refreshTodo(); return; }
   const a=b.dataset.act;
   if(a==="save"){ save(); return; } if(a==="back"){ back(); return; }
   if(a==="startover"){ store.del("mrm-manual-draft-"+REC.id); open(REC.id); return; } });
