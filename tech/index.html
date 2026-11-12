@@ -276,6 +276,9 @@ function updSum(){ const el=$("pendsum"); if(!el) return; refreshBrand(); const 
 async function saveFields(){ if(busy) return; const ch=collect(); if(!ch.length) return; const msg=$("emsg");
   if(brandBlocked()){ msg.innerHTML=`<div class="note warn">Make: pick a brand from the list, or get a manager's OK for a new one.</div>`; return; }
   const bs=bState((makeEl()||{}).value); ch.forEach(c=>{ if(c.k==="make"&&bs.st==="known"&&bs.name){ c.val=bs.name; c.to=bs.name; } });
+  /* 11/11 Jon: double-SKU protection: a sticker number can only be on one item */
+  const skc=ch.find(c=>c.k==="sku"&&c.val); if(skc){ try{ const v=String(skc.val).replace(/'/g,"\\'"); const j=await api(`?returnFieldsByFieldId=true&maxRecords=3&fields%5B%5D=${FX.name}&fields%5B%5D=${FX.status}&filterByFormula=${encodeURIComponent(`AND({SKU}&''='${v}',RECORD_ID()!='${REC.id}')`)}`);
+    const own=j.records||[]; if(own.length){ const o=own[0].fields||{}; const st=o[FX.status]; msg.innerHTML=`<div class="note warn">SKU ${esc(skc.val)} is already on "${esc(o[FX.name]||"another item")}" (${esc((st&&st.name)||st||"no status")}). Use a different sticker. Nothing was saved.</div>`; return; } }catch(e){ msg.innerHTML=`<div class="note warn">Couldn't check the SKU: ${esc(e.message)}</div>`; return; } }
   if(!WHO){ msg.innerHTML=`<div class="note warn">Pick your name at the top first, so the change is signed.</div>`; return; }
   busy=true; msg.innerHTML=`<div class="note">Saving…</div>`;
   try{ const fields={}; ch.forEach(c=>fields[FX[c.k]]= c.k==="sku" ? (c.val?{text:String(c.val)}:null) : c.val);

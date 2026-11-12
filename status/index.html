@@ -142,6 +142,14 @@ function judge(r){
   return out;
 }
 
+
+/* 11/11 Jon: double-SKU protection. Flag any listed item whose SKU is also on another Airtable item. */
+async function dupCheck(){ const skus=[...new Set(ALL.map(x=>String(v(x.r,"sku")||"").trim()).filter(x=>/^\d+$/.test(x)))]; const seen={}; let n=0;
+  for(let i=0;i<skus.length;i+=40){ const part=skus.slice(i,i+40); const f=`OR(${part.map(k=>`{SKU}&''='${k}'`).join(",")})`; let off="";
+    do{ const j=await api(`returnFieldsByFieldId=true&fields%5B%5D=${FX.sku}&fields%5B%5D=${FX.name}&pageSize=100&filterByFormula=${encodeURIComponent(f)}${off?"&offset="+encodeURIComponent(off):""}`);
+      (j.records||[]).forEach(r=>{ const k=String(v(r,"sku")||"").trim(); (seen[k]=seen[k]||[]).push(r); }); off=j.offset||""; }while(off); }
+  ALL.forEach(x=>{ const k=String(v(x.r,"sku")||"").trim(); const others=(seen[k]||[]).filter(o=>o.id!==x.r.id); if(others.length&&!x.j.dup){ x.j.dup=true; x.j.bad=true; if(x.j.otw){ x.j.otw=false; HIDDEN=Math.max(0,HIDDEN-1); } x.j.probs.unshift(`SKU ${k} is also on "${String(v(others[0],"name")||"another item").slice(0,60)}". Two items can't share a SKU.`); n++; } });
+  return n; }
 async function load(){
   if(loading) return; loading=true; $("msg").innerHTML=`<div class="small muted" style="margin-top:8px">Loading…</div>`;
   const days=+$("days").value||30;
@@ -159,6 +167,7 @@ async function load(){
     const names=[...new Set(ALL.map(x=>v(x.r,"listedBy")).filter(Boolean))].sort(), cur=$("lister").value;
     $("lister").innerHTML=`<option value="">Anyone</option>`+names.map(n=>`<option${n===cur?" selected":""}>${esc(n)}</option>`).join("");
     $("msg").innerHTML=""; render();
+    dupCheck().then(n=>{ if(n) render(); }).catch(()=>{});
   }catch(e){ $("msg").innerHTML=`<div class="note warn">Couldn't load: ${esc(e.message)}</div>`; }
   loading=false; }
 
