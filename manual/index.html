@@ -203,7 +203,7 @@ function render(){ const r=REC; if(!r) return; const ph=String(cv(r,"phys")||"")
   const field=f=>{ const v=VAL[f.k]??""; let inp;
     if(f.kind==="select"){ const opts=f.opts.includes(v)||!v?f.opts:[v].concat(f.opts); inp=`<select class="t" data-k="${f.k}"><option value="">Choose…</option>${opts.map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`; }
     else if(f.kind==="long") inp=`<textarea class="t" data-k="${f.k}" rows="${f.rows||4}" placeholder="Plain text, no bold or markdown. What it is, condition details, what's included.">${esc(v)}</textarea><div class="counter" id="cnt-${f.k}">${String(v).length} characters</div>`;
-    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal" placeholder="0"':""}>`;
+    else inp=`<input class="t" data-k="${f.k}" value="${esc(v)}" ${f.kind==="money"?'inputmode="decimal" placeholder="0"':""}${f.k==="make"?' list="makes" autocomplete="off"':""}>${f.k==="make"?'<div class="small" id="makewarn" style="color:var(--sugg)"></div>':""}`;
     return `<label class="f ${f.wide?"wide":""}"><span class="${f.req?"req":""}">${esc(f.label)}</span>${inp}</label>`; };
   $("item").innerHTML=`
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div style="min-width:0"><button class="btn sec" type="button" data-act="back" style="min-height:36px;padding:6px 12px;margin-bottom:8px">← Back to the list</button>
@@ -223,7 +223,15 @@ function render(){ const r=REC; if(!r) return; const ph=String(cv(r,"phys")||"")
     <div class="savebar"><div class="todo" id="todo">${m.length?m.map(x=>`<span>${esc(x)}</span>`).join(""):`<span class="ok">Everything's filled in.</span>`}</div>
       <button class="btn" type="button" data-act="save" ${m.length||saving?"disabled":""}>${saving?"Saving…":"Save listing"}</button></div>
     <div id="savemsg"></div>`; }
-function refreshTodo(){ const m=missing(), el=$("todo"); if(!el) return; el.innerHTML=m.length?m.map(x=>`<span>${esc(x)}</span>`).join(""):`<span class="ok">Everything's filled in.</span>`; const b=document.querySelector('[data-act="save"]'); if(b) b.disabled=!!m.length||saving; const c=$("cnt-desc"); if(c) c.textContent=String(VAL.desc||"").length+" characters"; }
+/* 11/11: Make is picked from the brands we already have; a new one shows a spelling warning, because saving creates the brand in Lightspeed too ("Walrus Auio" happened that way) */
+let MAKES=null;
+async function loadMakes(){ try{ const r=await fetch(`https://api.airtable.com/v0/meta/bases/${BASE}/tables`,{headers:{Authorization:"Bearer "+TOKEN}}); const j=await r.json(); const t=(j.tables||[]).find(x=>x.id===TABLE); const f=t&&t.fields.find(x=>x.id===FX.make);
+  MAKES=((f&&f.options&&f.options.choices)||[]).map(c=>c.name).filter(Boolean).sort((a,b)=>a.localeCompare(b)); let dl=$("makes"); if(!dl){ dl=document.createElement("datalist"); dl.id="makes"; document.body.appendChild(dl); } dl.innerHTML=MAKES.map(m=>`<option value="${esc(m)}">`).join(""); }catch(e){ MAKES=null; } }
+function makeCheck(){ const el=$("makewarn"); if(!el) return; const v=String(VAL.make||"").trim(); if(!v||!MAKES){ el.textContent=""; return; }
+  if(MAKES.some(m=>m.toLowerCase()===v.toLowerCase())){ el.textContent=""; return; }
+  const close=MAKES.filter(m=>m.toLowerCase().startsWith(v.toLowerCase().slice(0,4))).slice(0,3);
+  el.textContent=`New brand: saving adds "${v}" to Lightspeed. Check the spelling${close.length?" (did you mean "+close.join(", ")+"?)":""}.`; }
+function refreshTodo(){ makeCheck(); const m=missing(), el=$("todo"); if(!el) return; el.innerHTML=m.length?m.map(x=>`<span>${esc(x)}</span>`).join(""):`<span class="ok">Everything's filled in.</span>`; const b=document.querySelector('[data-act="save"]'); if(b) b.disabled=!!m.length||saving; const c=$("cnt-desc"); if(c) c.textContent=String(VAL.desc||"").length+" characters"; }
 function note(t,k){ const el=$("savemsg"); if(el) el.innerHTML=`<div class="note ${k||"warn"}">${t}</div>`; }
 
 /* ---------- save ---------- */
@@ -269,7 +277,7 @@ $("who").innerHTML=`<option value="">Who's listing?</option>`+STAFF.map(n=>`<opt
 $("who").addEventListener("change",e=>{ WHO=e.target.value; store.set("mrm-photos-who",WHO); refreshTodo(); });
 $("setform").addEventListener("submit",async e=>{ e.preventDefault(); const t=$("tok").value.trim(); if(!/^pat/.test(t)){ $("setmsg").innerHTML=`<div class="note warn">Airtable keys start with "pat".</div>`; return; }
   TOKEN=t; try{ await api("?pageSize=1&fields%5B%5D="+FX.sku); store.set("mrm-photos-token",t); start(); }catch(err){ TOKEN=""; $("setmsg").innerHTML=`<div class="note warn">${esc(err.message)}</div>`; } });
-function start(){ $("setup").hidden=!!TOKEN; $("find").hidden=!TOKEN; if(!TOKEN) return; renderPick();
+function start(){ $("setup").hidden=!!TOKEN; $("find").hidden=!TOKEN; if(!TOKEN) return; renderPick(); loadMakes();
   const id=new URLSearchParams(location.search).get("rec"); if(id&&/^rec[A-Za-z0-9]{14}$/.test(id)) open(id); }
 start();
 </script>
