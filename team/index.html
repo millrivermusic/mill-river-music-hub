@@ -218,10 +218,6 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Customer conversations</h2><a class="btn sec sm" href="/t/inbox/" style="text-decoration:none">Open the Customer Desk</a></div>
     <div id="cvbody"><div class="small" style="color:var(--muted)">Loading…</div></div>
   </section>
-  <section class="card" id="deskw" hidden>
-    <h2 style="margin:0 0 6px">From the desks</h2>
-    <div id="dwbody"><div class="small" style="color:var(--muted)">Loading…</div></div>
-  </section>
   <section class="card" id="tmsgs">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Team messages</h2><div style="display:flex;gap:6px"><button class="btn sec sm" id="mReadAll" type="button">Mark all read</button><button class="btn sm" id="mNew" type="button">+ New message</button></div></div>
     <div class="tbar" id="mbar"></div>
@@ -239,6 +235,11 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
   <section class="card" id="convsd" hidden>
     <h2 style="margin:0 0 6px">Not yet assigned in your departments</h2>
     <div id="cvdbody"></div>
+  </section>
+
+  <section class="card" id="deskw" hidden>
+    <h2 style="margin:0 0 6px">From the desks</h2>
+    <div id="dwbody"><div class="small" style="color:var(--muted)">Loading…</div></div>
   </section>
 
   <section class="card" id="qlcard">
@@ -553,7 +554,7 @@ renderTiles=function(){ renderSide(); const box=$("tiles"); const show=(id,on)=>
   const head=`<div class="crumb"><a href="#home">← Home</a><h2>${esc(pg?pg.t:"")}</h2></div>`;
   if(PAGE==="board"){ box.innerHTML=head; return; }
   if(PAGE==="me"){ const cnt=n=>TASKS.filter(r=>tf(r,"Assigned To")===n&&tf(r,"Status")!=="Done").length+DESKA.filter(d=>d.to===n).length+CONVS.filter(c=>cv(c,"Assigned To")===n).length+(typeof DW!=="undefined"?(()=>{ const w=deskWorkFor(n); return w.wa.length+w.re.length+w.rp.length; })():0);
-    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===WHO?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s work: customer conversations, desk items, messages and tasks. This device remembers who's working.</div>`:`<div class="note">Tap your name.</div>`); return; }
+    box.innerHTML=head+`<div class="pbar">${STAFF.map(n=>{ const c=cnt(n), u=(MSGS||[]).filter(r=>mf(r,"From")!==n&&forMeAs(r,n)&&!(((r.fields||{})["Read By"]||[]).includes(n))).length; return `<button class="chip ${n===(VIEWAS||WHO)?"on":""}" data-pickwho="${esc(n)}" type="button">${esc(n)}${c||u?`<span class="n">${u?"💬"+u+" ":""}${c||""}</span>`:""}</button>`; }).join("")}</div>`+(WHO?(VIEWAS&&VIEWAS!==WHO?`<div class="note" style="margin:2px 0 10px">Looking at <b>${esc(VIEWAS)}</b>'s work. You're still working as <b>${esc(WHO)}</b>: anything you do here is saved as you. <button class="btn sec sm" type="button" data-pickwho="${esc(WHO)}">Back to my work</button></div>`:`<div class="small" style="color:var(--muted);margin:2px 0 10px">${esc(WHO)}'s work: customer conversations, desk items, messages and tasks. Tap someone else to look at their work without switching who's working.</div>`):`<div class="note">Tap your name.</div>`); return; }
   const ts=tilesOf(pg); box.innerHTML=head+`<div class="grid">${ts.map(tile).join("")}</div>`; };
 renderSide=function(){ const el=$("side"); if(!el) return; let h=`<div class="sgrp"><a class="l1 ${PAGE==="home"?"on":""}" href="#home"><span class="i" aria-hidden="true">🏠</span><span class="t">Home</span></a></div>`; let g=null;
   PAGES.forEach(pg=>{ if(pg.g!==g){ if(g!==null) h+=`</div>`; g=pg.g; h+=`<div class="sgrp"><div class="sh">${esc(g)}</div>`; }
@@ -565,6 +566,7 @@ renderSide=function(){ const el=$("side"); if(!el) return; let h=`<div class="sg
   if(ql.length){ h+=`<div class="sgrp"><div class="sh">Quick links</div>`+ql.map(a=>`<a class="l2 ext" href="${esc(a.getAttribute("href"))}" target="_blank" rel="noopener"><span class="t">${esc(a.textContent)}</span></a>`).join("")+`</div>`; }
   el.innerHTML=`<div class="sidein">${h}</div>`; };
 function route(){ let k=(location.hash||"").slice(1); if(k==="tmsgs"||k==="tasks") k="board"; const prev=PAGE; PAGE=PAGES.some(p=>p.k===k&&!p.href)?k:"home";
+  if(PAGE!=="me") VIEWAS="";
   if(PAGE==="me"&&prev!=="me"){ PREVV=[MVIEW,TVIEW]; MVIEW="me"; TVIEW="mine"; } else if(PAGE!=="me"&&prev==="me"&&PREVV){ [MVIEW,TVIEW]=PREVV; PREVV=null; }
   renderTiles(); try{ renderTasks(); renderMsgs(); }catch(_){} window.scrollTo(0,0); }
 window.addEventListener("hashchange",route);
@@ -580,10 +582,16 @@ document.addEventListener("click",async e=>{ const t=e.target;
     const f={Title:title,Body:$("aB").value.trim(),From:WHO,Department:$("aD").value,Pinned:$("aP").checked}; if($("aU").value) f["Show Until"]=$("aU").value; const sid=(window.STAFF_IDS||{})[WHO]; if(sid) f["From (Staff)"]=[sid];
     t.disabled=true; try{ await atT("tblRAMJZ2nXXQM9QU",{method:"POST",body:JSON.stringify({records:[{fields:f}],typecast:true})}); ACOMP=false; await loadAnn(); }catch(err){ $("aMsg").textContent=err.message; t.disabled=false; } return; }
   if(t.dataset&&t.dataset.adown){ e.preventDefault(); const y=new Date(Date.now()-864e5).toISOString().slice(0,10); try{ await atT("tblRAMJZ2nXXQM9QU",{method:"PATCH",body:JSON.stringify({records:[{id:t.dataset.adown,fields:{"Show Until":y,Pinned:false}}]})}); await loadAnn(); }catch(err){ alert(err.message); } } });
-$("who").addEventListener("change",()=>{ renderTiles(); renderConvs(); renderDeskWork(); });
+$("who").addEventListener("change",()=>{ VIEWAS=""; renderTiles(); renderConvs(); renderDeskWork(); });
+// My Work: looking at someone else's work never changes who's working (11/11, Jon). Lists render as that person; actions stay yours.
+["renderTasks","renderMsgs","renderConvs","renderDeskWork"].forEach(n=>{ const f=window[n]; if(typeof f!=="function") return;
+  window[n]=function(){ if(PAGE==="me"&&VIEWAS&&VIEWAS!==WHO){ const o=WHO; WHO=VIEWAS; try{ return f.apply(this,arguments); } finally{ WHO=o; } } return f.apply(this,arguments); }; });
 window.onStaff=function(){ try{ $("who").innerHTML=`<option value="">Pick your name</option>`+STAFF.map(n=>`<option ${n===WHO?"selected":""}>${n}</option>`).join(""); renderTasks(); }catch(_){} };
 function forMeAs(r,n){ const o=WHO; WHO=n; try{ return forMe(r); } finally{ WHO=o; } }
-document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; WHO=b.dataset.pickwho; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} renderTiles(); renderConvs(); renderDeskWork(); try{ renderTasks(); renderMsgs(); }catch(_){} });
+var VIEWAS="";
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pickwho]"); if(!b) return; const n=b.dataset.pickwho;
+  if(!WHO){ WHO=n; store.set("mrm-photos-who",WHO); try{ $("who").value=WHO; hello(); }catch(_){} VIEWAS=""; } else VIEWAS=(n===WHO?"":n);
+  renderTiles(); renderConvs(); renderDeskWork(); try{ renderTasks(); renderMsgs(); }catch(_){} });
 
 // ---- Customer conversations (Customer Desk) for My Work ----
 var CONVS=[];
