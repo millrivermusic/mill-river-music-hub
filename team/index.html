@@ -186,6 +186,15 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
 .side a.l2{border-radius:0!important;padding:6px 12px;font-size:13.5px;font-weight:500;color:var(--muted)}
 .side a.l2:hover{color:var(--ink);background:var(--surface)}
 .side .sgrp>a.l2{padding-left:14px}
+/* 11/12 (Jon): a hair of the shop's colors, from millrivermusic.com's logo stripes */
+:root{--mrm-red:#C73A24;--mrm-gold:#E0911A;--mrm-sea:#66B096;--mrm-teal:#286578}
+.bar{position:relative}
+.bar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,var(--mrm-red) 0 25%,var(--mrm-gold) 25% 50%,var(--mrm-sea) 50% 75%,var(--mrm-teal) 75% 100%)}
+.ptile{border-top:3px solid var(--mrm-teal)}
+.pgrid .ptile:nth-child(4n+1){border-top-color:var(--mrm-red)}.pgrid .ptile:nth-child(4n+2){border-top-color:var(--mrm-gold)}.pgrid .ptile:nth-child(4n+3){border-top-color:var(--mrm-sea)}.pgrid .ptile:nth-child(4n+4){border-top-color:var(--mrm-teal)}
+.side .sh{color:var(--mrm-teal)!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .side .sh{color:var(--mrm-sea)!important}}
+:root[data-theme="dark"] .side .sh{color:var(--mrm-sea)!important}
 </style>
 </head>
 <body>
