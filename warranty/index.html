@@ -156,6 +156,7 @@ html body .stchips .vsep{display:block!important;grid-column:1/-1;height:1px;wid
 @media (max-width:1000px){html body .stchips{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:640px){html body .stchips{grid-template-columns:repeat(2,minmax(0,1fr))} html body .seg{flex-wrap:wrap}}
 </style>
+<script src="../custline.js?v=1"></script>
 <script src="../who.js?v=1" defer></script>
 </head>
 <body>
@@ -283,6 +284,7 @@ function render(){
   if(SHOWUNM){ $("list").innerHTML=unmatchedView(); return; }
   const v=visible();
   $("list").innerHTML=v.length?v.map(c=>{ const fl=flags(c); return `<button class="res" data-act="open" data-id="${c.id}"><b><span class="brandtag">${BR[c.b].label}</span>${esc(custName(c))}${c.model?" · "+esc(c.model):""}</b><span class="pill s-${c.status}">${SLABEL[c.status]}</span>
+    ${c.custId&&CUST[c.custId]&&window.MRMCust?`<span class="meta">${MRMCust.line(CUST[c.custId],{noName:true})}</span>`:""}
     <span class="meta">${[c.serial&&"S/N "+c.serial, c.num&&(c.b==="martin"?"Auth ":"Ticket ")+c.num, c.wo&&"WO "+c.wo+(c.wos?" ("+c.wos+")":""), c.techId&&RECSTAFF[c.techId], c.req&&"Requested "+fmtD(c.req)].filter(Boolean).map(esc).join(" · ")}</span>
     ${UNSEEN[c.id]?`<span class="why newrow">${UNSEEN[c.id]} new repl${UNSEEN[c.id]>1?"ies":"y"} from ${BR[c.b].label}<span class="lread" role="button" tabindex="0" data-act="lread" data-id="${c.id}" title="Mark read without opening">Mark read</span></span>`:""}
     ${fl.length?`<span class="why">${esc(fl[0])}</span>`:""}</button>`; }).join(""):`<div class="small muted">No cases match.</div>`;

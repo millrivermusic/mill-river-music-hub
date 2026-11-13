@@ -105,6 +105,7 @@ label.f.wide{grid-column:1/-1}
 </style>
 <link rel="stylesheet" href="../warm.css?v=2">
 <script src="../mk.js?v=3"></script>
+<script src="../custline.js?v=1"></script>
 <script src="../who.js?v=1" defer></script>
 </head>
 <body>
@@ -239,7 +240,7 @@ function renderItem(extra){ const r=REC, s=st(r), live=f(r,"live");
     <dl class="prices">${priceBox}</dl>
     ${why.length?`<div class="note warn">Probably holding up the POS sync: ${esc(why.join("; "))}.</div>`:""}
     ${p.length?`<div class="thumbs">${p.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
-    <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
+    <dl class="deets">${rows.map(([k,v])=>{ const sid=k==="Seller"?(()=>{ const x=(r.fields[FX.seller]||[])[0]; return x&&typeof x==="object"?x.id:x; })():""; return `<div><dt>${k}</dt><dd>${sid?`<span data-mrm-cust="${esc(sid)}">${esc(String(v))}</span>`:esc(String(v))}</dd></div>`; }).join("")}</dl>
     ${f(r,"reverbUrl")?`<div class="linkrow"><a href="${esc(f(r,"reverbUrl"))}" target="_blank" rel="noopener">Open on Reverb ↗</a></div>`:""}
     ${box("Notes",f(r,"notes"))}
     <div id="descbox"></div></div>
@@ -421,6 +422,7 @@ async function loadDeals(){ renderDTabs(); $("dmsg").innerHTML=`<div class="smal
     $("dlist").innerHTML=DEALS.map((d,i)=>{ const cash=num(dv(d,"cash")), cr=num(dv(d,"credit")), n=(d.fields[D.products]||[]).length, s=dv(d,"status");
       const pay=[cash?money(cash)+" cash":"", cr?money(cr)+" credit":""].filter(Boolean).join(" + ")||(s==="Declined"?"no deal":"$0");
       return `<button class="res" data-act="dopen" data-i="${i}"><b>${esc(String(dv(d,"deal")).split(" · ")[0]||"(no name)")}</b><span class="price">${esc(pay)}</span>
+        ${(d.fields[D.customer]||[])[0]?`<span class="meta" data-mrm-cust="${esc((d.fields[D.customer]||[])[0])}" data-mc-noname></span>`:""}
         <span class="meta">${esc(fmtDate(dv(d,"date")))} · ${esc(stLabel(s))} · ${n} item${n===1?"":"s"}${dv(d,"approved")?" · approved by "+esc(dv(d,"approved")):""}</span></button>`; }).join(""); }
   catch(e){ DEALS=[]; $("dmsg").innerHTML=`<div class="note warn">${esc(e.message)}</div>`; } }
 async function openDeal(d){ DEAL=d; DITEMS=null; $("deals").hidden=true; $("deal").hidden=false; renderDeal(); window.scrollTo(0,0);

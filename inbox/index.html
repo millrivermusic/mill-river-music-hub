@@ -55,6 +55,7 @@ textarea{width:100%;resize:vertical}
 #back{display:none}
 @media (max-width:760px){.wrap{grid-template-columns:1fr}#list,#detail{max-height:none}body.det #list{display:none}body:not(.det) #detail{display:none}#back{display:inline-block;margin-bottom:8px}#detail{padding-left:max(16px,env(safe-area-inset-left,0px))}}
 </style>
+<script src="../custline.js?v=1"></script>
 <script src="../who.js?v=1" defer></script>
 </head>
 <body>
@@ -94,6 +95,7 @@ function ago(d){ if(!d) return ""; const t=new Date(d), m=(Date.now()-t)/6e4; if
 function renderList(){ const xs=ROWS.filter(r=>inView(r,FILTER));
   $("list").innerHTML=xs.length?xs.map(r=>{ const ch=f(r,"Channel")||"Email", st=f(r,"Status")||"New", dept=f(r,"Department"), ty=f(r,"Type"), who=f(r,"Assigned To"), ai=f(r,"Tagged By")==="Claude";
     return `<div class="item ${SEL===r.id?"on":""} ${st==="New"?"new":""}" data-id="${r.id}"><div class="t"><span aria-hidden="true">${ICON[ch]||"✉"}</span><b>${esc(f(r,"Contact Name")||f(r,"Contact Address")||"Unknown")}</b><span class="when">${ago(f(r,"Last Message At"))}</span></div>
+      ${(r.fields.Customer||[])[0]?`<div class="s" data-mrm-cust="${esc(r.fields.Customer[0])}" data-mc-noname></div>`:""}
       <div class="s">${f(r,"Last From")==="Us"?"You: ":""}${esc(f(r,"Subject")||"")} — ${esc((f(r,"Snippet")||"").replace(/\s+/g," ").slice(0,140))}</div>
       <div class="tags">${dept?`<span class="tag dept ${ai?"ai":""}">${esc(dept)}</span>`:`<span class="tag">Unsorted</span>`}${ty?`<span class="tag ${ai?"ai":""}">${esc(ty)}</span>`:""}${who?`<span class="tag who">${esc(who)}</span>`:""}${st==="Waiting on customer"?`<span class="tag">Waiting</span>`:""}</div></div>`; }).join(""):`<div class="empty">Nothing here.</div>`; }
 async function openRow(id){ SEL=id; CONFIRM=null; document.body.classList.add("det"); renderList(); renderDetail(); MSGS=null;
@@ -112,6 +114,7 @@ function renderDetail(){ const r=ROWS.find(x=>x.id===SEL); if(!r){ $("detail").i
   const opt=(list,v,blank)=>(blank!=null?`<option value="">${esc(blank)}</option>`:"")+list.map(x=>`<option ${x===v?"selected":""}>${esc(x)}</option>`).join("");
   let h=`<button class="btn" id="back">← List</button><h2>${ICON[ch]||""} ${esc(f(r,"Contact Name")||addr||"Unknown")}</h2>
    <div class="meta">${esc(ch)}${addr&&!/txt\.voice/.test(addr)?" · "+esc(addr):""} · ${esc(f(r,"Subject")||"")}${cust?` · <a href="/t/customers/#${cust}" target="_blank" rel="noopener">Customer record</a>`:` · not linked to a customer <button class="btn" id="linkCust" style="padding:2px 8px;font-size:12.5px">Link</button>`}</div>
+   ${cust?`<div class="meta" data-mrm-cust="${esc(cust)}" style="margin-top:4px"></div>`:""}
    <div id="custbox"></div>
    <div class="ctl"><label>Department<select data-set="Department">${opt(DEPTS,f(r,"Department"),"Unsorted")}</select></label>
     <label>Type<select data-set="Type">${opt(TYPES,f(r,"Type"),"—")}</select></label>
@@ -143,8 +146,8 @@ document.addEventListener("click",async e=>{ const t=e.target;
     BUSY=false; return; }
   if(t.id==="linkCust"){ $("custbox").innerHTML=`<div class="row" style="margin:8px 0"><input id="cq" placeholder="Search name or email" style="flex:1"><button class="btn" id="cgo">Search</button></div><div id="cres"></div>`; $("cq").focus(); return; }
   if(t.id==="cgo"){ const q=$("cq").value.trim().toLowerCase().replace(/'/g,"\\'"); if(q.length<2) return; $("cres").innerHTML=`<div class="meta">Searching…</div>`;
-    const j=await at(`${UDB}?maxRecords=10&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&filterByFormula=${encodeURIComponent(`AND({LS Match}!='Duplicate (merged)',OR(FIND('${q}',LOWER({First Name}&' '&{Last Name})),FIND('${q}',LOWER({E-mail}))))`)}`).catch(err=>({records:[],err}));
-    $("cres").innerHTML=(j.records||[]).map(c=>`<div class="row" style="margin:4px 0"><button class="btn" data-pickcust="${c.id}">Link</button> ${esc((c.fields["First Name"]||"")+" "+(c.fields["Last Name"]||""))} <span class="meta">${esc(c.fields["E-mail"]||"")}</span></div>`).join("")||`<div class="meta">No match.</div>`; return; }
+    const j=await at(`${UDB}?maxRecords=10&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&fields%5B%5D=Mobile&fields%5B%5D=Phone&filterByFormula=${encodeURIComponent(`AND({LS Match}!='Duplicate (merged)',OR(FIND('${q}',LOWER({First Name}&' '&{Last Name})),FIND('${q}',LOWER({E-mail}))))`)}`).catch(err=>({records:[],err}));
+    $("cres").innerHTML=(j.records||[]).map(c=>`<div class="row" style="margin:4px 0"><button class="btn" data-pickcust="${c.id}">Link</button> ${window.MRMCust?MRMCust.line({name:((c.fields["First Name"]||"")+" "+(c.fields["Last Name"]||"")).trim(),email:c.fields["E-mail"]||"",phone:c.fields.Mobile||c.fields.Phone||""}):esc((c.fields["First Name"]||"")+" "+(c.fields["Last Name"]||""))}</div>`).join("")||`<div class="meta">No match.</div>`; return; }
   if(t.dataset.pickcust){ try{ await setThread(r,{Customer:[t.dataset.pickcust]}); }catch(err){ alertN(err.message); } return; }
 });
 document.addEventListener("change",async e=>{ const t=e.target; if(!t.dataset.set) return; const r=ROWS.find(x=>x.id===SEL); if(!r) return;

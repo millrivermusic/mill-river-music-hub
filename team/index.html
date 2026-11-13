@@ -200,6 +200,7 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .side .sh{color:var(--mrm-sea)!important}}
 :root[data-theme="dark"] .side .sh{color:var(--mrm-sea)!important}
 </style>
+<script src="../custline.js?v=1"></script>
 </head>
 <body>
 <header class="bar"><div class="in"><h1>Mill River Music · Team Hub</h1>
@@ -446,7 +447,7 @@ setInterval(()=>{ if(!document.hidden) loadTeamTasks().catch(()=>{}); },120000);
 // ---- References on messages: Reverb, gear items, customers (emails later) ----
 const RICON={"reverb-msg":"💬 Reverb msg","reverb-offer":"🏷 Offer","reverb-order":"📦 Order","reverb-refund":"↩ Refund","item":"🎸 Item","customer":"👤 Customer","deal":"🤝 Deal","return":"↩ Return","warranty":"🛠 Warranty","inbox":"✉ Customer msg","email":"✉ Email","task":"✅ Task"};
 function refsOf(r){ try{ return JSON.parse((r.fields||{}).Refs||"[]"); }catch(e){ return []; } }
-function refChip(x,rm){ return `<a class="rchip" href="${esc(x.url||"#")}" ${/^https?:/.test(x.url||"")?'target="_blank" rel="noopener"':""}>${esc(RICON[x.t]||"🔗")}: ${esc(String(x.label||"").slice(0,60))}${rm!=null?`<button type="button" data-rmref="${rm}" aria-label="Remove">×</button>`:""}</a>`; }
+function refChip(x,rm){ return `<a class="rchip" href="${esc(x.url||"#")}" ${/^https?:/.test(x.url||"")?'target="_blank" rel="noopener"':""}>${esc(RICON[x.t]||"🔗")}: ${esc((x.t==="customer"?String(x.label||"").split(" · ")[0]:String(x.label||"")).slice(0,60))}${x.t==="customer"&&/^rec[A-Za-z0-9]{14}$/.test(x.id||"")?` <span data-mrm-cust="${esc(x.id)}" data-mc-noname></span>`:""}${rm!=null?`<button type="button" data-rmref="${rm}" aria-label="Remove">×</button>`:""}</a>`; }
 let RVCACHE=null;
 async function rvAll(){ if(RVCACHE) return RVCACHE; const g=p=>fetch("/rv/"+p).then(r=>r.ok?r.json():{}).catch(()=>({}));
   const [c,n,o]=await Promise.all([g("my/conversations?per_page=50"),g("my/listings/negotiations?per_page=50"),g("my/orders/selling/all?per_page=50")]); const out=[];
@@ -457,7 +458,7 @@ async function rvAll(){ if(RVCACHE) return RVCACHE; const g=p=>fetch("/rv/"+p).t
 async function refSearch(type,q){ q=q.trim(); if(!q) return []; const ql=q.toLowerCase().replace(/'/g,"\\'");
   if(type==="reverb"){ const all=await rvAll(); return all.filter(x=>x.label.toLowerCase().includes(q.toLowerCase())).slice(0,15); }
   if(type==="item"){ const f=encodeURIComponent(`OR({SKU}='${q.replace(/'/g,"")}',FIND('${ql}',LOWER({Name})))`); const j=await atT(`tbleYgUhKCIepPtFR?maxRecords=12&fields%5B%5D=Name&fields%5B%5D=SKU&filterByFormula=${f}`); return (j.records||[]).map(r=>{ const sku=(r.fields.SKU&&r.fields.SKU.text)||r.fields.SKU||""; return {t:"item",id:r.id,label:`${sku?sku+" · ":""}${r.fields.Name||""}`,url:sku?`/t/lookup/?sku=${encodeURIComponent(sku)}`:`/t/lookup/?q=${encodeURIComponent(r.fields.Name||"")}`}; }); }
-  if(type==="customer"){ const f=encodeURIComponent(`OR(FIND('${ql}',LOWER({First Name}&' '&{Last Name})),FIND('${ql}',LOWER({E-mail})))`); const j=await atT(`tblGJnacXCV52gZdS?maxRecords=12&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&filterByFormula=${f}`); return (j.records||[]).map(r=>({t:"customer",id:r.id,label:`${r.fields["First Name"]||""} ${r.fields["Last Name"]||""}${r.fields["E-mail"]?" · "+r.fields["E-mail"]:""}`.trim(),url:`/t/customers/#${r.id}`})); }
+  if(type==="customer"){ const f=encodeURIComponent(`OR(FIND('${ql}',LOWER({First Name}&' '&{Last Name})),FIND('${ql}',LOWER({E-mail})))`); const j=await atT(`tblGJnacXCV52gZdS?maxRecords=12&fields%5B%5D=First%20Name&fields%5B%5D=Last%20Name&fields%5B%5D=E-mail&fields%5B%5D=Mobile&fields%5B%5D=Phone&filterByFormula=${f}`); return (j.records||[]).map(r=>({t:"customer",id:r.id,label:`${r.fields["First Name"]||""} ${r.fields["Last Name"]||""}${r.fields["E-mail"]?" · "+r.fields["E-mail"]:" · no email"}${(r.fields.Mobile||r.fields.Phone)?" · "+(r.fields.Mobile||r.fields.Phone):" · no phone"}`.trim(),url:`/t/customers/#${r.id}`})); }
   if(type==="deal"){ const f=encodeURIComponent(`FIND('${ql}',LOWER({Deal}))`); const j=await atT(`tblPJ4W0G96ATXPjD?maxRecords=12&fields%5B%5D=Deal&fields%5B%5D=Customer&fields%5B%5D=Agreed%20Total&sort%5B0%5D%5Bfield%5D=Date&sort%5B0%5D%5Bdirection%5D=desc&filterByFormula=${f}`); return (j.records||[]).map(r=>{ const c=(r.fields.Customer||[])[0], tot=r.fields["Agreed Total"]; return {t:"deal",id:r.id,label:`${r.fields.Deal||"Deal"}${tot!=null?" · $"+tot:""}`,url:c?`/t/customers/#${c}`:`https://airtable.com/appZD2jJGbSlvofcV/tblPJ4W0G96ATXPjD/${r.id}`}; }); }
   return []; }
 var TREFS={refs:[]};

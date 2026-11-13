@@ -83,6 +83,7 @@ textarea.t{min-height:70px;resize:vertical}
 .queue span{font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:3px 8px;background:var(--sunk)}
 </style>
 <link rel="stylesheet" href="../warm.css?v=2">
+<script src="../custline.js?v=1"></script>
 <script src="../who.js?v=1" defer></script>
 </head>
 <body>
@@ -183,7 +184,8 @@ function tagFor(s){ return `<span class="tag ${s==="Customer Contacted Us"?"warn
 function renderList(){ renderChips(); const rows=shown();
   $("bmsg").innerHTML=MSG?`<div class="note ${/^Couldn|didn't/.test(MSG)?"warn":"ok"}">${esc(MSG)}</div>`:(!rows.length?`<p class="small muted" style="margin:12px 0 0">${ALL.length?"No returns match.":"No returns yet."}</p>`:"");
   $("list").innerHTML=rows.map(r=>`<button class="res" data-act="open" data-id="${r.id}"><b>${esc(v(r,"name")||"(no item)")}</b><span>${UNREAD[r.id]?`<span class="tag warn">✉ ${UNREAD[r.id]} new</span> `:""}${tagFor(v(r,"status"))}</span>
-    <span class="meta">${esc([v(r,"cust"),v(r,"platform"),v(r,"date"),v(r,"order")&&"#"+v(r,"order")].filter(Boolean).join(" · "))}${v(r,"next")?" · next: "+esc(v(r,"next")):""}</span></button>`).join(""); }
+    ${v(r,"cust")&&window.MRMCust?`<span class="meta">${MRMCust.line({name:v(r,"cust"),email:v(r,"email"),phone:v(r,"phone")})}</span>`:""}
+    <span class="meta">${esc([v(r,"cust")&&!window.MRMCust?v(r,"cust"):"",v(r,"platform"),v(r,"date"),v(r,"order")&&"#"+v(r,"order")].filter(Boolean).join(" · "))}${v(r,"next")?" · next: "+esc(v(r,"next")):""}</span></button>`).join(""); }
 
 /* ---------- one return ---------- */
 function openRet(id){ REC=ALL.find(x=>x.id===id); if(!REC) return; MODE="view"; EDIT=null; ASK=null; EMAIL=null; MSG=""; SENDING=null; ATTACH={}; CONFIRM=false; MAILS=null; show(); window.scrollTo(0,0); const r=REC; loadMails(r).then(()=>{ if(REC===r&&MODE==="view") show(); }); }

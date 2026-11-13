@@ -101,6 +101,7 @@ details.more summary{cursor:pointer;font-weight:600;font-size:13.5px}
 .soon{border:1px dashed var(--line2);border-radius:6px;padding:10px 12px;color:var(--muted);font-size:13.5px;margin-top:8px}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="../custline.js?v=1"></script>
 <script src="../who.js?v=1" defer></script>
 </head>
 <body>
@@ -209,7 +210,7 @@ function lsTag(r){ const id=uv(r,"lsId"), m=uv(r,"match"), st=uv(r,"status");
   if(m==="Needs review"||m==="Lightspeed duplicates"||m==="Airtable duplicate") return `<span class="tag need">${esc(m)}</span>`;
   return `<span class="tag">Not in Lightspeed</span>`; }
 function renderResults(){ $("results").innerHTML=RESULTS.map(r=>{ const n=(r.fields[U.log]||[]).length, d=(r.fields[U.deals]||[]).length;
-  return `<button class="res ${r.id===CURID?"on":""}" data-act="open" data-id="${r.id}"><b>${esc(nameOf(r))}</b><span class="r">${n?n+" item"+(n===1?"":"s"):""}${d?` · ${d} deal${d===1?"":"s"}`:""}</span><span class="meta">${esc([uv(r,"email"),uv(r,"mobile")||uv(r,"phone")].filter(Boolean).join(" · ")||"no contact info")}</span></button>`; }).join("")||""; }
+  return `<button class="res ${r.id===CURID?"on":""}" data-act="open" data-id="${r.id}"><b>${esc(nameOf(r))}</b><span class="r">${n?n+" item"+(n===1?"":"s"):""}${d?` · ${d} deal${d===1?"":"s"}`:""}</span><span class="meta">${window.MRMCust?MRMCust.line({email:uv(r,"email"),phone:uv(r,"mobile")||uv(r,"phone")},{noName:true}):esc([uv(r,"email"),uv(r,"mobile")||uv(r,"phone")].filter(Boolean).join(" · ")||"no contact info")}</span></button>`; }).join("")||""; }
 
 /* ---------- profile ---------- */
 async function openCust(id, keepMsg){ CURID=id; if(!keepMsg) MSG=""; EDIT=null; NEWC=null; FILTER="all"; REL_DATA={}; CUR=null; renderResults(); $("layout").classList.add("open");

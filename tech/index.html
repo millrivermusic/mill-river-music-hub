@@ -83,6 +83,7 @@ label.f.wide{grid-column:1/-1}
 .bpicks button:hover{border-color:var(--accent,#8A3B12)}.bnew{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.bnew select{font:inherit;padding:3px 6px;border-radius:8px}
 </style>
 <link rel="stylesheet" href="../warm.css?v=2">
+<script src="../custline.js?v=1"></script>
 <script src="../who.js?v=1" defer></script>
 </head>
 <body>
@@ -196,7 +197,7 @@ function renderItem(extra){ const r=REC; const ps=f(r,"phys");
   const box=(t,v)=>v?`<div class="notebox"><b>${t}</b>${esc(v)}</div>`:"";
   $("item").innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><h2 style="margin:0 0 2px">${esc(f(r,"name"))}</h2>${f(r,"sku")?`<span class="sku" style="font-size:15px;font-weight:700">SKU ${esc(f(r,"sku"))}</span>`:`<span class="tag need">No SKU yet</span>`}</div><button class="btn sec" data-act="close" style="min-height:40px;padding:8px 12px;flex:none">← Queue</button></div>
     ${pics.length?`<div class="thumbs">${pics.map(u=>`<img src="${esc(u)}" alt="" loading="lazy">`).join("")}</div>`:""}
-    <dl class="deets">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(String(v))}</dd></div>`).join("")}</dl>
+    <dl class="deets">${rows.map(([k,v])=>{ const sid=k==="Seller"?(()=>{ const x=(r.fields[FX.seller]||[])[0]; return x&&typeof x==="object"?x.id:x; })():""; return `<div><dt>${k}</dt><dd>${sid?`<span data-mrm-cust="${esc(sid)}">${esc(String(v))}</span>`:esc(String(v))}</dd></div>`; }).join("")}</dl>
     ${box("Notes",f(r,"notes"))}
     ${EDITING?editForm():`<div class="locked"><span>🔒 Item details are locked.</span><button class="btn sec" data-act="unlock">✏️ Change fields</button></div>`}
     <div id="emsg"></div></div>
