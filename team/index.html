@@ -192,6 +192,10 @@ h2.sec{font-size:12px;font-weight:700;letter-spacing:.09em;margin:26px 0 12px;pa
 .bar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,var(--mrm-red) 0 25%,var(--mrm-gold) 25% 50%,var(--mrm-sea) 50% 75%,var(--mrm-teal) 75% 100%)}
 .ptile{border-top:3px solid var(--mrm-teal)}
 .pgrid .ptile:nth-child(4n+1){border-top-color:var(--mrm-red)}.pgrid .ptile:nth-child(4n+2){border-top-color:var(--mrm-gold)}.pgrid .ptile:nth-child(4n+3){border-top-color:var(--mrm-sea)}.pgrid .ptile:nth-child(4n+4){border-top-color:var(--mrm-teal)}
+.side{background:#EBE4DA!important;border-right-color:#D9D0C4!important}
+.side a.l1:hover,.side a.l1.on{background:var(--bg)!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .side{background:#141210!important;border-right-color:#2A2622!important}}
+:root[data-theme="dark"] .side{background:#141210!important;border-right-color:#2A2622!important}
 .side .sh{color:var(--mrm-teal)!important}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .side .sh{color:var(--mrm-sea)!important}}
 :root[data-theme="dark"] .side .sh{color:var(--mrm-sea)!important}
